@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { existsSync } from "node:fs";
 import type { Okuma, Ortam, Yazma } from "../ortak/tipler";
-import { ayar, onerilenAyarYolu } from "./ayar";
+import { arananYollar, ayar, onerilenAyarYolu, taniYaz } from "./ayar";
 import * as cekirdek from "./veri-cekirdek";
 
 /**
@@ -10,9 +10,28 @@ import * as cekirdek from "./veri-cekirdek";
  */
 
 let _dataDir: string | null = null;
+/** Son çözüm denemesinde nereye bakıldı, ne görüldü. */
+let _arananlar: { yol: string; bulundu: boolean }[] = [];
 
+/**
+ * Veri klasörü. Çözüm YALNIZCA başarılıysa saklanır.
+ *
+ * Kurulumdan hemen sonraki ilk açılışta ayar dosyası bir an okunamıyor:
+ * virüs taraması yeni kurulan uygulamayı tarıyor, eşitleme istemcisi
+ * dosyaya giriyor. `existsSync` her hatayı sessizce "yok" diye döndürdüğü
+ * için bu, dosyanın olmaması gibi görünüyor.
+ *
+ * Başarısız çözümü ömür boyu saklamak, kilit kalktıktan sonra bile uygulama
+ * kapanana dek boş ekran demekti. Artık çözülen klasör ortada yoksa bir
+ * sonraki çağrıda yeniden aranıyor — kilit kalkınca kendiliğinden düzeliyor.
+ */
 export function dataDir(): string {
-  if (!_dataDir) _dataDir = ayar("dataDir", "../personnal_assistant/data", process.env.ARGOS_DATA);
+  if (_dataDir && existsSync(_dataDir)) return _dataDir;
+  _arananlar = arananYollar();
+  _dataDir = ayar("dataDir", "../personnal_assistant/data", process.env.ARGOS_DATA);
+  // Her çözüm denemesi tanıya yazılır: dosya son durumu gösterir, ilk
+  // denemeyi değil. Toparlanma da böyle görünüyor.
+  taniYaz(_dataDir, existsSync(_dataDir), _arananlar);
   return _dataDir;
 }
 
@@ -22,6 +41,7 @@ export function ortam(): Ortam {
     dataDir: d,
     dataDirVar: existsSync(d),
     ayarYolu: onerilenAyarYolu(),
+    arananYollar: _arananlar,
     surum: app.getVersion(),
     platform: process.platform,
     paketli: app.isPackaged,

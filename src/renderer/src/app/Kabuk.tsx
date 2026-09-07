@@ -75,6 +75,15 @@ function Icerik() {
               Veri klasörü bulunamadı: <span className={s.seritYol}>{ortam.dataDir}</span> — yolu{" "}
               <span className={s.seritYol}>{ortam.ayarYolu}</span> dosyasına{" "}
               <span className={s.seritYol}>{`{"dataDir": "..."}`}</span> olarak yaz.
+              {/* Nereye bakıldığı da yazılıyor: "bulunamadı" tek başına
+                  neyin yanlış gittiğini söylemiyor. */}
+              <span className={s.seritArananlar}>
+                {ortam.arananYollar.map((y) => (
+                  <span key={y.yol}>
+                    {y.bulundu ? "VAR" : "yok"} — {y.yol}
+                  </span>
+                ))}
+              </span>
             </span>
           </div>
         )}
