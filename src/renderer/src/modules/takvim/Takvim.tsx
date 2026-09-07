@@ -1,69 +1,235 @@
-import { CalendarOff, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { CalendarOff, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, isoyaTarih } from "@ortak/gun";
+import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
 import { dakika, gununSlotlari, yeniSlotId, type KuralSeti } from "@ortak/kural";
 import { gunBosalt, gunTipi, type BosaltRaporu } from "@ortak/plan-islem";
-import { BosDurum, Dugme, EkranBasi, Etiket, Kart, Yuklenirken } from "@/ui/bilesenler";
+import type { TodoistGorev } from "@ortak/tipler";
+import { Dugme, EkranBasi, Etiket, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
+import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
 import s from "./takvim.module.css";
 
 /**
  * Takvim — geçmişe değil ÖNE bakar.
  *
- * Eski panodaki hâli her hücreye alışkanlık oranı basıyordu; bir ay boyunca
- * sıralanan oran hem istenmeden tamamlanma yorumu yapıyor hem de sekmeyi
- * işlevsiz bırakıyordu (`siradaki.md`). Geçmiş zaten Arşiv'de.
+ * İki kaynak birleşir: plan slotları (`data/W*.json`) ve Todoist görevleri.
+ * Takvim yalnızca planı gösterse günün yarısı eksik kalırdı.
  *
- * Buranın işi **boşluk görmek**: hangi güne ne sığar, korumalı alan nerede,
- * sosyal kota hangi güne konabilir. İki görünüm var — ay ızgarası ve gün
- * ekseni. Güne tıklayınca tek adımda slot eklenir ya da gün boşaltılır.
+ * Ay ızgarasının işi **boşluk görmek**: hangi güne ne sığar, korumalı alan
+ * nerede, sosyal kota hangi güne konabilir. Hafta ve gün ekseni ise saati
+ * gösterir — plan ile görev yan yana.
+ *
+ * Haftası kurulmamış bir gün hata değil: o gün de açılır, görevleri görünür,
+ * yalnızca slot düzenleme kapalıdır.
  */
 
 const kisaltAlan = (a: string): string => (a.length <= 4 ? a : a.slice(0, 3));
 
 const TIP_ADI: Record<string, string> = { ofis: "ofis", ev: "ev", haftaSonu: "h.sonu" };
 
-type Gorunum = "ay" | "gun";
+type Gorunum = "ay" | "hafta" | "gun";
 
-/** Gün ekseninin saat aralığı ve bir saatin piksel yüksekliği. */
+/** Eksenin saat aralığı ve bir saatin piksel yüksekliği. */
 const ILK_SAAT = 6;
 const SON_SAAT = 24;
 const SAAT_YUKSEKLIK = 46;
+const EKSEN_YUKSEKLIK = (SON_SAAT - ILK_SAAT) * SAAT_YUKSEKLIK;
 
 const yerDk = (dk: number): number => ((dk - ILK_SAAT * 60) / 60) * SAAT_YUKSEKLIK;
 
-interface GunBilgisi {
-  iso: string;
-  ayIcinde: boolean;
-  gecmis: boolean;
-  bugunMu: boolean;
-  haftaKodu: string | null;
-  tip: string | null;
-  korumali: boolean;
-  slotlar: { id: string; saat: string; alan: string; konu: string; durum: string }[];
-  seansDk: number;
-  bos: boolean;
-  kotaBos: boolean;
+/** Bir ISO tarihin plan dosyasındaki karşılığı. */
+interface GunKaydi {
+  kod: string;
+  gunNo: number;
+  veri: HaftaTipi;
 }
+
+const haftaninPazartesisi = (iso: string): string => gunEkle(iso, -haftaninGunu(iso));
+
+/* --- görev parçaları ----------------------------------------------------- */
+
+function GorevCipi({ gorev, onKapat }: { gorev: TodoistGorev; onKapat: () => void }) {
+  const saat = gorevSaati(gorev);
+  return (
+    <button
+      type="button"
+      className={s.gorevCip}
+      onClick={onKapat}
+      title={`${gorev.icerik}${saat ? ` · ${saat}` : ""} — tamamlamak için tıkla`}
+    >
+      <span className={s.gorevKutucuk} />
+      <span className={s.gorevCipAd}>
+        {saat ? `${saat} ` : ""}
+        {gorev.icerik}
+      </span>
+    </button>
+  );
+}
+
+/* --- gün sütunu (hafta ve gün ekseni ortak) ------------------------------ */
+
+function EksenSutunu({
+  kayit,
+  kurallar,
+  gorevler,
+  bugunMu,
+  simdiDk,
+  dar,
+  onSlotSec,
+  seciliSlot,
+}: {
+  kayit: GunKaydi | null;
+  kurallar: KuralSeti;
+  gorevler: TodoistGorev[];
+  bugunMu: boolean;
+  simdiDk: number;
+  dar: boolean;
+  onSlotSec: (id: string | null) => void;
+  seciliSlot: string | null;
+}) {
+  const slotlar = kayit ? gununSlotlari(kayit.veri, kayit.gunNo) : [];
+  const ofisK = kurallar.ofisGunuKurallari ?? {};
+
+  // Yasak ve korumalı bantlar: nereye slot konmayacağı gözle görünsün.
+  const bantlar: { bas: number; son: number; ad: string }[] = [];
+  if (kayit) {
+    const tip = gunTipi(kayit.gunNo, kayit.veri.ofisGunleri ?? []);
+    if (tip === "ofis") {
+      if (ofisK.sabahSlotuYok && ofisK.sabahSiniri) {
+        bantlar.push({ bas: ILK_SAAT * 60, son: dakika(ofisK.sabahSiniri), ad: "sabah yok" });
+      }
+      if (ofisK.sonSlotBitisEnGec) {
+        bantlar.push({ bas: dakika(ofisK.sonSlotBitisEnGec), son: SON_SAAT * 60, ad: "geç" });
+      }
+    }
+    for (const k of kurallar.korumaliAlanlar ?? []) {
+      if (k.gunler.includes(kayit.gunNo)) {
+        bantlar.push({ bas: dakika(k.saattenSonra), son: SON_SAAT * 60, ad: "korumalı" });
+      }
+    }
+  }
+
+  const saatliGorevler = gorevler.filter((g) => gorevSaati(g) !== null);
+
+  return (
+    <div
+      className={dar ? `${s.slotSutunu} ${s.haftaSutun}` : s.slotSutunu}
+      style={{ height: EKSEN_YUKSEKLIK }}
+    >
+      {Array.from({ length: (SON_SAAT - ILK_SAAT) * 2 + 1 }, (_, i) => (
+        <div
+          key={i}
+          className={i % 2 ? `${s.saatCizgi} ${s.saatCizgiYarim}` : s.saatCizgi}
+          style={{ top: (i * SAAT_YUKSEKLIK) / 2 }}
+        />
+      ))}
+
+      {bantlar.map((b, i) => (
+        <div
+          key={i}
+          className={s.bant}
+          style={{ top: yerDk(b.bas), height: yerDk(b.son) - yerDk(b.bas) }}
+        >
+          {!dar && <span className={s.bantEtiket}>{b.ad}</span>}
+        </div>
+      ))}
+
+      {slotlar.map((x) => (
+        <button
+          key={x.id}
+          type="button"
+          className={[
+            s.blok,
+            dar && s.blokKucuk,
+            x.id === seciliSlot && s.blokSecili,
+            x.durum === "yapildi" && s.blokYapildi,
+            x.durum === "kacti" && s.blokKacti,
+            x.durum === "tasindi" && s.blokTasindi,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={{
+            top: yerDk(dakika(x.saat)),
+            height: Math.max(20, (x.sureDk / 60) * SAAT_YUKSEKLIK - 3),
+          }}
+          onClick={() => onSlotSec(x.id === seciliSlot ? null : x.id)}
+          title={`${x.saat} · ${x.alan} — ${x.konu} · ${x.sureDk} dk`}
+        >
+          <span className={s.blokBas}>{dar ? x.alan : `${x.saat} · ${x.alan}`}</span>
+          {x.konu && !dar && <span className={s.blokAlt}>{x.konu}</span>}
+        </button>
+      ))}
+
+      {saatliGorevler.map((g) => (
+        <div
+          key={g.id}
+          className={`${s.blok} ${s.gorevBlok}${dar ? ` ${s.blokKucuk}` : ""}`}
+          style={{ top: yerDk(dakika(gorevSaati(g)!)), height: 24 }}
+          title={`${gorevSaati(g)} · ${g.icerik}`}
+        >
+          <span className={s.blokBas}>{g.icerik}</span>
+        </div>
+      ))}
+
+      {bugunMu && simdiDk >= ILK_SAAT * 60 && simdiDk <= SON_SAAT * 60 && (
+        <div className={s.simdiCizgi} style={{ top: yerDk(simdiDk) }} />
+      )}
+    </div>
+  );
+}
+
+function SaatSutunu() {
+  return (
+    <div className={s.saatSutunu}>
+      {Array.from({ length: SON_SAAT - ILK_SAAT + 1 }, (_, i) => (
+        <span key={i} className={s.saatEtiket} style={{ top: i * SAAT_YUKSEKLIK }}>
+          {String(ILK_SAAT + i).padStart(2, "0")}:00
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* --- ekran --------------------------------------------------------------- */
 
 export function Takvim() {
   const { haftalar, kurallar, bugun, yukleniyor } = usePlanVerisi();
   const [gorunum, setGorunum] = useState<Gorunum>("ay");
-  const [ay, setAy] = useState(() => bugun.slice(0, 7));
-  const [secili, setSecili] = useState<string | null>(null);
+  const [secili, setSecili] = useState(bugun);
+  const [seciliSlot, setSeciliSlot] = useState<string | null>(null);
+  const [simdi, setSimdi] = useState(() => new Date());
 
   const kuralSeti = kurallar as KuralSeti;
-  const yil = Number(ay.slice(0, 4));
-  const ayNo = Number(ay.slice(5, 7));
 
+  useEffect(() => {
+    const t = window.setInterval(() => setSimdi(new Date()), 60000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  /** Görünen aralık — hem Todoist sorgusu hem ay ızgarası bunu kullanır. */
+  const { bas, son, ayAnahtari } = useMemo(() => {
+    if (gorunum === "gun") return { bas: secili, son: secili, ayAnahtari: secili.slice(0, 7) };
+    if (gorunum === "hafta") {
+      const p = haftaninPazartesisi(secili);
+      return { bas: p, son: gunEkle(p, 6), ayAnahtari: secili.slice(0, 7) };
+    }
+    const ilk = `${secili.slice(0, 7)}-01`;
+    const basla = haftaninPazartesisi(ilk);
+    return { bas: basla, son: gunEkle(basla, 41), ayAnahtari: secili.slice(0, 7) };
+  }, [gorunum, secili]);
+
+  // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
+  const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1));
+
+  const yil = Number(ayAnahtari.slice(0, 4));
+  const ayNo = Number(ayAnahtari.slice(5, 7));
   const tk = useMemo(() => takvim(haftalar, yil, ayNo), [haftalar, yil, ayNo]);
 
-  /** Bir ISO tarihin hangi hafta dosyasında, kaçıncı gün olduğu. */
   const gunHaritasi = useMemo(() => {
-    const m = new Map<string, { kod: string; gunNo: number; veri: HaftaTipi }>();
+    const m = new Map<string, GunKaydi>();
     for (const h of haftalar) {
       for (const g of h.veri.gunler) {
         if (g.isoTarih) m.set(g.isoTarih, { kod: h.kod, gunNo: g.no, veri: h.veri });
@@ -71,48 +237,6 @@ export function Takvim() {
     }
     return m;
   }, [haftalar]);
-
-  const hucreler = useMemo<GunBilgisi[]>(() => {
-    const ilk = `${ay}-01`;
-    const basla = gunEkle(ilk, -((isoyaTarih(ilk).getUTCDay() + 6) % 7));
-    const korumaliAlanlar = kuralSeti.korumaliAlanlar ?? [];
-
-    return Array.from({ length: 42 }, (_, i) => {
-      const iso = gunEkle(basla, i);
-      const kayit = gunHaritasi.get(iso);
-      const gun = tk.gunler[iso] as
-        | { slotlar?: GunBilgisi["slotlar"]; seansDk?: number }
-        | undefined;
-      const slotlar = gun?.slotlar ?? [];
-      const tip = kayit ? gunTipi(kayit.gunNo, kayit.veri.ofisGunleri ?? []) : null;
-      const korumali =
-        kayit !== undefined && korumaliAlanlar.some((k) => k.gunler.includes(kayit.gunNo));
-      const aktif = slotlar.filter((x) => x.durum !== "tasindi" && x.alan !== "Kapanış");
-      const kota = kayit?.veri.sosyalKota ?? {};
-      const kotaBos =
-        kayit !== undefined &&
-        (kayit.gunNo >= 6 ? kota.haftaSonu !== true : kota.haftaIci !== true);
-
-      return {
-        iso,
-        ayIcinde: iso.slice(0, 7) === ay,
-        gecmis: iso < bugun,
-        bugunMu: iso === bugun,
-        haftaKodu: kayit?.kod ?? null,
-        tip,
-        korumali,
-        slotlar,
-        seansDk: gun?.seansDk ?? 0,
-        bos: aktif.length === 0,
-        kotaBos,
-      };
-    });
-  }, [ay, tk, gunHaritasi, bugun, kuralSeti]);
-
-  // Gün görünümüne geçilince bir gün seçili olmalı.
-  useEffect(() => {
-    if (gorunum === "gun" && !secili) setSecili(bugun);
-  }, [gorunum, secili, bugun]);
 
   if (yukleniyor) {
     return (
@@ -125,210 +249,364 @@ export function Takvim() {
     );
   }
 
-  const seciliKayit = secili ? (gunHaritasi.get(secili) ?? null) : null;
+  const simdiDk = simdi.getHours() * 60 + simdi.getMinutes();
+  const seciliKayit = gunHaritasi.get(secili) ?? null;
 
-  const gorunumSecici = (
-    <div className={s.gorunumler}>
-      {(["ay", "gun"] as Gorunum[]).map((g) => (
-        <button
-          key={g}
-          type="button"
-          className={g === gorunum ? `${s.gorunumDugme} ${s.gorunumSecili}` : s.gorunumDugme}
-          onClick={() => setGorunum(g)}
-        >
-          {g === "ay" ? "ay" : "gün"}
-        </button>
-      ))}
-    </div>
-  );
+  const kaydir = (yon: number) => {
+    if (gorunum === "gun") setSecili(gunEkle(secili, yon));
+    else if (gorunum === "hafta") setSecili(gunEkle(secili, yon * 7));
+    else setSecili(gunEkle(`${secili.slice(0, 7)}-01`, yon > 0 ? 32 : -1).slice(0, 7) + "-01");
+  };
 
-  /* --- gün görünümü ------------------------------------------------------ */
-
-  if (gorunum === "gun") {
-    const gun = secili ?? bugun;
-    return (
-      <>
-        <EkranBasi
-          baslik="Takvim"
-          altyazi={`${Number(gun.slice(8, 10))} ${
-            AY_TAM[Number(gun.slice(5, 7)) - 1]
-          } ${gun.slice(0, 4)} · ${GUN_ADLARI[(isoyaTarih(gun).getUTCDay() + 6) % 7]}`}
-          sag={
-            <div className={s.gez}>
-              {gorunumSecici}
-              <Dugme
-                tur="sade"
-                ikon={<ChevronLeft size={16} />}
-                onClick={() => setSecili(gunEkle(gun, -1))}
-                aria-label="Önceki gün"
-              />
-              {gun !== bugun && (
-                <Dugme tur="sade" onClick={() => setSecili(bugun)}>
-                  bugün
-                </Dugme>
-              )}
-              <Dugme
-                tur="sade"
-                ikon={<ChevronRight size={16} />}
-                onClick={() => setSecili(gunEkle(gun, 1))}
-                aria-label="Sonraki gün"
-              />
-            </div>
-          }
-        />
-
-        {seciliKayit ? (
-          <GunEkrani
-            kod={seciliKayit.kod}
-            gunNo={seciliKayit.gunNo}
-            iso={gun}
-            bugun={bugun}
-            kurallar={kuralSeti}
-          />
-        ) : (
-          <Kart>
-            <BosDurum
-              baslik="Bu gün bir hafta dosyasında değil"
-              metin="Plan yalnızca kurulmuş haftalarda düzenlenebilir."
-            />
-          </Kart>
-        )}
-      </>
-    );
-  }
-
-  /* --- ay görünümü ------------------------------------------------------- */
+  const baslikMetni =
+    gorunum === "gun"
+      ? `${Number(secili.slice(8, 10))} ${AY_TAM[Number(secili.slice(5, 7)) - 1]} ${secili.slice(0, 4)} · ${GUN_ADLARI[haftaninGunu(secili)]}`
+      : gorunum === "hafta"
+        ? `${Number(bas.slice(8, 10))} ${AY_TAM[Number(bas.slice(5, 7)) - 1]} – ${Number(son.slice(8, 10))} ${AY_TAM[Number(son.slice(5, 7)) - 1]}`
+        : `${AY_TAM[ayNo - 1]} ${yil}`;
 
   return (
     <>
       <EkranBasi
         baslik="Takvim"
-        altyazi="Hangi güne ne sığar. Geçmişin dökümü Arşiv'de."
+        altyazi="Plan ve görevler bir arada. Geçmişin dökümü Arşiv'de."
         sag={
           <div className={s.gez}>
-            {gorunumSecici}
+            <div className={s.gorunumler}>
+              {(["ay", "hafta", "gun"] as Gorunum[]).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className={
+                    g === gorunum ? `${s.gorunumDugme} ${s.gorunumSecili}` : s.gorunumDugme
+                  }
+                  onClick={() => setGorunum(g)}
+                >
+                  {g === "gun" ? "gün" : g}
+                </button>
+              ))}
+            </div>
             <Dugme
               tur="sade"
               ikon={<ChevronLeft size={16} />}
-              onClick={() => setAy(gunEkle(`${ay}-01`, -1).slice(0, 7))}
-              aria-label="Önceki ay"
+              onClick={() => kaydir(-1)}
+              aria-label="Önceki"
             />
-            <span style={{ minWidth: 120, textAlign: "center" }}>
-              {AY_TAM[ayNo - 1]} {yil}
-            </span>
+            <span style={{ minWidth: 150, textAlign: "center" }}>{baslikMetni}</span>
             <Dugme
               tur="sade"
               ikon={<ChevronRight size={16} />}
-              onClick={() => setAy(gunEkle(`${ay}-01`, 32).slice(0, 7))}
-              aria-label="Sonraki ay"
+              onClick={() => kaydir(1)}
+              aria-label="Sonraki"
+            />
+            {secili !== bugun && (
+              <Dugme tur="sade" onClick={() => setSecili(bugun)}>
+                bugün
+              </Dugme>
+            )}
+            <Dugme
+              tur="sade"
+              ikon={<RefreshCw size={15} />}
+              onClick={() => void td.tazele()}
+              title="Görevleri yenile"
+              aria-label="Görevleri yenile"
             />
           </div>
         }
       />
 
-      <div className={secili ? `${s.duzen} ${s.duzenPanelli}` : s.duzen}>
+      <div className={`${s.duzen} ${s.duzenPanelli}`}>
         <Kart dolgulu={false}>
-          <div className={s.baslikSatiri}>
-            {GUN_KISA.map((g) => (
-              <span key={g} className={s.baslikGun}>
-                {g}
-              </span>
-            ))}
-          </div>
+          {gorunum === "ay" && (
+            <AyIzgarasi
+              bas={bas}
+              ay={ayAnahtari}
+              bugun={bugun}
+              secili={secili}
+              tk={tk}
+              gunHaritasi={gunHaritasi}
+              kurallar={kuralSeti}
+              gorevler={td.gunlere}
+              onSec={setSecili}
+              onGunGorunumu={(iso) => {
+                setSecili(iso);
+                setGorunum("gun");
+              }}
+            />
+          )}
 
-          <div className={s.izgara}>
-            {hucreler.map((h) => {
-              if (!h.ayIcinde) return <div key={h.iso} className={`${s.hucre} ${s.hucreDisi}`} />;
-              const yapilan = h.slotlar.filter((x) => x.durum === "yapildi").length;
-              const planli = h.slotlar.filter((x) => x.durum !== "tasindi").length;
-              return (
-                <button
-                  key={h.iso}
-                  type="button"
-                  className={[
-                    s.hucre,
-                    h.bugunMu && s.hucreBugun,
-                    h.iso === secili && s.hucreSecili,
-                    h.gecmis && s.hucreGecmis,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => setSecili(h.iso === secili ? null : h.iso)}
-                  onDoubleClick={() => {
-                    setSecili(h.iso);
-                    setGorunum("gun");
-                  }}
-                >
-                  <span className={s.hucreBas}>
-                    <span className={s.gunNo}>{Number(h.iso.slice(8, 10))}</span>
-                    {h.tip && (
-                      <span className={h.tip === "ofis" ? `${s.gunTipi} ${s.tipOfis}` : s.gunTipi}>
-                        {TIP_ADI[h.tip]}
-                      </span>
-                    )}
-                    {h.korumali && (
-                      <span className={s.korumaliIsaret} title="16:00 sonrası korumalı">
-                        ⌾
-                      </span>
-                    )}
-                  </span>
+          {gorunum === "hafta" && (
+            <HaftaEkseni
+              bas={bas}
+              bugun={bugun}
+              secili={secili}
+              simdiDk={simdiDk}
+              gunHaritasi={gunHaritasi}
+              kurallar={kuralSeti}
+              gorevler={td.gunlere}
+              onSec={setSecili}
+              seciliSlot={seciliSlot}
+              onSlotSec={setSeciliSlot}
+              onKapat={td.kapat}
+            />
+          )}
 
-                  <span className={s.alanlar}>
-                    {h.slotlar
-                      .filter((x) => x.durum !== "tasindi")
-                      .slice(0, 4)
-                      .map((x) => (
-                        <span
-                          key={x.id}
-                          className={[
-                            s.alanRozet,
-                            x.durum === "yapildi" && s.alanRozetYapildi,
-                            x.durum === "kacti" && s.alanRozetKacti,
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          title={`${x.saat} · ${x.alan} — ${x.konu}`}
-                        >
-                          {kisaltAlan(x.alan)}
-                        </span>
-                      ))}
-                  </span>
-
-                  <span className={s.hucreDip}>
-                    {/* Oran yalnızca geçmiş günlerde, küçük punto. */}
-                    {h.gecmis && planli > 0 && (
-                      <span>
-                        {yapilan}/{planli}
-                      </span>
-                    )}
-                    {h.seansDk > 0 && <span>{h.seansDk} dk</span>}
-                    {!h.gecmis && h.bos && h.kotaBos && h.haftaKodu && (
-                      <span className={s.bosluk}>kota boş</span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {gorunum === "gun" && (
+            <GunEkseni
+              iso={secili}
+              bugun={bugun}
+              simdiDk={simdiDk}
+              kayit={seciliKayit}
+              kurallar={kuralSeti}
+              gorevler={td.gunlere.get(secili) ?? []}
+              seciliSlot={seciliSlot}
+              onSlotSec={setSeciliSlot}
+              onKapat={td.kapat}
+            />
+          )}
         </Kart>
 
-        {secili && seciliKayit ? (
-          <GunPaneli
+        {seciliKayit ? (
+          <GunPaneliDosyali
             kod={seciliKayit.kod}
             gunNo={seciliKayit.gunNo}
             iso={secili}
             kurallar={kuralSeti}
-            onKapat={() => setSecili(null)}
-            onGunGorunumu={() => setGorunum("gun")}
+            gorevler={td.gunlere.get(secili) ?? []}
+            onGorevKapat={td.kapat}
           />
-        ) : secili ? (
-          <Kart>
-            <BosDurum
-              baslik="Bu gün bir hafta dosyasında değil"
-              metin="Plan yalnızca kurulmuş haftalarda düzenlenebilir."
-            />
-          </Kart>
-        ) : null}
+        ) : (
+          <GunPaneliPlansiz
+            iso={secili}
+            gorevler={td.gunlere.get(secili) ?? []}
+            onGorevKapat={td.kapat}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+/* --- ay ızgarası --------------------------------------------------------- */
+
+function AyIzgarasi({
+  bas,
+  ay,
+  bugun,
+  secili,
+  tk,
+  gunHaritasi,
+  kurallar,
+  gorevler,
+  onSec,
+  onGunGorunumu,
+}: {
+  bas: string;
+  ay: string;
+  bugun: string;
+  secili: string;
+  tk: ReturnType<typeof takvim>;
+  gunHaritasi: Map<string, GunKaydi>;
+  kurallar: KuralSeti;
+  gorevler: Map<string, TodoistGorev[]>;
+  onSec: (iso: string) => void;
+  onGunGorunumu: (iso: string) => void;
+}) {
+  const korumaliAlanlar = kurallar.korumaliAlanlar ?? [];
+
+  return (
+    <>
+      <div className={s.baslikSatiri}>
+        {GUN_KISA.map((g) => (
+          <span key={g} className={s.baslikGun}>
+            {g}
+          </span>
+        ))}
+      </div>
+
+      <div className={s.izgara}>
+        {Array.from({ length: 42 }, (_, i) => {
+          const iso = gunEkle(bas, i);
+          if (iso.slice(0, 7) !== ay) return <div key={iso} className={`${s.hucre} ${s.hucreDisi}`} />;
+
+          const kayit = gunHaritasi.get(iso);
+          const gun = tk.gunler[iso] as
+            | { slotlar?: { id: string; saat: string; alan: string; konu: string; durum: string }[] }
+            | undefined;
+          const slotlar = gun?.slotlar ?? [];
+          const gunGorevleri = gorevler.get(iso) ?? [];
+          const gecmis = iso < bugun;
+          const yapilan = slotlar.filter((x) => x.durum === "yapildi").length;
+          const planli = slotlar.filter((x) => x.durum !== "tasindi").length;
+          const tip = kayit ? gunTipi(kayit.gunNo, kayit.veri.ofisGunleri ?? []) : null;
+          const korumali =
+            kayit !== undefined && korumaliAlanlar.some((k) => k.gunler.includes(kayit.gunNo));
+          const kota = kayit?.veri.sosyalKota ?? {};
+          const bos = slotlar.filter((x) => x.durum !== "tasindi" && x.alan !== "Kapanış").length === 0;
+          const kotaBos =
+            kayit !== undefined && (kayit.gunNo >= 6 ? kota.haftaSonu !== true : kota.haftaIci !== true);
+
+          return (
+            <button
+              key={iso}
+              type="button"
+              className={[
+                s.hucre,
+                iso === bugun && s.hucreBugun,
+                iso === secili && s.hucreSecili,
+                gecmis && s.hucreGecmis,
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => onSec(iso)}
+              onDoubleClick={() => onGunGorunumu(iso)}
+            >
+              <span className={s.hucreBas}>
+                <span className={s.gunNo}>{Number(iso.slice(8, 10))}</span>
+                {tip && (
+                  <span className={tip === "ofis" ? `${s.gunTipi} ${s.tipOfis}` : s.gunTipi}>
+                    {TIP_ADI[tip]}
+                  </span>
+                )}
+                {korumali && (
+                  <span className={s.korumaliIsaret} title="16:00 sonrası korumalı">
+                    ⌾
+                  </span>
+                )}
+              </span>
+
+              <span className={s.alanlar}>
+                {slotlar
+                  .filter((x) => x.durum !== "tasindi")
+                  .slice(0, 3)
+                  .map((x) => (
+                    <span
+                      key={x.id}
+                      className={[
+                        s.alanRozet,
+                        x.durum === "yapildi" && s.alanRozetYapildi,
+                        x.durum === "kacti" && s.alanRozetKacti,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      title={`${x.saat} · ${x.alan} — ${x.konu}`}
+                    >
+                      {kisaltAlan(x.alan)}
+                    </span>
+                  ))}
+                {gunGorevleri.slice(0, 2).map((g) => (
+                  <span key={g.id} className={s.gorevRozet} title={g.icerik}>
+                    {g.icerik}
+                  </span>
+                ))}
+                {gunGorevleri.length > 2 && (
+                  <span className={s.gorevRozet}>+{gunGorevleri.length - 2}</span>
+                )}
+              </span>
+
+              <span className={s.hucreDip}>
+                {/* Oran yalnızca geçmiş günlerde, küçük punto. */}
+                {gecmis && planli > 0 && (
+                  <span>
+                    {yapilan}/{planli}
+                  </span>
+                )}
+                {!gecmis && bos && kotaBos && kayit && <span className={s.bosluk}>kota boş</span>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/* --- hafta ekseni -------------------------------------------------------- */
+
+function HaftaEkseni({
+  bas,
+  bugun,
+  secili,
+  simdiDk,
+  gunHaritasi,
+  kurallar,
+  gorevler,
+  onSec,
+  seciliSlot,
+  onSlotSec,
+  onKapat,
+}: {
+  bas: string;
+  bugun: string;
+  secili: string;
+  simdiDk: number;
+  gunHaritasi: Map<string, GunKaydi>;
+  kurallar: KuralSeti;
+  gorevler: Map<string, TodoistGorev[]>;
+  onSec: (iso: string) => void;
+  seciliSlot: string | null;
+  onSlotSec: (id: string | null) => void;
+  onKapat: (g: TodoistGorev) => Promise<void>;
+}) {
+  const gunler = Array.from({ length: 7 }, (_, i) => gunEkle(bas, i));
+  const sutunlar = `52px repeat(7, minmax(0, 1fr))`;
+
+  return (
+    <>
+      <div className={s.haftaBaslik} style={{ gridTemplateColumns: sutunlar }}>
+        <span className={s.haftaBaslikBos} />
+        {gunler.map((iso) => (
+          <button
+            key={iso}
+            type="button"
+            className={iso === secili ? `${s.haftaGun} ${s.haftaGunSecili}` : s.haftaGun}
+            onClick={() => onSec(iso)}
+          >
+            <span className={s.haftaGunAd}>{GUN_KISA[haftaninGunu(iso)]}</span>
+            <span className={iso === bugun ? `${s.haftaGunNo} ${s.haftaGunBugun}` : s.haftaGunNo}>
+              {Number(iso.slice(8, 10))}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Saatsiz görevler eksene konamaz; üstte gün boyu şeridinde durur. */}
+      <div className={s.gunBoyu} style={{ gridTemplateColumns: sutunlar }}>
+        <span className={s.gunBoyuEtiket}>gün boyu</span>
+        <div
+          className={s.gunBoyuSutunlar}
+          style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gridColumn: "2 / -1" }}
+        >
+          {gunler.map((iso) => (
+            <div key={iso} className={s.gunBoyuHucre}>
+              {(gorevler.get(iso) ?? [])
+                .filter((g) => gorevSaati(g) === null)
+                .map((g) => (
+                  <GorevCipi key={g.id} gorev={g} onKapat={() => void onKapat(g)} />
+                ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div
+        className={s.haftaEksen}
+        style={{ gridTemplateColumns: sutunlar, height: EKSEN_YUKSEKLIK + 24 }}
+      >
+        <SaatSutunu />
+        {gunler.map((iso) => (
+          <EksenSutunu
+            key={iso}
+            kayit={gunHaritasi.get(iso) ?? null}
+            kurallar={kurallar}
+            gorevler={gorevler.get(iso) ?? []}
+            bugunMu={iso === bugun}
+            simdiDk={simdiDk}
+            dar
+            seciliSlot={seciliSlot}
+            onSlotSec={onSlotSec}
+          />
+        ))}
       </div>
     </>
   );
@@ -336,182 +614,168 @@ export function Takvim() {
 
 /* --- gün ekseni ---------------------------------------------------------- */
 
-function GunEkrani({
-  kod,
-  gunNo,
+function GunEkseni({
   iso,
   bugun,
+  simdiDk,
+  kayit,
   kurallar,
+  gorevler,
+  seciliSlot,
+  onSlotSec,
+  onKapat,
 }: {
-  kod: string;
-  gunNo: number;
   iso: string;
   bugun: string;
+  simdiDk: number;
+  kayit: GunKaydi | null;
   kurallar: KuralSeti;
+  gorevler: TodoistGorev[];
+  seciliSlot: string | null;
+  onSlotSec: (id: string | null) => void;
+  onKapat: (g: TodoistGorev) => Promise<void>;
 }) {
-  const dosya = useDosya<HaftaTipi>(`${kod}.json`);
-  const [seciliSlot, setSeciliSlot] = useState<string | null>(null);
-  const [simdi, setSimdi] = useState(() => new Date());
-
-  // "Şimdi" çizgisi dakikada bir kayar; saniye hassasiyeti gereksiz.
-  useEffect(() => {
-    const t = window.setInterval(() => setSimdi(new Date()), 60000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  const veri = dosya.veri;
-  if (dosya.yukleniyor || !veri) {
-    return (
-      <Kart>
-        <Yuklenirken />
-      </Kart>
-    );
-  }
-
-  const slotlar = gununSlotlari(veri, gunNo);
-  const tip = gunTipi(gunNo, veri.ofisGunleri ?? []);
-  const ofisK = kurallar.ofisGunuKurallari ?? {};
-
-  // Yasak ve korumalı bantlar: nereye slot konmayacağı gözle görünsün.
-  const bantlar: { bas: number; son: number; ad: string }[] = [];
-  if (tip === "ofis") {
-    if (ofisK.sabahSlotuYok && ofisK.sabahSiniri) {
-      bantlar.push({ bas: ILK_SAAT * 60, son: dakika(ofisK.sabahSiniri), ad: "sabah slotu yok" });
-    }
-    if (ofisK.sonSlotBitisEnGec) {
-      bantlar.push({ bas: dakika(ofisK.sonSlotBitisEnGec), son: SON_SAAT * 60, ad: "geç" });
-    }
-  }
-  for (const k of kurallar.korumaliAlanlar ?? []) {
-    if (k.gunler.includes(gunNo)) {
-      bantlar.push({ bas: dakika(k.saattenSonra), son: SON_SAAT * 60, ad: "korumalı" });
-    }
-  }
-
-  const gunSeanslari = (veri.seanslar ?? []).filter(
+  const seanslar = (kayit?.veri.seanslar ?? []).filter(
     (x) => (x.baslangic ?? "").slice(0, 10) === iso,
   );
-
-  const yukseklik = (SON_SAAT - ILK_SAAT) * SAAT_YUKSEKLIK;
-  const simdiDk = simdi.getHours() * 60 + simdi.getMinutes();
-  const simdiGorunur = iso === bugun && simdiDk >= ILK_SAAT * 60 && simdiDk <= SON_SAAT * 60;
+  const gunBoyu = gorevler.filter((g) => gorevSaati(g) === null);
 
   return (
-    <div className={`${s.duzen} ${s.duzenPanelli}`}>
-      <Kart dolgulu={false}>
-        <div className={s.sutunBasi}>
-          <span className={s.sutunBasiPlan}>plan</span>
-          <span className={s.sutunBasiOlcum}>ölçülen</span>
-        </div>
+    <>
+      <div className={s.sutunBasi}>
+        <span className={s.sutunBasiPlan}>plan ve görevler</span>
+        <span className={s.sutunBasiOlcum}>ölçülen</span>
+      </div>
 
-        <div className={s.eksen} style={{ height: yukseklik + 24 }}>
-          <div className={s.saatSutunu}>
-            {Array.from({ length: SON_SAAT - ILK_SAAT + 1 }, (_, i) => (
-              <span key={i} className={s.saatEtiket} style={{ top: i * SAAT_YUKSEKLIK }}>
-                {String(ILK_SAAT + i).padStart(2, "0")}:00
-              </span>
+      {gunBoyu.length > 0 && (
+        <div className={s.gunBoyu}>
+          <span className={s.gunBoyuEtiket}>gün boyu</span>
+          <div className={s.gunBoyuIcerik}>
+            {gunBoyu.map((g) => (
+              <GorevCipi key={g.id} gorev={g} onKapat={() => void onKapat(g)} />
             ))}
           </div>
+        </div>
+      )}
 
-          <div className={s.slotSutunu} style={{ height: yukseklik }}>
-            {Array.from({ length: (SON_SAAT - ILK_SAAT) * 2 + 1 }, (_, i) => (
-              <div
-                key={i}
-                className={i % 2 ? `${s.saatCizgi} ${s.saatCizgiYarim}` : s.saatCizgi}
-                style={{ top: (i * SAAT_YUKSEKLIK) / 2 }}
-              />
-            ))}
+      <div className={s.eksen} style={{ height: EKSEN_YUKSEKLIK + 24 }}>
+        <SaatSutunu />
+        <EksenSutunu
+          kayit={kayit}
+          kurallar={kurallar}
+          gorevler={gorevler}
+          bugunMu={iso === bugun}
+          simdiDk={simdiDk}
+          dar={false}
+          seciliSlot={seciliSlot}
+          onSlotSec={onSlotSec}
+        />
 
-            {bantlar.map((b, i) => (
-              <div
-                key={i}
-                className={s.bant}
-                style={{ top: yerDk(b.bas), height: yerDk(b.son) - yerDk(b.bas) }}
-              >
-                <span className={s.bantEtiket}>{b.ad}</span>
-              </div>
-            ))}
-
-            {slotlar.map((x) => (
-              <button
-                key={x.id}
-                type="button"
-                className={[
-                  s.blok,
-                  x.id === seciliSlot && s.blokSecili,
-                  x.durum === "yapildi" && s.blokYapildi,
-                  x.durum === "kacti" && s.blokKacti,
-                  x.durum === "tasindi" && s.blokTasindi,
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                style={{
-                  top: yerDk(dakika(x.saat)),
-                  height: Math.max(22, (x.sureDk / 60) * SAAT_YUKSEKLIK - 3),
-                }}
-                onClick={() => setSeciliSlot(x.id === seciliSlot ? null : x.id)}
-                title={`${x.saat} · ${x.alan} — ${x.konu} · ${x.sureDk} dk`}
-              >
-                <span className={s.blokBas}>
-                  {x.saat} · {x.alan}
+        {/* Ölçülen seanslar ayrı sütunda: plan ile gerçek yan yana durur. */}
+        <div className={s.seansSutunu} style={{ height: EKSEN_YUKSEKLIK }}>
+          {seanslar.map((x) => {
+            const t = (x.baslangic ?? "").slice(11, 16) || "00:00";
+            return (
+              <div key={x.id}>
+                <div
+                  className={s.seansBlok}
+                  style={{
+                    top: yerDk(dakika(t)),
+                    height: Math.max(3, ((x.sureDk ?? 0) / 60) * SAAT_YUKSEKLIK),
+                  }}
+                  title={`${t} · ${x.sureDk} dk`}
+                />
+                <span className={s.seansEtiket} style={{ top: yerDk(dakika(t)) }}>
+                  {x.sureDk} dk
                 </span>
-                {x.konu && <span className={s.blokAlt}>{x.konu}</span>}
-              </button>
-            ))}
-
-            {simdiGorunur && <div className={s.simdiCizgi} style={{ top: yerDk(simdiDk) }} />}
-            {simdiGorunur && <div className={s.simdiNokta} style={{ top: yerDk(simdiDk) }} />}
-          </div>
-
-          {/* Ölçülen seanslar ayrı sütunda: plan ile gerçek yan yana durur. */}
-          <div className={s.seansSutunu} style={{ height: yukseklik }}>
-            {gunSeanslari.map((x) => {
-              const t = (x.baslangic ?? "").slice(11, 16) || "00:00";
-              const bas = dakika(t);
-              return (
-                <div key={x.id}>
-                  <div
-                    className={s.seansBlok}
-                    style={{
-                      top: yerDk(bas),
-                      height: Math.max(3, ((x.sureDk ?? 0) / 60) * SAAT_YUKSEKLIK),
-                    }}
-                    title={`${t} · ${x.sureDk} dk`}
-                  />
-                  <span className={s.seansEtiket} style={{ top: yerDk(bas) }}>
-                    {x.sureDk} dk
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
-      </Kart>
-
-      <GunPaneliIc
-        veri={veri}
-        yaz={dosya.yaz}
-        gunNo={gunNo}
-        iso={iso}
-        kurallar={kurallar}
-        onKapat={null}
-        onGunGorunumu={null}
-      />
-    </div>
+      </div>
+    </>
   );
 }
 
 /* --- gün paneli ---------------------------------------------------------- */
 
-function GunPaneli(p: {
+function GorevBolumu({
+  gorevler,
+  onKapat,
+}: {
+  gorevler: TodoistGorev[];
+  onKapat: (g: TodoistGorev) => Promise<void>;
+}) {
+  if (gorevler.length === 0) return null;
+  return (
+    <>
+      <p className={s.panelBolum}>Görevler</p>
+      {gorevler.map((g) => (
+        <div key={g.id} className={s.panelGorev}>
+          <button
+            type="button"
+            className={s.gorevKutucuk}
+            onClick={() => void onKapat(g)}
+            title="Tamamla"
+            aria-label={`${g.icerik} görevini tamamla`}
+          />
+          <span className={s.panelGorevAd}>{g.icerik}</span>
+          {gorevSaati(g) && <span className={s.aciklama}>{gorevSaati(g)}</span>}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Haftası kurulmamış gün: görevleri var, planı yok. Hata değil. */
+function GunPaneliPlansiz({
+  iso,
+  gorevler,
+  onGorevKapat,
+}: {
+  iso: string;
+  gorevler: TodoistGorev[];
+  onGorevKapat: (g: TodoistGorev) => Promise<void>;
+}) {
+  return (
+    <aside className={s.panel}>
+      <div className={s.panelBas}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p className={s.panelUst}>{GUN_ADLARI[haftaninGunu(iso)]}</p>
+          <h2 className={s.panelBaslik}>
+            {Number(iso.slice(8, 10))} {AY_TAM[Number(iso.slice(5, 7)) - 1]}
+          </h2>
+        </div>
+      </div>
+
+      <GorevBolumu gorevler={gorevler} onKapat={onGorevKapat} />
+
+      <p className={s.panelBolum}>Plan</p>
+      <p className={s.aciklama}>
+        Bu haftanın planı henüz kurulmamış. Slot eklemek için önce hafta kurulur.
+      </p>
+    </aside>
+  );
+}
+
+function GunPaneliDosyali({
+  kod,
+  gunNo,
+  iso,
+  kurallar,
+  gorevler,
+  onGorevKapat,
+}: {
   kod: string;
   gunNo: number;
   iso: string;
   kurallar: KuralSeti;
-  onKapat: () => void;
-  onGunGorunumu: () => void;
+  gorevler: TodoistGorev[];
+  onGorevKapat: (g: TodoistGorev) => Promise<void>;
 }) {
-  const { veri, yukleniyor, yaz } = useDosya<HaftaTipi>(`${p.kod}.json`);
+  const { veri, yukleniyor, yaz } = useDosya<HaftaTipi>(`${kod}.json`);
+  const [rapor, setRapor] = useState<BosaltRaporu | null>(null);
+
   if (yukleniyor || !veri) {
     return (
       <aside className={s.panel}>
@@ -519,37 +783,6 @@ function GunPaneli(p: {
       </aside>
     );
   }
-  return (
-    <GunPaneliIc
-      veri={veri}
-      yaz={yaz}
-      gunNo={p.gunNo}
-      iso={p.iso}
-      kurallar={p.kurallar}
-      onKapat={p.onKapat}
-      onGunGorunumu={p.onGunGorunumu}
-    />
-  );
-}
-
-function GunPaneliIc({
-  veri,
-  yaz,
-  gunNo,
-  iso,
-  kurallar,
-  onKapat,
-  onGunGorunumu,
-}: {
-  veri: HaftaTipi;
-  yaz: (y: HaftaTipi) => Promise<boolean>;
-  gunNo: number;
-  iso: string;
-  kurallar: KuralSeti;
-  onKapat: (() => void) | null;
-  onGunGorunumu: (() => void) | null;
-}) {
-  const [rapor, setRapor] = useState<BosaltRaporu | null>(null);
 
   const gun = veri.gunler.find((g) => g.no === gunNo);
   const slotlar = gununSlotlari(veri, gunNo);
@@ -582,10 +815,15 @@ function GunPaneliIc({
     setRapor(null);
   };
 
-  const bosalt = (kota: "haftaSonu" | "haftaIci" | null) => {
-    const { hafta, rapor: r } = gunBosalt(veri, kurallar, gunNo, kota);
+  const bosalt = () => {
+    const { hafta, rapor: r } = gunBosalt(
+      veri,
+      kurallar,
+      gunNo,
+      gunNo >= 6 ? "haftaSonu" : "haftaIci",
+    );
     setRapor(r);
-    if (r.tasinan > 0 || r.dusen > 0 || kota) void yaz(hafta);
+    void yaz(hafta);
   };
 
   return (
@@ -597,11 +835,11 @@ function GunPaneliIc({
           </p>
           <h2 className={s.panelBaslik}>{gun?.tarih ?? iso}</h2>
         </div>
-        {onKapat && (
-          <Dugme tur="sade" ikon={<X size={16} />} onClick={onKapat} aria-label="Paneli kapat" />
-        )}
       </div>
 
+      <GorevBolumu gorevler={gorevler} onKapat={onGorevKapat} />
+
+      <p className={s.panelBolum}>Plan</p>
       {slotlar.length === 0 ? (
         <p className={s.aciklama}>Bu güne slot konmamış.</p>
       ) : (
@@ -635,16 +873,11 @@ function GunPaneliIc({
         <Dugme
           tur="cizgili"
           ikon={<CalendarOff size={15} />}
-          onClick={() => bosalt(gunNo >= 6 ? "haftaSonu" : "haftaIci")}
+          onClick={bosalt}
           disabled={slotlar.filter((x) => x.durum === "planli").length === 0}
         >
           Günü boşalt (buluşma)
         </Dugme>
-        {onGunGorunumu && (
-          <Dugme tur="sade" onClick={onGunGorunumu}>
-            Gün görünümünde aç
-          </Dugme>
-        )}
         <p className={s.aciklama}>
           Slot taşınır, sıkıştırılmaz. Hafta sonuna sığmayan düşer ve ⊘ olarak kalır.
         </p>

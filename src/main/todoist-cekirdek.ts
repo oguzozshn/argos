@@ -142,6 +142,27 @@ export async function bugunVeGecikmis(token: string): Promise<TodoistGorev[]> {
   return ham.map(gorevCevir).filter((g) => g.projeId !== PLAN_PROJESI);
 }
 
+/**
+ * Bir tarih aralığındaki görevler — takvim için. Todoist'in kendi süzgeci
+ * kullanılır, tek istekte tüm projeleri tarar. Plan projesi elenir: slot
+ * görevleri takvimde zaten plan tarafında görünüyor, iki kez çıkmasın.
+ */
+export async function tarihAraligi(
+  token: string,
+  basIso: string,
+  sonIso: string,
+): Promise<TodoistGorev[]> {
+  const sorgu = `due after: ${basIso} & due before: ${sonIso}`;
+  const ham = await tumSayfalar<HamGorev>(
+    token,
+    (i) =>
+      `/tasks/filter?query=${encodeURIComponent(sorgu)}&limit=200${
+        i ? `&cursor=${encodeURIComponent(i)}` : ""
+      }`,
+  );
+  return ham.map(gorevCevir).filter((g) => g.projeId !== PLAN_PROJESI);
+}
+
 export interface YeniGorev {
   icerik: string;
   projeId: string;

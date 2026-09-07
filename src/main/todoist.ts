@@ -67,6 +67,9 @@ export const gorevler = (projeId: string): Promise<TodoistGorev[]> =>
 
 export const bugunVeGecikmis = (): Promise<TodoistGorev[]> => cekirdek.bugunVeGecikmis(jeton());
 
+export const tarihAraligi = (bas: string, son: string): Promise<TodoistGorev[]> =>
+  cekirdek.tarihAraligi(jeton(), bas, son);
+
 export const ekle = (g: YeniGorev): Promise<TodoistGorev> => cekirdek.ekle(jeton(), g);
 
 export const kapat = (id: string): Promise<void> => cekirdek.kapat(jeton(), id);
