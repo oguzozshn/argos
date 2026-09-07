@@ -1,0 +1,460 @@
+.duzen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--b5);
+  align-items: start;
+}
+
+.duzenPanelli {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+@media (max-width: 1000px) {
+  .duzenPanelli {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gez {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+}
+
+/* --- ızgara -------------------------------------------------------------- */
+
+.baslikSatiri {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  padding: var(--b3) var(--b5) var(--b2);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.baslikGun {
+  font-size: var(--y5);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+  text-align: center;
+}
+
+.izgara {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: var(--b4) var(--b5) var(--b5);
+}
+
+.hucre {
+  min-height: 88px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--kart);
+  padding: 6px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--sure-hizli) var(--egri),
+    border-color var(--sure-hizli) var(--egri);
+}
+
+.hucre:hover {
+  background: var(--kart-hover);
+  border-color: var(--cizgi-koyu);
+}
+
+.hucreDisi {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.hucreDisi:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.hucreBugun {
+  border-color: var(--vurgu);
+  box-shadow: 0 0 0 1px var(--vurgu);
+}
+
+.hucreSecili {
+  background: var(--vurgu-yumusak);
+  border-color: var(--vurgu);
+}
+
+.hucreGecmis {
+  opacity: 0.72;
+}
+
+.hucreBas {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gunNo {
+  font-weight: var(--sik-orta);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--y4);
+}
+
+.gunTipi {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  color: var(--metin-soluk);
+}
+
+.tipOfis {
+  background: var(--uyari-yumusak);
+  color: var(--uyari);
+}
+
+.korumaliIsaret {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--metin-soluk);
+}
+
+.alanlar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.alanRozet {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: var(--r1);
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu-koyu);
+  white-space: nowrap;
+}
+
+.alanRozetYapildi {
+  background: var(--iyi-yumusak);
+  color: var(--iyi);
+}
+
+.alanRozetKacti {
+  background: var(--hata-yumusak);
+  color: var(--hata);
+}
+
+.hucreDip {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums;
+}
+
+.bosluk {
+  font-size: 10px;
+  color: var(--iyi);
+  background: var(--iyi-yumusak);
+  border-radius: var(--r-tam);
+  padding: 1px 6px;
+}
+
+/* --- gün paneli ---------------------------------------------------------- */
+
+.panel {
+  position: sticky;
+  top: 0;
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r3);
+  box-shadow: var(--golge1);
+  padding: var(--b5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+}
+
+.panelBas {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--b2);
+}
+
+.panelBaslik {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--y2);
+}
+
+.panelUst {
+  font-size: var(--y5);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+}
+
+.panelSlot {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--cizgi);
+  font-size: var(--y4);
+}
+
+.panelSlotSaat {
+  font-variant-numeric: tabular-nums;
+  color: var(--metin-soluk);
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.panelSlotAd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panelDip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b2);
+  padding-top: var(--b3);
+  border-top: 1px solid var(--cizgi);
+}
+
+.rapor {
+  font-size: var(--y5);
+  color: var(--metin-orta);
+  background: var(--zemin-alt);
+  border-radius: var(--r1);
+  padding: var(--b2) var(--b3);
+  line-height: 1.5;
+}
+
+.aciklama {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  line-height: 1.5;
+}
+
+/* --- görünüm seçimi ------------------------------------------------------ */
+
+.gorunumler {
+  display: flex;
+  gap: 3px;
+  margin-right: var(--b3);
+}
+
+.gorunumDugme {
+  border: none;
+  background: transparent;
+  color: var(--metin-orta);
+  border-radius: var(--r-tam);
+  padding: 4px 12px;
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  cursor: pointer;
+  transition:
+    background var(--sure-hizli) var(--egri),
+    color var(--sure-hizli) var(--egri);
+}
+
+.gorunumDugme:hover {
+  background: var(--zemin-alt);
+}
+
+.gorunumSecili {
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}
+
+/* --- gün ekseni ---------------------------------------------------------- */
+
+.eksen {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 76px;
+  padding: var(--b4) var(--b5) var(--b5);
+}
+
+.saatSutunu {
+  position: relative;
+}
+
+.saatEtiket {
+  position: absolute;
+  right: var(--b3);
+  transform: translateY(-7px);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums;
+}
+
+.slotSutunu {
+  position: relative;
+  border-left: 1px solid var(--cizgi);
+  border-right: 1px solid var(--cizgi);
+}
+
+.seansSutunu {
+  position: relative;
+}
+
+.saatCizgi {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--cizgi);
+}
+
+.saatCizgiYarim {
+  border-top-style: dashed;
+  opacity: 0.45;
+}
+
+.bant {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--zemin-alt),
+    var(--zemin-alt) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  pointer-events: none;
+}
+
+.bantEtiket {
+  position: absolute;
+  right: 6px;
+  top: 3px;
+  font-size: 10px;
+  color: var(--metin-soluk);
+  letter-spacing: 0.04em;
+}
+
+.simdiCizgi {
+  position: absolute;
+  left: -52px;
+  right: -76px;
+  border-top: 2px solid var(--hata);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.simdiNokta {
+  position: absolute;
+  left: -56px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-tam);
+  background: var(--hata);
+  transform: translateY(-5px);
+}
+
+.blok {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  border-radius: var(--r1);
+  border: 1px solid var(--vurgu);
+  background: var(--vurgu-yumusak);
+  padding: 5px 8px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transition: box-shadow var(--sure-hizli) var(--egri);
+}
+
+.blok:hover {
+  box-shadow: var(--golge2);
+}
+
+.blokSecili {
+  box-shadow: 0 0 0 2px var(--vurgu);
+}
+
+.blokYapildi {
+  border-color: var(--iyi);
+  background: var(--iyi-yumusak);
+}
+
+.blokKacti {
+  border-color: var(--hata);
+  background: var(--hata-yumusak);
+  opacity: 0.75;
+}
+
+.blokTasindi {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.6;
+}
+
+.blokBas {
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blokAlt {
+  font-size: 10px;
+  color: var(--metin-orta);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seansBlok {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  border-radius: var(--r1);
+  background: var(--iyi);
+  opacity: 0.28;
+  min-height: 3px;
+}
+
+.seansEtiket {
+  position: absolute;
+  left: 8px;
+  font-size: 10px;
+  color: var(--iyi);
+  font-variant-numeric: tabular-nums;
+}
+
+.sutunBasi {
+  display: flex;
+  padding: var(--b3) var(--b5) 0;
+  font-size: var(--y5);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+}
+
+.sutunBasiPlan {
+  flex: 1;
+  padding-left: 58px;
+}
+
+.sutunBasiOlcum {
+  width: 76px;
+}

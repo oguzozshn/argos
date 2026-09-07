@@ -1,0 +1,219 @@
+.kabuk {
+  display: grid;
+  grid-template-columns: var(--kenar-genislik) 1fr;
+  grid-template-rows: var(--baslik-yukseklik) 1fr;
+  grid-template-areas:
+    "baslik baslik"
+    "kenar icerik";
+  height: 100%;
+}
+
+/* --- başlık çubuğu ----------------------------------------------------- */
+
+.baslikCubugu {
+  grid-area: baslik;
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: 0 var(--b5);
+  background: var(--zemin);
+  /* Pencere düğmeleri yerel kaplama olarak sağda duruyor; yerini boş bırak. */
+  padding-right: 150px;
+  -webkit-app-region: drag;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--sure) var(--egri);
+}
+
+.baslikCizgili {
+  border-bottom-color: var(--cizgi);
+}
+
+.marka {
+  font-family: var(--aile-baslik);
+  font-size: var(--y4);
+  font-weight: var(--sik-kalin);
+  letter-spacing: -0.01em;
+}
+
+.kirinti {
+  color: var(--metin-soluk);
+  font-size: var(--y4);
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  min-width: 0;
+}
+
+.kirintiAyrac {
+  color: var(--cizgi-koyu);
+}
+
+.baslikSag {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  -webkit-app-region: no-drag;
+}
+
+/* --- kenar çubuğu ------------------------------------------------------ */
+
+.kenar {
+  grid-area: kenar;
+  background: var(--zemin-alt);
+  border-right: 1px solid var(--cizgi);
+  padding: var(--b3) var(--b3) var(--b5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--b1);
+  overflow-y: auto;
+}
+
+.kenarBolum {
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+  padding: var(--b4) var(--b3) var(--b2);
+}
+
+.bag {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: 9px var(--b3);
+  border-radius: var(--r1);
+  color: var(--metin-orta);
+  text-decoration: none;
+  font-size: var(--y3);
+  font-weight: var(--sik-orta);
+  cursor: pointer;
+  transition: color var(--sure-hizli) var(--egri);
+}
+
+.bag:hover {
+  color: var(--metin);
+}
+
+.bagEtkin {
+  color: var(--metin);
+}
+
+.bagIkon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--metin-soluk);
+  transition: color var(--sure-hizli) var(--egri);
+  z-index: 1;
+}
+
+.bagEtkin .bagIkon,
+.bag:hover .bagIkon {
+  color: var(--vurgu);
+}
+
+.bagMetin {
+  z-index: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kayan gösterge: aktif maddenin arkasındaki tek kutu, layoutId ile taşınır. */
+.gosterge {
+  position: absolute;
+  inset: 0;
+  background: var(--kart);
+  border-radius: var(--r1);
+  box-shadow: var(--golge1);
+  z-index: 0;
+}
+
+/* --- alt rotalar ------------------------------------------------------- */
+
+.altListe {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: var(--b1) 0 var(--b2) 30px;
+  padding-left: var(--b3);
+  border-left: 1px solid var(--cizgi-koyu);
+  overflow: hidden;
+}
+
+.altBag {
+  padding: 5px var(--b3);
+  border-radius: var(--r1);
+  color: var(--metin-soluk);
+  text-decoration: none;
+  font-size: var(--y4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    color var(--sure-hizli) var(--egri),
+    background var(--sure-hizli) var(--egri);
+}
+
+.altBag:hover {
+  color: var(--metin);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.altBagEtkin {
+  color: var(--vurgu-koyu);
+  font-weight: var(--sik-orta);
+}
+
+.kenarDip {
+  margin-top: auto;
+  padding: var(--b3) var(--b3) 0;
+  border-top: 1px solid var(--cizgi);
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kenarDipYol {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+/* --- içerik ------------------------------------------------------------ */
+
+.icerik {
+  grid-area: icerik;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.icerikIc {
+  max-width: var(--icerik-en);
+  margin: 0 auto;
+  padding: var(--b8) var(--b7) var(--b9);
+}
+
+/* --- uyarı şeridi ------------------------------------------------------ */
+
+.serit {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b3) var(--b5);
+  background: var(--uyari-yumusak);
+  color: var(--uyari);
+  font-size: var(--y4);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.seritYol {
+  font-family: var(--aile-sayi);
+  user-select: text;
+}

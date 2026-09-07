@@ -1,0 +1,93 @@
+/* Sıfırlama ve taban. Bileşen stilleri CSS Modules'ta, burada yalnızca kök. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#kok {
+  height: 100%;
+  margin: 0;
+}
+
+/* Yerel denetimler (select, kaydırma çubuğu, imleç) da temayı izlesin. */
+:root {
+  color-scheme: light;
+}
+:root[data-tema="koyu"] {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--zemin);
+  color: var(--metin);
+  font-family: var(--aile);
+  font-size: var(--y3);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Masaüstü uygulaması: metin seçimi yalnızca içerik alanında anlamlı. */
+  user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--aile-baslik);
+  font-weight: var(--sik-kalin);
+  letter-spacing: -0.011em;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  user-select: text;
+}
+
+/* Klavye ile gezinen görür, fare ile tıklayan görmez. */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--vurgu);
+  outline-offset: 2px;
+  border-radius: var(--r1);
+}
+
+/* İnce, sessiz kaydırma çubuğu — ferah görünümü bozmasın. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--cizgi-koyu);
+  border: 3px solid transparent;
+  border-radius: var(--r-tam);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--metin-soluk);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

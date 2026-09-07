@@ -1,0 +1,131 @@
+/*
+ * Tasarım belirteçleri — tek kaynak. Renk, boşluk, yazı ve gölge kararları
+ * yalnızca burada verilir; bileşenler ham değer yazmaz.
+ *
+ * Tema açık ve ferah. Koyu tema aşağıda, tek blok: her belirteç rol olarak
+ * tanımlı olduğu için hiçbir bileşen değişmedi.
+ *
+ * `data/tema` kökte çözülmüş hâliyle durur ("acik" | "koyu"). Tercih ("sistem"
+ * dahil) arayüzde tutulur — sistem takibi orada karara bağlanır (ui/tema.ts).
+ */
+
+:root {
+  /* --- renk: zemin ve mürekkep ------------------------------------- */
+  --zemin: #f5f4f0; /* sayfa — sıcak kâğıt */
+  --zemin-alt: #edebe4; /* kenar çubuğu */
+  --kart: #ffffff;
+  --kart-hover: #fbfaf7;
+
+  --metin: #1b1a17; /* başlık ve gövde */
+  --metin-orta: #5a574f; /* ikincil */
+  --metin-soluk: #8c887e; /* üçüncül, ipucu */
+
+  --cizgi: #e6e3db;
+  --cizgi-koyu: #d5d1c6;
+
+  /* --- renk: vurgu -------------------------------------------------- */
+  --vurgu: #4c63b6;
+  --vurgu-koyu: #3d5099;
+  --vurgu-yumusak: #eceff9;
+  --vurgu-metin: #ffffff;
+
+  /* --- renk: durum -------------------------------------------------- */
+  --iyi: #3f7d58;
+  --iyi-yumusak: #e9f2ec;
+  --uyari: #9a6b25;
+  --uyari-yumusak: #f7efe1;
+  --hata: #a3453c;
+  --hata-yumusak: #f8eae8;
+
+  /* --- yazı ---------------------------------------------------------- */
+  --aile: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --aile-baslik: "Inter", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --aile-sayi: "Segoe UI Variable Text", ui-monospace, "Cascadia Mono", monospace;
+
+  --y1: 30px; /* ekran başlığı */
+  --y2: 19px; /* bölüm başlığı */
+  --y3: 14.5px; /* gövde */
+  --y4: 13px; /* ikincil */
+  --y5: 11.5px; /* etiket */
+
+  --sik-normal: 400;
+  --sik-orta: 500;
+  --sik-kalin: 600;
+
+  /* --- boşluk -------------------------------------------------------- */
+  --b1: 4px;
+  --b2: 8px;
+  --b3: 12px;
+  --b4: 16px;
+  --b5: 20px;
+  --b6: 24px;
+  --b7: 32px;
+  --b8: 40px;
+  --b9: 56px;
+
+  /* --- biçim --------------------------------------------------------- */
+  --r1: 8px;
+  --r2: 12px;
+  --r3: 18px;
+  --r-tam: 999px;
+
+  --golge1: 0 1px 2px rgba(27, 26, 23, 0.04), 0 1px 3px rgba(27, 26, 23, 0.05);
+  --golge2: 0 2px 6px rgba(27, 26, 23, 0.05), 0 10px 24px rgba(27, 26, 23, 0.06);
+  --golge3: 0 4px 12px rgba(27, 26, 23, 0.07), 0 20px 48px rgba(27, 26, 23, 0.1);
+
+  /* --- ölçü ---------------------------------------------------------- */
+  --kenar-genislik: 236px;
+  --baslik-yukseklik: 44px;
+  --icerik-en: 1080px;
+
+  /* --- hareket ------------------------------------------------------- */
+  --sure-hizli: 120ms;
+  --sure: 180ms;
+  --sure-yavas: 280ms;
+  --egri: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/*
+ * Koyu tema. Yalnızca renk rolleri yeniden tanımlanır — ölçü, boşluk ve
+ * hareket ortaktır. Sıcaklık korunur: koyu taraf da nötr gri değil, kâğıdın
+ * karşılığı olan sıcak koyu.
+ */
+:root[data-tema="koyu"] {
+  --zemin: #191816;
+  --zemin-alt: #1f1e1b;
+  --kart: #242220;
+  --kart-hover: #2a2825;
+
+  --metin: #f2f0ea;
+  --metin-orta: #b3aea4;
+  --metin-soluk: #847f75;
+
+  --cizgi: #332f2b;
+  --cizgi-koyu: #443f39;
+
+  /* Vurgu açık zeminde koyulaşır, koyu zeminde açılır — rol aynı, yön ters. */
+  --vurgu: #8b9be8;
+  --vurgu-koyu: #a7b3ee;
+  --vurgu-yumusak: #272a3c;
+  --vurgu-metin: #16151c;
+
+  --iyi: #7fc39a;
+  --iyi-yumusak: #1d2a22;
+  --uyari: #d9a55c;
+  --uyari-yumusak: #2e2519;
+  --hata: #e08b82;
+  --hata-yumusak: #2f1e1c;
+
+  --golge1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.24);
+  --golge2: 0 2px 6px rgba(0, 0, 0, 0.32), 0 10px 24px rgba(0, 0, 0, 0.34);
+  --golge3: 0 4px 12px rgba(0, 0, 0, 0.4), 0 20px 48px rgba(0, 0, 0, 0.46);
+}
+
+/* Kullanıcı hareketi azaltmayı seçtiyse üç hareket kuralının üçü de düşer. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sure-hizli: 0ms;
+    --sure: 0ms;
+    --sure-yavas: 0ms;
+  }
+}

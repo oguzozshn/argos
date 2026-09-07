@@ -1,0 +1,5 @@
+{
+  "_not": "Varsayılan yollar. Makineye özel değer için argos.config.local.json aç — o dosya önce okunur ve depoya girmez.",
+  "dataDir": "../personnal_assistant/data",
+  "gizliYolu": "../personnal_assistant/gizli.json"
+}

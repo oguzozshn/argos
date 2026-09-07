@@ -1,0 +1,356 @@
+.duzen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--b5);
+  align-items: start;
+}
+
+.duzenPanelli {
+  grid-template-columns: minmax(0, 1fr) 268px;
+}
+
+@media (max-width: 980px) {
+  .duzenPanelli {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b5);
+  min-width: 0;
+}
+
+/* --- gezinme ------------------------------------------------------------ */
+
+.gez {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+}
+
+/* --- uyarılar ----------------------------------------------------------- */
+
+.uyari {
+  background: var(--uyari-yumusak);
+  border: 1px solid var(--uyari);
+  border-radius: var(--r2);
+  padding: var(--b4) var(--b5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--b1);
+}
+
+.uyariBas {
+  font-size: var(--y5);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: var(--sik-orta);
+  color: var(--uyari);
+  margin-bottom: var(--b1);
+}
+
+.uyariSatir {
+  font-size: var(--y4);
+  color: var(--uyari);
+}
+
+/* --- üst bilgi ---------------------------------------------------------- */
+
+.bilgi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--b2) var(--b5);
+  padding: var(--b4) var(--b6);
+  align-items: center;
+}
+
+.bilgiParca {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  font-size: var(--y4);
+  color: var(--metin-orta);
+}
+
+.gunSecim {
+  display: flex;
+  gap: 3px;
+}
+
+.gunKutu {
+  width: 30px;
+  height: 26px;
+  border-radius: var(--r1);
+  border: 1px solid var(--cizgi-koyu);
+  background: var(--kart);
+  color: var(--metin-orta);
+  font-size: var(--y5);
+  cursor: pointer;
+  transition:
+    background var(--sure-hizli) var(--egri),
+    color var(--sure-hizli) var(--egri);
+}
+
+.gunKutuSecili {
+  background: var(--vurgu);
+  border-color: var(--vurgu);
+  color: var(--vurgu-metin);
+  font-weight: var(--sik-orta);
+}
+
+/* --- günlük ızgara ------------------------------------------------------ */
+
+.izgara {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--y4);
+}
+
+.izgara th {
+  font-weight: var(--sik-orta);
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  padding: var(--b2) 0;
+  text-align: center;
+  width: 40px;
+}
+
+.izgara th:first-child {
+  text-align: left;
+  width: auto;
+  padding-left: var(--b6);
+}
+
+.izgara td {
+  padding: 3px 0;
+  text-align: center;
+  border-top: 1px solid var(--cizgi);
+}
+
+.izgara td:first-child {
+  text-align: left;
+  padding-left: var(--b6);
+  color: var(--metin-orta);
+}
+
+.izgaraSon {
+  padding-right: var(--b6) !important;
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+  text-align: right !important;
+}
+
+.hucre {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r1);
+  border: 1px solid var(--cizgi);
+  background: transparent;
+  cursor: pointer;
+  color: var(--metin-soluk);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  transition:
+    background var(--sure-hizli) var(--egri),
+    border-color var(--sure-hizli) var(--egri);
+}
+
+.hucre:hover {
+  border-color: var(--metin-soluk);
+}
+
+.hucreYapildi {
+  background: var(--iyi-yumusak);
+  border-color: var(--iyi);
+  color: var(--iyi);
+}
+
+.hucreBeklenmiyor {
+  opacity: 0.35;
+}
+
+.aliskanlikAd {
+  font-size: var(--y4);
+}
+
+.aliskanlikSiklik {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  margin-left: var(--b2);
+}
+
+/* --- gün ve slotlar ----------------------------------------------------- */
+
+.gunBasi {
+  display: flex;
+  align-items: baseline;
+  gap: var(--b3);
+  padding: var(--b4) var(--b6) var(--b2);
+}
+
+.gunAd {
+  font-weight: var(--sik-orta);
+}
+
+.gunTarih {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}
+
+.gunEtiket {
+  margin-left: auto;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: 8px var(--b6);
+  border-top: 1px solid var(--cizgi);
+  cursor: pointer;
+  transition: background var(--sure-hizli) var(--egri);
+}
+
+.slot:hover {
+  background: var(--kart-hover);
+}
+
+.slotSecili {
+  background: var(--vurgu-yumusak);
+}
+
+.isaretDugme {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--r1);
+  flex-shrink: 0;
+}
+
+.isaretDugme:hover {
+  background: var(--zemin-alt);
+}
+
+.slotSaat {
+  font-variant-numeric: tabular-nums;
+  color: var(--metin-soluk);
+  font-size: var(--y4);
+  width: 42px;
+  flex-shrink: 0;
+}
+
+.slotGovde {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--b2);
+  flex-wrap: wrap;
+}
+
+.slotAlan {
+  font-weight: var(--sik-orta);
+}
+
+.slotKonu {
+  color: var(--metin-orta);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slotSure {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.gunDip {
+  padding: var(--b2) var(--b6) var(--b4);
+}
+
+.bosGun {
+  padding: var(--b2) var(--b6);
+  color: var(--metin-soluk);
+  font-size: var(--y4);
+  border-top: 1px solid var(--cizgi);
+}
+
+/* --- yan panel ---------------------------------------------------------- */
+
+.panel {
+  position: sticky;
+  top: 0;
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r3);
+  box-shadow: var(--golge1);
+  padding: var(--b5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+}
+
+.panelBas {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--b2);
+}
+
+.panelKimlik {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--aile-sayi);
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  user-select: text;
+}
+
+.alanEtiket {
+  display: block;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  margin-bottom: var(--b1);
+}
+
+.secim {
+  width: 100%;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  padding: 8px var(--b2);
+  font-size: var(--y4);
+  color: var(--metin);
+  cursor: pointer;
+}
+
+.ikiliAlan {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--b2);
+}
+
+.onay {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  cursor: pointer;
+}
+
+.panelDip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--b3);
+  border-top: 1px solid var(--cizgi);
+}

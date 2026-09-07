@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist/
+*.tsbuildinfo
+.DS_Store
+*.log
+
+# Todoist anahtarı gibi gizli değerler — asla depoya girmez
+gizli.json
+
+# Yerel yol ayarı: her makinede farklı olabilir
+argos.config.local.json

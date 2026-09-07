@@ -1,0 +1,226 @@
+.duzen {
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr);
+  gap: var(--b6);
+  align-items: start;
+}
+
+/* --- proje listesi ------------------------------------------------------ */
+
+.projeler {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 0;
+}
+
+.projeBag {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: 8px var(--b3);
+  border-radius: var(--r1);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--metin-orta);
+  font-size: var(--y3);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--sure-hizli) var(--egri),
+    color var(--sure-hizli) var(--egri);
+}
+
+.projeBag:hover {
+  background: var(--zemin-alt);
+  color: var(--metin);
+}
+
+.projeEtkin {
+  background: var(--kart);
+  border-color: var(--cizgi);
+  box-shadow: var(--golge1);
+  color: var(--metin);
+  font-weight: var(--sik-orta);
+}
+
+.projeAd {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projeNot {
+  margin-top: var(--b4);
+  padding: var(--b3);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  line-height: 1.5;
+  border-top: 1px solid var(--cizgi);
+}
+
+/* --- ekleme ------------------------------------------------------------ */
+
+.ekleme {
+  display: flex;
+  gap: var(--b2);
+  padding: var(--b4) var(--b5);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.tarihKutusu {
+  flex: 0 0 132px;
+}
+
+/* --- öbek --------------------------------------------------------------- */
+
+.obekBasi {
+  display: flex;
+  align-items: baseline;
+  gap: var(--b2);
+  padding: var(--b4) var(--b5) var(--b2);
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+}
+
+.obekGecikmis {
+  color: var(--hata);
+}
+
+.obekSayi {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* --- görev satırı ------------------------------------------------------- */
+
+.gorev {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--b3);
+  padding: 9px var(--b5);
+  border-bottom: 1px solid var(--cizgi);
+  transition: background var(--sure-hizli) var(--egri);
+}
+
+.gorev:hover {
+  background: var(--kart-hover);
+}
+
+.kutucuk {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-tam);
+  border: 1.5px solid var(--cizgi-koyu);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  padding: 0;
+  transition:
+    border-color var(--sure-hizli) var(--egri),
+    color var(--sure-hizli) var(--egri),
+    background var(--sure-hizli) var(--egri);
+}
+
+.kutucuk:hover {
+  color: var(--metin-soluk);
+  background: var(--zemin-alt);
+}
+
+.govde {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.icerik {
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.altSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  flex-wrap: wrap;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.tarih {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tarihGecikmis {
+  color: var(--hata);
+}
+
+.aciklama {
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60ch;
+}
+
+.eylemler {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.gorev:hover .eylemler,
+.gorev:focus-within .eylemler {
+  opacity: 1;
+}
+
+/* --- geri alma şeridi --------------------------------------------------- */
+
+.geriAl {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b3) var(--b5);
+  background: var(--iyi-yumusak);
+  color: var(--iyi);
+  font-size: var(--y4);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.geriAlAd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- hata şeridi -------------------------------------------------------- */
+
+.hataSerit {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b3) var(--b5);
+  background: var(--hata-yumusak);
+  color: var(--hata);
+  font-size: var(--y4);
+  border-bottom: 1px solid var(--cizgi);
+}
