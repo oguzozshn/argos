@@ -651,3 +651,114 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* --- sürükleme ------------------------------------------------------------ */
+
+/* Sürükleme başlayınca her gün hedefe dönüşür; nereye bırakılabileceği görünsün. */
+.hedef {
+  outline: 1px dashed var(--cizgi-koyu);
+  outline-offset: -2px;
+}
+
+.hedefUstunde {
+  outline: 2px solid var(--vurgu);
+  outline-offset: -2px;
+  background: var(--vurgu-yumusak);
+}
+
+/* Tekrarlı görev sürüklenmez: tarihi yazmak tekrar düzenini siler. */
+.gorevCipTekrarli,
+.gorevRozetTekrarli {
+  border-style: dashed;
+  cursor: default;
+}
+
+/* --- gecikmiş şeridi ------------------------------------------------------ */
+
+.gecikmis {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--b3);
+  padding: var(--b2) var(--b3);
+  margin-bottom: var(--b3);
+  border: 1px solid var(--uyari);
+  background: var(--uyari-yumusak);
+  border-radius: var(--r1);
+}
+
+.gecikmisBas {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: var(--y5);
+  color: var(--uyari);
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.gecikmisListe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.gecikmisOge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gecikmisBugune {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--r1);
+  border: 1px solid var(--cizgi);
+  background: var(--zemin);
+  color: var(--metin-orta);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gecikmisBugune:hover:not(:disabled) {
+  border-color: var(--vurgu);
+  color: var(--metin);
+}
+
+.gecikmisBugune:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* --- görev ekleme --------------------------------------------------------- */
+
+.gorevEkle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: var(--b2);
+}
+
+.gorevEkle > *:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.saatGiris {
+  width: 78px;
+  flex-shrink: 0;
+  font: inherit;
+  font-size: var(--y5);
+  padding: 6px 6px;
+  border-radius: var(--r1);
+  border: 1px solid var(--cizgi);
+  background: var(--zemin);
+  color: var(--metin);
+}
+
+.saatGiris:focus {
+  outline: none;
+  border-color: var(--vurgu);
+}

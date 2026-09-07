@@ -1,12 +1,12 @@
-import { CalendarOff, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { CalendarOff, ChevronLeft, ChevronRight, History, Plus, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from "react";
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
 import { dakika, gununSlotlari, yeniSlotId, type KuralSeti } from "@ortak/kural";
 import { gunBosalt, gunTipi, type BosaltRaporu } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
-import { Dugme, EkranBasi, Etiket, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
@@ -49,16 +49,81 @@ interface GunKaydi {
 
 const haftaninPazartesisi = (iso: string): string => gunEkle(iso, -haftaninGunu(iso));
 
+/* --- sürükleme ----------------------------------------------------------- */
+
+/**
+ * Görevi başka güne sürükleme. Tek yerde durur çünkü üç görünüm de aynı
+ * sözleşmeyi kullanıyor: ay hücresi, hafta sütunu, gün boyu şeridi.
+ *
+ * Tekrarlı görev sürüklenmez. Tarihi `due_string` ile yazmak tekrar düzenini
+ * siler — alışkanlık görevini bir kez taşımak onu tümden bitirir.
+ */
+interface Surukle {
+  aktif: TodoistGorev | null;
+  hedef: string | null;
+  basla: (g: TodoistGorev) => void;
+  bitir: () => void;
+  uzerinde: (iso: string | null) => void;
+  birak: (iso: string) => void;
+}
+
+const SURUKLENMEZ = "Tekrarlı görev sürüklenmez — tekrar düzeni silinir";
+
+/** Sürüklenen görevi taşıyan öğenin nitelikleri. */
+function kaynakOzellikleri(g: TodoistGorev, sr: Surukle) {
+  if (g.tekrarli) return { draggable: false };
+  return {
+    draggable: true,
+    onDragStart: (e: DragEvent) => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", g.id);
+      sr.basla(g);
+    },
+    onDragEnd: () => sr.bitir(),
+  };
+}
+
+/** Bir günü bırakma hedefi yapan nitelikler. */
+function hedefOzellikleri(iso: string, sr: Surukle) {
+  if (!sr.aktif) return {};
+  return {
+    onDragOver: (e: DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move" as const;
+    },
+    onDragEnter: () => sr.uzerinde(iso),
+    onDragLeave: () => sr.uzerinde(null),
+    onDrop: (e: DragEvent) => {
+      e.preventDefault();
+      sr.birak(iso);
+    },
+  };
+}
+
+/** Sürükleme sırasında hedefin görünür sınıfı. */
+const hedefSinifi = (iso: string, sr: Surukle): string | false =>
+  Boolean(sr.aktif) && (sr.hedef === iso ? s.hedefUstunde : s.hedef);
+
 /* --- görev parçaları ----------------------------------------------------- */
 
-function GorevCipi({ gorev, onKapat }: { gorev: TodoistGorev; onKapat: () => void }) {
+function GorevCipi({
+  gorev,
+  onKapat,
+  surukle,
+}: {
+  gorev: TodoistGorev;
+  onKapat: () => void;
+  surukle: Surukle;
+}) {
   const saat = gorevSaati(gorev);
+  const ipucu = gorev.tekrarli ? SURUKLENMEZ : "tamamlamak için tıkla, taşımak için sürükle";
   return (
     <button
       type="button"
-      className={s.gorevCip}
+      className={gorev.tekrarli ? `${s.gorevCip} ${s.gorevCipTekrarli}` : s.gorevCip}
       onClick={onKapat}
-      title={`${gorev.icerik}${saat ? ` · ${saat}` : ""} — tamamlamak için tıkla`}
+      title={`${gorev.icerik}${saat ? ` · ${saat}` : ""} — ${ipucu}`}
+      {...kaynakOzellikleri(gorev, surukle)}
     >
       <span className={s.gorevKutucuk} />
       <span className={s.gorevCipAd}>
@@ -72,6 +137,7 @@ function GorevCipi({ gorev, onKapat }: { gorev: TodoistGorev; onKapat: () => voi
 /* --- gün sütunu (hafta ve gün ekseni ortak) ------------------------------ */
 
 function EksenSutunu({
+  iso,
   kayit,
   kurallar,
   gorevler,
@@ -80,7 +146,9 @@ function EksenSutunu({
   dar,
   onSlotSec,
   seciliSlot,
+  surukle,
 }: {
+  iso: string;
   kayit: GunKaydi | null;
   kurallar: KuralSeti;
   gorevler: TodoistGorev[];
@@ -89,6 +157,7 @@ function EksenSutunu({
   dar: boolean;
   onSlotSec: (id: string | null) => void;
   seciliSlot: string | null;
+  surukle: Surukle;
 }) {
   const slotlar = kayit ? gununSlotlari(kayit.veri, kayit.gunNo) : [];
   const ofisK = kurallar.ofisGunuKurallari ?? {};
@@ -116,8 +185,11 @@ function EksenSutunu({
 
   return (
     <div
-      className={dar ? `${s.slotSutunu} ${s.haftaSutun}` : s.slotSutunu}
+      className={[dar ? `${s.slotSutunu} ${s.haftaSutun}` : s.slotSutunu, hedefSinifi(iso, surukle)]
+        .filter(Boolean)
+        .join(" ")}
       style={{ height: EKSEN_YUKSEKLIK }}
+      {...hedefOzellikleri(iso, surukle)}
     >
       {Array.from({ length: (SON_SAAT - ILK_SAAT) * 2 + 1 }, (_, i) => (
         <div
@@ -168,7 +240,8 @@ function EksenSutunu({
           key={g.id}
           className={`${s.blok} ${s.gorevBlok}${dar ? ` ${s.blokKucuk}` : ""}`}
           style={{ top: yerDk(dakika(gorevSaati(g)!)), height: 24 }}
-          title={`${gorevSaati(g)} · ${g.icerik}`}
+          title={`${gorevSaati(g)} · ${g.icerik}${g.tekrarli ? ` — ${SURUKLENMEZ}` : ""}`}
+          {...kaynakOzellikleri(g, surukle)}
         >
           <span className={s.blokBas}>{g.icerik}</span>
         </div>
@@ -201,6 +274,8 @@ export function Takvim() {
   const [secili, setSecili] = useState(bugun);
   const [seciliSlot, setSeciliSlot] = useState<string | null>(null);
   const [simdi, setSimdi] = useState(() => new Date());
+  const [surunen, setSurunen] = useState<TodoistGorev | null>(null);
+  const [surukleHedefi, setSurukleHedefi] = useState<string | null>(null);
 
   const kuralSeti = kurallar as KuralSeti;
 
@@ -222,7 +297,23 @@ export function Takvim() {
   }, [gorunum, secili]);
 
   // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
-  const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1));
+  const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1), bugun);
+
+  const surukle: Surukle = {
+    aktif: surunen,
+    hedef: surukleHedefi,
+    basla: setSurunen,
+    bitir: () => {
+      setSurunen(null);
+      setSurukleHedefi(null);
+    },
+    uzerinde: setSurukleHedefi,
+    birak: (iso) => {
+      if (surunen) void td.tarihiDegistir(surunen, iso);
+      setSurunen(null);
+      setSurukleHedefi(null);
+    },
+  };
 
   const yil = Number(ayAnahtari.slice(0, 4));
   const ayNo = Number(ayAnahtari.slice(5, 7));
@@ -315,6 +406,15 @@ export function Takvim() {
         }
       />
 
+      {td.gecikmisler.length > 0 && (
+        <GecikmisSerit
+          gorevler={td.gecikmisler}
+          onKapat={td.kapat}
+          onBugune={(g) => void td.tarihiDegistir(g, bugun)}
+          surukle={surukle}
+        />
+      )}
+
       <div className={`${s.duzen} ${s.duzenPanelli}`}>
         <Kart dolgulu={false}>
           {gorunum === "ay" && (
@@ -327,6 +427,7 @@ export function Takvim() {
               gunHaritasi={gunHaritasi}
               kurallar={kuralSeti}
               gorevler={td.gunlere}
+              surukle={surukle}
               onSec={setSecili}
               onGunGorunumu={(iso) => {
                 setSecili(iso);
@@ -344,6 +445,7 @@ export function Takvim() {
               gunHaritasi={gunHaritasi}
               kurallar={kuralSeti}
               gorevler={td.gunlere}
+              surukle={surukle}
               onSec={setSecili}
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
@@ -359,6 +461,7 @@ export function Takvim() {
               kayit={seciliKayit}
               kurallar={kuralSeti}
               gorevler={td.gunlere.get(secili) ?? []}
+              surukle={surukle}
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
               onKapat={td.kapat}
@@ -374,16 +477,64 @@ export function Takvim() {
             kurallar={kuralSeti}
             gorevler={td.gunlere.get(secili) ?? []}
             onGorevKapat={td.kapat}
+            onGorevEkle={td.ekle}
+            surukle={surukle}
           />
         ) : (
           <GunPaneliPlansiz
             iso={secili}
             gorevler={td.gunlere.get(secili) ?? []}
             onGorevKapat={td.kapat}
+            onGorevEkle={td.ekle}
+            surukle={surukle}
           />
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * Gecikmiş görevler. Aralık sorgusundan bağımsız gelir: eylülü görüntülerken
+ * ağustostan kalan görev de burada durur, yoksa hiç görünmezdi.
+ *
+ * Yığın suçluluk üretmesin diye tek satır: ya tamamlanır, ya bugüne alınır, ya
+ * da bir güne sürüklenir.
+ */
+function GecikmisSerit({
+  gorevler,
+  onKapat,
+  onBugune,
+  surukle,
+}: {
+  gorevler: TodoistGorev[];
+  onKapat: (g: TodoistGorev) => Promise<void>;
+  onBugune: (g: TodoistGorev) => void;
+  surukle: Surukle;
+}) {
+  return (
+    <div className={s.gecikmis}>
+      <span className={s.gecikmisBas}>
+        <History size={15} strokeWidth={2} />
+        {gorevler.length} gecikmiş
+      </span>
+      <div className={s.gecikmisListe}>
+        {gorevler.map((g) => (
+          <span key={g.id} className={s.gecikmisOge}>
+            <GorevCipi gorev={g} onKapat={() => void onKapat(g)} surukle={surukle} />
+            <button
+              type="button"
+              className={s.gecikmisBugune}
+              onClick={() => onBugune(g)}
+              title={`${g.icerik} — bugüne al`}
+              disabled={g.tekrarli}
+            >
+              bugüne
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -398,6 +549,7 @@ function AyIzgarasi({
   gunHaritasi,
   kurallar,
   gorevler,
+  surukle,
   onSec,
   onGunGorunumu,
 }: {
@@ -409,6 +561,7 @@ function AyIzgarasi({
   gunHaritasi: Map<string, GunKaydi>;
   kurallar: KuralSeti;
   gorevler: Map<string, TodoistGorev[]>;
+  surukle: Surukle;
   onSec: (iso: string) => void;
   onGunGorunumu: (iso: string) => void;
 }) {
@@ -455,11 +608,13 @@ function AyIzgarasi({
                 iso === bugun && s.hucreBugun,
                 iso === secili && s.hucreSecili,
                 gecmis && s.hucreGecmis,
+                hedefSinifi(iso, surukle),
               ]
                 .filter(Boolean)
                 .join(" ")}
               onClick={() => onSec(iso)}
               onDoubleClick={() => onGunGorunumu(iso)}
+              {...hedefOzellikleri(iso, surukle)}
             >
               <span className={s.hucreBas}>
                 <span className={s.gunNo}>{Number(iso.slice(8, 10))}</span>
@@ -495,7 +650,12 @@ function AyIzgarasi({
                     </span>
                   ))}
                 {gunGorevleri.slice(0, 2).map((g) => (
-                  <span key={g.id} className={s.gorevRozet} title={g.icerik}>
+                  <span
+                    key={g.id}
+                    className={g.tekrarli ? `${s.gorevRozet} ${s.gorevRozetTekrarli}` : s.gorevRozet}
+                    title={g.tekrarli ? `${g.icerik} — ${SURUKLENMEZ}` : `${g.icerik} — başka güne sürükleyebilirsin`}
+                    {...kaynakOzellikleri(g, surukle)}
+                  >
                     {g.icerik}
                   </span>
                 ))}
@@ -531,6 +691,7 @@ function HaftaEkseni({
   gunHaritasi,
   kurallar,
   gorevler,
+  surukle,
   onSec,
   seciliSlot,
   onSlotSec,
@@ -543,6 +704,7 @@ function HaftaEkseni({
   gunHaritasi: Map<string, GunKaydi>;
   kurallar: KuralSeti;
   gorevler: Map<string, TodoistGorev[]>;
+  surukle: Surukle;
   onSec: (iso: string) => void;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
@@ -578,11 +740,20 @@ function HaftaEkseni({
           style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gridColumn: "2 / -1" }}
         >
           {gunler.map((iso) => (
-            <div key={iso} className={s.gunBoyuHucre}>
+            <div
+              key={iso}
+              className={[s.gunBoyuHucre, hedefSinifi(iso, surukle)].filter(Boolean).join(" ")}
+              {...hedefOzellikleri(iso, surukle)}
+            >
               {(gorevler.get(iso) ?? [])
                 .filter((g) => gorevSaati(g) === null)
                 .map((g) => (
-                  <GorevCipi key={g.id} gorev={g} onKapat={() => void onKapat(g)} />
+                  <GorevCipi
+                    key={g.id}
+                    gorev={g}
+                    onKapat={() => void onKapat(g)}
+                    surukle={surukle}
+                  />
                 ))}
             </div>
           ))}
@@ -597,6 +768,7 @@ function HaftaEkseni({
         {gunler.map((iso) => (
           <EksenSutunu
             key={iso}
+            iso={iso}
             kayit={gunHaritasi.get(iso) ?? null}
             kurallar={kurallar}
             gorevler={gorevler.get(iso) ?? []}
@@ -605,6 +777,7 @@ function HaftaEkseni({
             dar
             seciliSlot={seciliSlot}
             onSlotSec={onSlotSec}
+            surukle={surukle}
           />
         ))}
       </div>
@@ -621,6 +794,7 @@ function GunEkseni({
   kayit,
   kurallar,
   gorevler,
+  surukle,
   seciliSlot,
   onSlotSec,
   onKapat,
@@ -631,6 +805,7 @@ function GunEkseni({
   kayit: GunKaydi | null;
   kurallar: KuralSeti;
   gorevler: TodoistGorev[];
+  surukle: Surukle;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
   onKapat: (g: TodoistGorev) => Promise<void>;
@@ -652,7 +827,7 @@ function GunEkseni({
           <span className={s.gunBoyuEtiket}>gün boyu</span>
           <div className={s.gunBoyuIcerik}>
             {gunBoyu.map((g) => (
-              <GorevCipi key={g.id} gorev={g} onKapat={() => void onKapat(g)} />
+              <GorevCipi key={g.id} gorev={g} onKapat={() => void onKapat(g)} surukle={surukle} />
             ))}
           </div>
         </div>
@@ -661,6 +836,7 @@ function GunEkseni({
       <div className={s.eksen} style={{ height: EKSEN_YUKSEKLIK + 24 }}>
         <SaatSutunu />
         <EksenSutunu
+          iso={iso}
           kayit={kayit}
           kurallar={kurallar}
           gorevler={gorevler}
@@ -669,6 +845,7 @@ function GunEkseni({
           dar={false}
           seciliSlot={seciliSlot}
           onSlotSec={onSlotSec}
+          surukle={surukle}
         />
 
         {/* Ölçülen seanslar ayrı sütunda: plan ile gerçek yan yana durur. */}
@@ -699,19 +876,29 @@ function GunEkseni({
 
 /* --- gün paneli ---------------------------------------------------------- */
 
+/**
+ * Günün görevleri ve yeni görev satırı. Görev Inbox'a gider: `Gelişim Planı`
+ * slotların projesi, kişisel görev oraya yazılmaz.
+ */
 function GorevBolumu({
+  iso,
   gorevler,
   onKapat,
+  onEkle,
+  surukle,
 }: {
+  iso: string;
   gorevler: TodoistGorev[];
   onKapat: (g: TodoistGorev) => Promise<void>;
+  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  surukle: Surukle;
 }) {
-  if (gorevler.length === 0) return null;
   return (
     <>
       <p className={s.panelBolum}>Görevler</p>
+      {gorevler.length === 0 && <p className={s.aciklama}>Bu güne görev yok.</p>}
       {gorevler.map((g) => (
-        <div key={g.id} className={s.panelGorev}>
+        <div key={g.id} className={s.panelGorev} {...kaynakOzellikleri(g, surukle)}>
           <button
             type="button"
             className={s.gorevKutucuk}
@@ -723,7 +910,57 @@ function GorevBolumu({
           {gorevSaati(g) && <span className={s.aciklama}>{gorevSaati(g)}</span>}
         </div>
       ))}
+      <GorevEkle iso={iso} onEkle={onEkle} />
     </>
+  );
+}
+
+function GorevEkle({
+  iso,
+  onEkle,
+}: {
+  iso: string;
+  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+}) {
+  const [metin, setMetin] = useState("");
+  const [saat, setSaat] = useState("");
+  const [gonderiliyor, setGonderiliyor] = useState(false);
+
+  const gonder = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!metin.trim() || gonderiliyor) return;
+    setGonderiliyor(true);
+    // Saat boşsa gün boyu görev olur; Todoist saatsiz tarihi böyle bekliyor.
+    await onEkle(iso, metin, saat || null);
+    setMetin("");
+    setSaat("");
+    setGonderiliyor(false);
+  };
+
+  return (
+    <form className={s.gorevEkle} onSubmit={(e) => void gonder(e)}>
+      <Giris
+        placeholder="Yeni görev"
+        value={metin}
+        onChange={(e) => setMetin(e.target.value)}
+        aria-label="Yeni görev"
+      />
+      <input
+        type="time"
+        className={s.saatGiris}
+        value={saat}
+        onChange={(e) => setSaat(e.target.value)}
+        title="Saat — boş bırakılırsa gün boyu"
+        aria-label="Saat"
+      />
+      <Dugme
+        type="submit"
+        tur="dolu"
+        ikon={<Plus size={15} />}
+        disabled={!metin.trim() || gonderiliyor}
+        aria-label="Görev ekle"
+      />
+    </form>
   );
 }
 
@@ -732,10 +969,14 @@ function GunPaneliPlansiz({
   iso,
   gorevler,
   onGorevKapat,
+  onGorevEkle,
+  surukle,
 }: {
   iso: string;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
+  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  surukle: Surukle;
 }) {
   return (
     <aside className={s.panel}>
@@ -748,7 +989,13 @@ function GunPaneliPlansiz({
         </div>
       </div>
 
-      <GorevBolumu gorevler={gorevler} onKapat={onGorevKapat} />
+      <GorevBolumu
+        iso={iso}
+        gorevler={gorevler}
+        onKapat={onGorevKapat}
+        onEkle={onGorevEkle}
+        surukle={surukle}
+      />
 
       <p className={s.panelBolum}>Plan</p>
       <p className={s.aciklama}>
@@ -765,6 +1012,8 @@ function GunPaneliDosyali({
   kurallar,
   gorevler,
   onGorevKapat,
+  onGorevEkle,
+  surukle,
 }: {
   kod: string;
   gunNo: number;
@@ -772,6 +1021,8 @@ function GunPaneliDosyali({
   kurallar: KuralSeti;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
+  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  surukle: Surukle;
 }) {
   const { veri, yukleniyor, yaz } = useDosya<HaftaTipi>(`${kod}.json`);
   const [rapor, setRapor] = useState<BosaltRaporu | null>(null);
@@ -837,7 +1088,13 @@ function GunPaneliDosyali({
         </div>
       </div>
 
-      <GorevBolumu gorevler={gorevler} onKapat={onGorevKapat} />
+      <GorevBolumu
+        iso={iso}
+        gorevler={gorevler}
+        onKapat={onGorevKapat}
+        onEkle={onGorevEkle}
+        surukle={surukle}
+      />
 
       <p className={s.panelBolum}>Plan</p>
       {slotlar.length === 0 ? (
