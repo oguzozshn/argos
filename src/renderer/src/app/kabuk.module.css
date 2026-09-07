@@ -217,3 +217,16 @@
   font-family: var(--aile-sayi);
   user-select: text;
 }
+
+/* Ayar aranırken bakılan yollar; şeridin altında küçük punto liste. */
+.seritArananlar {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.seritArananlar > span {
+  display: block;
+  font-family: var(--aile-sayi);
+}

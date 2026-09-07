@@ -120,13 +120,41 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
   return { veri, yukleniyor, hata, disaridanDegisti, yaz, tazele };
 }
 
-/** Veri klasörünün durumu. Bir kez okunur, uygulama boyunca değişmez. */
+/**
+ * Veri klasörünün durumu.
+ *
+ * Klasör bulunamadıysa bir süre yeniden sorulur. Kurulumdan hemen sonraki
+ * ilk açılışta ayar dosyası bir an okunamıyor (tarama, eşitleme); kilit
+ * kalkınca ana süreç yeniden çözüyor ve uyarı kendiliğinden kalkıyor.
+ * Bulunduysa soru bitiyor — klasör uygulama boyunca değişmiyor.
+ */
+const YENIDEN_SORMA_ADEDI = 5;
+const YENIDEN_SORMA_MS = 2000;
+
 export function useOrtam(): Ortam | null {
   const [o, setO] = useState<Ortam | null>(null);
   useEffect(() => {
     const k = kopru();
     if (!k) return;
-    void k.ortam().then(setO);
+    let birakildi = false;
+    let kalan = YENIDEN_SORMA_ADEDI;
+    let zamanlayici: number | undefined;
+
+    const sor = () => {
+      void k.ortam().then((x) => {
+        if (birakildi) return;
+        setO(x);
+        if (x.dataDirVar || kalan <= 0) return;
+        kalan -= 1;
+        zamanlayici = window.setTimeout(sor, YENIDEN_SORMA_MS);
+      });
+    };
+    sor();
+
+    return () => {
+      birakildi = true;
+      window.clearTimeout(zamanlayici);
+    };
   }, []);
   return o;
 }

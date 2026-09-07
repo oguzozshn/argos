@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { ipcKur } from "./ipc";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
-import { dataDir } from "./veri";
+import { dataDir, ortam } from "./veri";
 
 // Tek örnek: ikinci kez açılırsa var olan pencere öne gelir. İki örnek aynı
 // JSON dosyalarına yazarsa çakışma kontrolü gereksiz yere devreye girer.
@@ -64,6 +64,10 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     console.log("[argos] veri klasörü:", dataDir());
+    const o = ortam();
+    for (const y of o.arananYollar) {
+      console.log(`[argos] ayar arandı: ${y.bulundu ? "VAR" : "yok"} — ${y.yol}`);
+    }
     ipcKur();
     pencereKur();
 

@@ -27,6 +27,8 @@ export interface Ortam {
   dataDirVar: boolean;
   /** Ayarın konması önerilen yer; klasör bulunamayınca arayüz bunu gösterir. */
   ayarYolu: string;
+  /** Ayar için sırayla bakılan yollar ve o an var olup olmadıkları. */
+  arananYollar: { yol: string; bulundu: boolean }[];
   surum: string;
   /** "win32" · "darwin" · "linux" — arayüz tarafında node tipleri yok, dizge. */
   platform: string;
