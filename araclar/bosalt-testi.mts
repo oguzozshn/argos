@@ -153,27 +153,28 @@ console.log("\nElle slot taşıma");
 {
   const v = hafta([slot({ id: "A", gun: 1, saat: "19:00" })]);
   const r = slotTasi(v, KURALLAR, "A", 2, AN);
-  const eski = r.hafta.slotlar.find((x) => x.id === "A");
-  const yeni = r.hafta.slotlar.find((x) => x.id === r.yeniId);
-  kontrol("yeni ID verilir", typeof r.yeniId === "string" && r.yeniId !== "A");
-  kontrol("eski slot yerinde kalır ve tasindi olur", eski?.durum === "tasindi");
-  kontrol("eski slotun günü değişmez", eski?.gun === 1);
-  kontrol(
-    "nereye gittiği yazılır",
-    (eski as { tasindigiYer?: string } | undefined)?.tasindigiYer === r.yeniId,
-  );
-  kontrol("yeni slot hedef günde planlı", yeni?.gun === 2 && yeni?.durum === "planli");
-  kontrol("saat korunur", yeni?.saat === "19:00");
-  kontrol("alan ve konu korunur", yeni?.alan === "AI" && yeni?.konu === "konu");
-  kontrol("yeni ID kullanılmışlara yazılır", r.hafta.kullanilmisIdler?.includes(r.yeniId!) === true);
+  const tasinan = r.hafta.slotlar.filter((x) => x.id === "A");
+  kontrol("taşındı denir", r.tasindi === true);
+  kontrol("slot çoğalmaz — tek kopya kalır", tasinan.length === 1);
+  kontrol("günü değişir", tasinan[0]?.gun === 2);
+  kontrol("eski günde iz kalmaz", r.hafta.slotlar.some((x) => x.gun === 1) === false);
+  kontrol("ID değişmez", tasinan[0]?.id === "A");
+  kontrol("durum bozulmaz", tasinan[0]?.durum === "planli");
+  kontrol("saat, alan ve konu korunur",
+    tasinan[0]?.saat === "19:00" && tasinan[0]?.alan === "AI" && tasinan[0]?.konu === "konu");
+  kontrol("mezar taşı bırakılmaz",
+    (tasinan[0] as { tasindigiYer?: string } | undefined)?.tasindigiYer === undefined);
   kontrol("sorun yoksa not yok", r.not === null);
   const g = (r.hafta as { degisiklikGunlugu?: { not: string }[] }).degisiklikGunlugu;
   kontrol("değişiklik günlüğüne yazılır", g?.[0]?.not.includes("elle taşındı") === true);
+  kontrol("günlük nereden nereye olduğunu söyler",
+    g?.[0]?.not.includes("Pazartesi") === true && g?.[0]?.not.includes("Salı") === true,
+    g?.[0]?.not ?? "");
 }
 {
   const v = hafta([slot({ id: "A", gun: 1, saat: "19:00" })]);
   const r = slotTasi(v, KURALLAR, "A", 1, AN);
-  kontrol("aynı güne taşıma bir şey yapmaz", r.yeniId === null && r.hafta === v);
+  kontrol("aynı güne taşıma bir şey yapmaz", r.tasindi === false && r.hafta === v);
 }
 {
   const v = hafta([
@@ -181,16 +182,22 @@ console.log("\nElle slot taşıma");
     slot({ id: "B", gun: 2, saat: "19:00" }),
   ]);
   const r = slotTasi(v, KURALLAR, "A", 2, AN);
-  kontrol("dolu saate taşınmaz", r.yeniId === null && r.hafta === v);
+  kontrol("dolu saate taşınmaz", r.tasindi === false && r.hafta === v);
   kontrol("sebebi söylenir", r.not?.includes("dolu") === true, r.not ?? "");
 }
 {
   const v = hafta([slot({ id: "A", gun: 1, saat: "19:00", durum: "tasindi" })]);
   const r = slotTasi(v, KURALLAR, "A", 2, AN);
-  kontrol("taşınmış slot yeniden taşınmaz", r.yeniId === null && r.not !== null);
+  kontrol("taşınmış slot yeniden taşınmaz", r.tasindi === false && r.not !== null);
 }
 {
-  // Ofis günü sınırı 2; hedefte iki dolu slot varken taşıma yine de yapılır.
+  // gunBosalt mezar taşı bırakmayı sürdürüyor: orada bir olay var.
+  const v = hafta([slot({ id: "A", gun: 1, saat: "10:00" })]);
+  const { hafta: y } = gunBosalt(v, KURALLAR, 1, null, AN);
+  kontrol("otomatik boşaltma hâlâ iz bırakır",
+    y.slotlar.find((x) => x.id === "A")?.durum === "tasindi");
+}
+{
   const v = hafta(
     [
       slot({ id: "A", gun: 6, saat: "09:00" }),
@@ -200,13 +207,13 @@ console.log("\nElle slot taşıma");
     [1],
   );
   const r = slotTasi(v, KURALLAR, "A", 1, AN);
-  kontrol("kapasite engel değil, uyarı", r.yeniId !== null);
+  kontrol("kapasite engel değil, uyarı", r.tasindi === true);
   kontrol("kapasite uyarısı verilir", r.not?.includes("kapasite") === true, r.not ?? "");
 }
 {
   const v = hafta([slot({ id: "A", gun: 1, saat: "18:00" })]);
   const r = slotTasi(v, KURALLAR, "A", 6, AN);
-  kontrol("korumalı saate taşınabilir", r.yeniId !== null);
+  kontrol("korumalı saate taşınabilir", r.tasindi === true);
   kontrol("korumalı uyarısı verilir", r.not?.includes("korumalı") === true, r.not ?? "");
 }
 
