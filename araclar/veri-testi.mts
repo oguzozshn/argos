@@ -8,8 +8,8 @@
 
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { listele, oku, sil, tamYol, yaz } from "../src/main/veri-cekirdek.ts";
+import { join, resolve } from "node:path";
+import { ayarCoz, listele, oku, sil, tamYol, yaz } from "../src/main/veri-cekirdek.ts";
 
 let gecen = 0;
 let kalan = 0;
@@ -112,6 +112,62 @@ async function calis(): Promise<void> {
   kontrol(
     "silinenin yedeği kalır",
     (await readFile(join(kokDizin, "hobiler/diziler.json.bak"), "utf8").catch(() => null)) !== null,
+  );
+
+  console.log("\nAyar çözümü");
+  // Kökler diskte olmak zorunda değil: okuyucu dışarıdan geliyor.
+  const kurgu = (dosyalar: Record<string, string>) => (yol: string) => dosyalar[yol] ?? null;
+  const exeKok = join(kokDizin, "exe");
+  const kaliciKok = join(kokDizin, "kalici");
+  const yerel = join(exeKok, "argos.config.local.json");
+  const genel = join(exeKok, "argos.config.json");
+  const kalici = join(kaliciKok, "argos.config.local.json");
+
+  kontrol(
+    "ayar yoksa varsayılan ilk köke göre çözülür",
+    ayarCoz([exeKok, kaliciKok], "dataDir", "../veri", kurgu({})) === resolve(exeKok, "../veri"),
+  );
+  kontrol(
+    "yerel dosya genelden önce gelir",
+    ayarCoz(
+      [exeKok],
+      "dataDir",
+      "../veri",
+      kurgu({ [yerel]: `{"dataDir": "/y"}`, [genel]: `{"dataDir": "/g"}` }),
+    ) === resolve("/y"),
+  );
+  kontrol(
+    "ilk kök boşsa ikinci kök okunur (kurulum silinse de ayar kalır)",
+    ayarCoz([exeKok, kaliciKok], "dataDir", "../veri", kurgu({ [kalici]: `{"dataDir": "/k"}` })) ===
+      resolve("/k"),
+  );
+  kontrol(
+    "göreli yol ayarın bulunduğu köke göre çözülür",
+    ayarCoz([exeKok, kaliciKok], "dataDir", "../veri", kurgu({ [kalici]: `{"dataDir": "data"}` })) ===
+      resolve(kaliciKok, "data"),
+  );
+  kontrol(
+    "bozuk JSON atlanır, arama sürer",
+    ayarCoz(
+      [exeKok, kaliciKok],
+      "dataDir",
+      "../veri",
+      kurgu({ [yerel]: "{ bozuk", [kalici]: `{"dataDir": "/k"}` }),
+    ) === resolve("/k"),
+  );
+  kontrol(
+    "alan yoksa sonraki dosyaya düşülür",
+    ayarCoz(
+      [exeKok],
+      "gizliYolu",
+      "../gizli.json",
+      kurgu({ [yerel]: `{"dataDir": "/y"}`, [genel]: `{"gizliYolu": "/g.json"}` }),
+    ) === resolve("/g.json"),
+  );
+  kontrol(
+    "ortam değişkeni ayarı ezer",
+    ayarCoz([exeKok], "dataDir", "../veri", kurgu({ [yerel]: `{"dataDir": "/y"}` }), "/ortam") ===
+      resolve("/ortam"),
   );
 
   await rm(kokDizin, { recursive: true, force: true });

@@ -1,7 +1,7 @@
 import { app } from "electron";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { existsSync } from "node:fs";
 import type { Okuma, Ortam, Yazma } from "../ortak/tipler";
+import { ayar, onerilenAyarYolu } from "./ayar";
 import * as cekirdek from "./veri-cekirdek";
 
 /**
@@ -9,19 +9,10 @@ import * as cekirdek from "./veri-cekirdek";
  * kök dizini çözer ve uygulama bilgisini verir. Dosya işleri çekirdekte.
  */
 
-/** Ayar dosyasının aranacağı kök: geliştirmede proje klasörü, pakette exe yanı. */
-function kok(): string {
-  return app.isPackaged ? dirname(app.getPath("exe")) : process.cwd();
-}
-
 let _dataDir: string | null = null;
 
 export function dataDir(): string {
-  if (!_dataDir) {
-    _dataDir = cekirdek.dataDirCoz(kok(), (yol) =>
-      existsSync(yol) ? readFileSync(yol, "utf8") : null,
-    );
-  }
+  if (!_dataDir) _dataDir = ayar("dataDir", "../personnal_assistant/data", process.env.ARGOS_DATA);
   return _dataDir;
 }
 
@@ -30,6 +21,7 @@ export function ortam(): Ortam {
   return {
     dataDir: d,
     dataDirVar: existsSync(d),
+    ayarYolu: onerilenAyarYolu(),
     surum: app.getVersion(),
     platform: process.platform,
     paketli: app.isPackaged,
