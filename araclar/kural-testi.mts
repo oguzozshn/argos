@@ -9,6 +9,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { dakika, ihlaller, yeniSlotId, type KuralSeti } from "../src/ortak/kural.ts";
+import { saatAyikla } from "../src/ortak/gun.ts";
 import { veriYolu } from "./yol.mts";
 import type { Hafta, Slot } from "../src/ortak/plan.ts";
 
@@ -237,6 +238,28 @@ if (!existsSync(dataDir)) {
     console.log(`    ${d}: ${u.length} uyarı${u.length ? " — " + u[0] : ""}`);
   }
   kontrol("gerçek veride çalışır", hepsiDizi);
+}
+
+console.log("\nSaat ayıklama");
+// Takvimde görev "toplantı 18:00" diye tek satırda yazılıyor; saati metinden
+// ayıran gövde burada, saat dizgesinin diğer sınamalarıyla (dakika) birlikte.
+{
+  const a = (metin: string) => JSON.stringify(saatAyikla(metin));
+  kontrol("sondaki saat ayrılır", a("toplantı 18:00") === '{"icerik":"toplantı","saat":"18:00"}');
+  kontrol("tek haneli saat tamamlanır", a("koşu 9:05") === '{"icerik":"koşu","saat":"09:05"}');
+  kontrol("saat yoksa metin bozulmaz", a("tek") === '{"icerik":"tek","saat":null}');
+  kontrol("iki nokta yoksa saat sayılmaz", a("Sprint 15") === '{"icerik":"Sprint 15","saat":null}');
+  kontrol(
+    "nokta saat sayılmaz (sürüm numarası)",
+    a("sürüm 1.30") === '{"icerik":"sürüm 1.30","saat":null}',
+  );
+  kontrol("saat tek başınaysa görevin adıdır", a("18:00") === '{"icerik":"18:00","saat":null}');
+  kontrol("geçersiz saat metinde kalır", a("kahve 25:00") === '{"icerik":"kahve 25:00","saat":null}');
+  kontrol("geçersiz dakika metinde kalır", a("kahve 12:99") === '{"icerik":"kahve 12:99","saat":null}');
+  kontrol(
+    "baş ve son boşluklar kırpılır",
+    a("  boşluklu  7:30  ") === '{"icerik":"boşluklu","saat":"07:30"}',
+  );
 }
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);

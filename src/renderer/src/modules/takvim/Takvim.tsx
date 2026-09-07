@@ -1,6 +1,6 @@
 import { CalendarOff, ChevronLeft, ChevronRight, History, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from "react";
-import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu } from "@ortak/gun";
+import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
 import { dakika, gununSlotlari, yeniSlotId, type KuralSeti } from "@ortak/kural";
@@ -923,17 +923,17 @@ function GorevEkle({
   onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
 }) {
   const [metin, setMetin] = useState("");
-  const [saat, setSaat] = useState("");
   const [gonderiliyor, setGonderiliyor] = useState(false);
+  // Saat metnin içinden çıkar: dar panelde ayrı bir saat kutusu hem yer yiyor
+  // hem de tarayıcının kendi çizimiyle geliyordu.
+  const { icerik, saat } = saatAyikla(metin);
 
   const gonder = async (e: FormEvent) => {
     e.preventDefault();
-    if (!metin.trim() || gonderiliyor) return;
+    if (!icerik || gonderiliyor) return;
     setGonderiliyor(true);
-    // Saat boşsa gün boyu görev olur; Todoist saatsiz tarihi böyle bekliyor.
-    await onEkle(iso, metin, saat || null);
+    await onEkle(iso, icerik, saat);
     setMetin("");
-    setSaat("");
     setGonderiliyor(false);
   };
 
@@ -945,21 +945,13 @@ function GorevEkle({
         onChange={(e) => setMetin(e.target.value)}
         aria-label="Yeni görev"
       />
-      <input
-        type="time"
-        className={s.saatGiris}
-        value={saat}
-        onChange={(e) => setSaat(e.target.value)}
-        title="Saat — boş bırakılırsa gün boyu"
-        aria-label="Saat"
-      />
-      <Dugme
-        type="submit"
-        tur="dolu"
-        ikon={<Plus size={15} />}
-        disabled={!metin.trim() || gonderiliyor}
-        aria-label="Görev ekle"
-      />
+      <Dugme type="submit" tur="dolu" disabled={!icerik || gonderiliyor}>
+        Ekle
+      </Dugme>
+      {/* Ayrıştırmanın sonucu görünür olsun: sihir görünmezse güvenilmez. */}
+      <p className={saat ? `${s.gorevEkleNot} ${s.gorevEkleNotSaat}` : s.gorevEkleNot}>
+        {saat ? `${icerik} — ${saat}` : "Sona saat yazarsan (18:00) o saate konur, yazmazsan gün boyu."}
+      </p>
     </form>
   );
 }
