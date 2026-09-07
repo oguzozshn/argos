@@ -230,3 +230,26 @@
   display: block;
   font-family: var(--aile-sayi);
 }
+
+/* Şeritteki eylem: klasörü uygulama içinden seçtirir. */
+.seritDugme {
+  font: inherit;
+  font-size: var(--y5);
+  margin: 0 6px;
+  padding: 3px 10px;
+  border-radius: var(--r1);
+  border: 1px solid var(--uyari);
+  background: transparent;
+  color: var(--uyari);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seritDugme:hover {
+  background: var(--uyari);
+  color: var(--zemin);
+}
+
+.seritIkincil {
+  opacity: 0.85;
+}

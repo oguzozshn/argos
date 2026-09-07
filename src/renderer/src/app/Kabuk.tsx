@@ -4,7 +4,7 @@ import { useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { moduller } from "@/modules";
 import { ekranGecisi } from "@/ui/hareket";
-import { KOPRU_VAR, useOrtam } from "@/veri/kanca";
+import { KOPRU_VAR, kopru, useOrtam } from "@/veri/kanca";
 import { BaslikCubugu } from "./BaslikCubugu";
 import { Bugun } from "./Bugun";
 import { KenarCubugu } from "./KenarCubugu";
@@ -49,7 +49,14 @@ function Yonlendirme() {
 
 function Icerik() {
   const [kaydirildi, setKaydirildi] = useState(false);
-  const ortam = useOrtam();
+  const [ortam, setOrtam] = useOrtam();
+
+  const klasorSec = async () => {
+    const k = kopru();
+    if (!k) return;
+    const yeni = await k.klasorSec();
+    if (yeni) setOrtam(yeni);
+  };
 
   return (
     <div className={s.kabuk}>
@@ -72,9 +79,15 @@ function Icerik() {
           <div className={s.serit}>
             <AlertTriangle size={16} strokeWidth={2} />
             <span>
-              Veri klasörü bulunamadı: <span className={s.seritYol}>{ortam.dataDir}</span> — yolu{" "}
-              <span className={s.seritYol}>{ortam.ayarYolu}</span> dosyasına{" "}
-              <span className={s.seritYol}>{`{"dataDir": "..."}`}</span> olarak yaz.
+              Veri klasörü bulunamadı: <span className={s.seritYol}>{ortam.dataDir}</span>.
+              {/* Elle dosya yerleştirmek tek çare olmasın: klasör buradan seçilir. */}
+              <button type="button" className={s.seritDugme} onClick={() => void klasorSec()}>
+                Klasör seç
+              </button>
+              <span className={s.seritIkincil}>
+                Seçim{" "}
+                <span className={s.seritYol}>{ortam.ayarYolu}</span> dosyasına yazılır.
+              </span>
               {/* Nereye bakıldığı da yazılıyor: "bulunamadı" tek başına
                   neyin yanlış gittiğini söylemiyor. */}
               <span className={s.seritArananlar}>

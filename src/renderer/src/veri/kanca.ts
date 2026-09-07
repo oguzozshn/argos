@@ -131,7 +131,7 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
 const YENIDEN_SORMA_ADEDI = 5;
 const YENIDEN_SORMA_MS = 2000;
 
-export function useOrtam(): Ortam | null {
+export function useOrtam(): [Ortam | null, (o: Ortam) => void] {
   const [o, setO] = useState<Ortam | null>(null);
   useEffect(() => {
     const k = kopru();
@@ -156,5 +156,5 @@ export function useOrtam(): Ortam | null {
       window.clearTimeout(zamanlayici);
     };
   }, []);
-  return o;
+  return [o, setO];
 }

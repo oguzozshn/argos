@@ -10,6 +10,7 @@ import {
 
 const argos: ArgosApi = {
   ortam: (): Promise<Ortam> => ipcRenderer.invoke(KANAL.ortam),
+  klasorSec: (): Promise<Ortam | null> => ipcRenderer.invoke(KANAL.ayarKlasor),
 
   veri: {
     oku: <T = unknown,>(yol: string): Promise<Okuma<T>> => ipcRenderer.invoke(KANAL.veriOku, yol),
