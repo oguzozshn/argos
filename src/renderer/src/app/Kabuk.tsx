@@ -72,7 +72,7 @@ function Icerik() {
           <div className={s.serit}>
             <AlertTriangle size={16} strokeWidth={2} />
             <span>
-              Veri klasörü bulunamadı: <span className={s.seritYol}>{ortam.dataDir}</span> — yolu
+              Veri klasörü bulunamadı: <span className={s.seritYol}>{ortam.dataDir}</span> — yolu{" "}
               <span className={s.seritYol}>{ortam.ayarYolu}</span> dosyasına{" "}
               <span className={s.seritYol}>{`{"dataDir": "..."}`}</span> olarak yaz.
             </span>
