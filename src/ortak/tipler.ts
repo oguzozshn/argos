@@ -94,6 +94,8 @@ export interface ArgosApi {
     gorevler(projeId: string): Promise<TodoistGorev[]>;
     /** Bugün + gecikmiş, tüm projelerden (plan projesi hariç). */
     bugunVeGecikmis(): Promise<TodoistGorev[]>;
+    /** Tarihi verilen aralıkta olan görevler — takvim için. */
+    tarihAraligi(basIso: string, sonIso: string): Promise<TodoistGorev[]>;
     ekle(g: {
       icerik: string;
       projeId: string;
@@ -123,6 +125,7 @@ export const KANAL = {
   tdAc: "todoist:ac",
   tdTarih: "todoist:tarih",
   tdBugun: "todoist:bugun",
+  tdAralik: "todoist:aralik",
 } as const;
 
 /**

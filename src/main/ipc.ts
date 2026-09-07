@@ -31,6 +31,7 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdProjeler, () => td.projeler());
   ipcMain.handle(KANAL.tdGorevler, (_o, projeId: string) => td.gorevler(projeId));
   ipcMain.handle(KANAL.tdBugun, () => td.bugunVeGecikmis());
+  ipcMain.handle(KANAL.tdAralik, (_o, bas: string, son: string) => td.tarihAraligi(bas, son));
   ipcMain.handle(KANAL.tdEkle, (_o, g: Parameters<typeof td.ekle>[0]) => td.ekle(g));
   ipcMain.handle(KANAL.tdKapat, (_o, id: string) => td.kapat(id));
   ipcMain.handle(KANAL.tdAc, (_o, id: string) => td.ac(id));

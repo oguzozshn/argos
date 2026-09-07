@@ -458,3 +458,196 @@
 .sutunBasiOlcum {
   width: 76px;
 }
+
+/* --- görevler ------------------------------------------------------------ */
+
+.gorevRozet {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: var(--r1);
+  background: var(--zemin-alt);
+  color: var(--metin-orta);
+  border: 1px solid var(--cizgi);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.gorevBlok {
+  border-color: var(--cizgi-koyu);
+  background: var(--zemin-alt);
+}
+
+.gunBoyu {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  border-bottom: 1px solid var(--cizgi);
+  padding: 0 var(--b5);
+  min-height: 30px;
+}
+
+.gunBoyuEtiket {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  align-self: center;
+  padding-right: var(--b3);
+  text-align: right;
+}
+
+.gunBoyuIcerik {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 5px 0 5px 6px;
+  border-left: 1px solid var(--cizgi);
+}
+
+.gunBoyuSutunlar {
+  display: grid;
+  border-left: 1px solid var(--cizgi);
+}
+
+.gunBoyuHucre {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 4px;
+  border-right: 1px solid var(--cizgi);
+  min-width: 0;
+}
+
+.gorevCip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: var(--r1);
+  background: var(--zemin-alt);
+  border: 1px solid var(--cizgi);
+  color: var(--metin-orta);
+  cursor: pointer;
+  min-width: 0;
+  text-align: left;
+}
+
+.gorevCip:hover {
+  border-color: var(--iyi);
+  color: var(--metin);
+}
+
+.gorevCipAd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gorevKutucuk {
+  width: 11px;
+  height: 11px;
+  border-radius: var(--r-tam);
+  border: 1.5px solid var(--cizgi-koyu);
+  flex-shrink: 0;
+}
+
+.gorevCip:hover .gorevKutucuk {
+  border-color: var(--iyi);
+}
+
+/* --- hafta ekseni --------------------------------------------------------- */
+
+.haftaEksen {
+  position: relative;
+  display: grid;
+  padding: var(--b3) var(--b5) var(--b5);
+}
+
+.haftaBaslik {
+  display: grid;
+  padding: var(--b3) var(--b5) 0;
+}
+
+.haftaBaslikBos {
+  width: 52px;
+}
+
+.haftaGun {
+  text-align: center;
+  padding: 4px 0 8px;
+  border-radius: var(--r1);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+.haftaGun:hover {
+  background: var(--kart-hover);
+}
+
+.haftaGunSecili {
+  background: var(--vurgu-yumusak);
+}
+
+.haftaGunAd {
+  display: block;
+  font-size: var(--y5);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+}
+
+.haftaGunNo {
+  display: block;
+  font-size: var(--y2);
+  font-weight: var(--sik-orta);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.haftaGunBugun {
+  color: var(--vurgu);
+}
+
+.haftaSutun {
+  position: relative;
+  border-left: 1px solid var(--cizgi);
+}
+
+.haftaSutun:last-child {
+  border-right: 1px solid var(--cizgi);
+}
+
+.blokKucuk {
+  padding: 3px 5px;
+  left: 2px;
+  right: 2px;
+}
+
+/* --- panel ekleri --------------------------------------------------------- */
+
+.panelBolum {
+  font-size: var(--y5);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+  margin-top: var(--b2);
+}
+
+.panelGorev {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--cizgi);
+  font-size: var(--y4);
+}
+
+.panelGorevAd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
