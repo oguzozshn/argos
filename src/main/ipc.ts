@@ -1,7 +1,8 @@
-import { BrowserWindow, ipcMain, nativeTheme } from "electron";
+import { BrowserWindow, dialog, ipcMain, nativeTheme } from "electron";
 import { BASLIK_RENKLERI, KANAL } from "../ortak/tipler";
 import * as td from "./todoist";
-import { listele, oku, ortam, sil, yaz } from "./veri";
+import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
+import { klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
 
 /**
  * Arayüzün dosya sistemine tek kapısı. Renderer'da `fs` yok, `nodeIntegration`
@@ -9,6 +10,34 @@ import { listele, oku, ortam, sil, yaz } from "./veri";
  */
 export function ipcKur(): void {
   ipcMain.handle(KANAL.ortam, () => ortam());
+
+  /**
+   * Veri klasörünü kullanıcıya seçtirir. Ayar dosyasını elle yerleştirmek
+   * zorunda kalmamak için var: klasör bulunamadığında uygulama içinden
+   * yapılabilecek tek şey buydu ve yoktu.
+   *
+   * Seçimden sonra izleyici de yeniden kuruluyor — eski klasörü dinlemeye
+   * devam ederse dışarıdan gelen değişiklikler görünmez.
+   */
+  ipcMain.handle(KANAL.ayarKlasor, async (olay) => {
+    const p = BrowserWindow.fromWebContents(olay.sender);
+    const secenekler = {
+      title: "Veri klasörünü seç",
+      properties: ["openDirectory" as const],
+      defaultPath: ortam().dataDir,
+    };
+    const sonuc = p ? await dialog.showOpenDialog(p, secenekler) : await dialog.showOpenDialog(secenekler);
+    const secilen = sonuc.filePaths[0];
+    if (sonuc.canceled || !secilen) return null;
+
+    klasorAyarla(secilen);
+    if (p && !p.isDestroyed()) {
+      await izlemeyiDurdur();
+      izlemeyeBasla(p);
+    }
+    return ortam();
+  });
+
   ipcMain.handle(KANAL.veriOku, (_o, yol: string) => oku(yol));
   ipcMain.handle(KANAL.veriYaz, (_o, yol: string, icerik: unknown, mtime: number | null) =>
     yaz(yol, icerik, mtime),

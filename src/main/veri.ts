@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { existsSync } from "node:fs";
 import type { Okuma, Ortam, Yazma } from "../ortak/tipler";
-import { arananYollar, ayar, onerilenAyarYolu, taniYaz } from "./ayar";
+import { arananYollar, ayar, ayarKaydet, onerilenAyarYolu, taniYaz } from "./ayar";
 import * as cekirdek from "./veri-cekirdek";
 
 /**
@@ -33,6 +33,15 @@ export function dataDir(): string {
   // denemeyi değil. Toparlanma da böyle görünüyor.
   taniYaz(_dataDir, existsSync(_dataDir), _arananlar);
   return _dataDir;
+}
+
+/**
+ * Kullanıcının seçtiği klasörü kalıcı ayara yazar ve çözümü sıfırlar.
+ * Bir sonraki `dataDir()` yeni değeri okur.
+ */
+export function klasorAyarla(yol: string): void {
+  ayarKaydet("dataDir", yol.split("\\").join("/"));
+  _dataDir = null;
 }
 
 export function ortam(): Ortam {

@@ -81,6 +81,12 @@ export interface TodoistDurum {
  */
 export interface ArgosApi {
   ortam(): Promise<Ortam>;
+  /**
+   * Veri klasörünü kullanıcıya seçtirir ve seçimi kalıcı ayara yazar.
+   * İptal edilirse null döner. Ayar dosyasını elle yerleştirmek zorunda
+   * kalmamak için var: klasör bulunamadığında tek yapılabilir şey buydu.
+   */
+  klasorSec(): Promise<Ortam | null>;
   veri: {
     oku<T = unknown>(yol: string): Promise<Okuma<T>>;
     yaz(yol: string, icerik: unknown, mtime: number | null): Promise<Yazma>;
@@ -130,6 +136,7 @@ export const KANAL = {
   tdTarih: "todoist:tarih",
   tdBugun: "todoist:bugun",
   tdAralik: "todoist:aralik",
+  ayarKlasor: "ayar:klasor-sec",
 } as const;
 
 /**

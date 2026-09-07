@@ -56,7 +56,7 @@ function ModulBagi({ modul, etkin }: { modul: Modul; etkin: boolean }) {
 
 export function KenarCubugu() {
   const { pathname } = useLocation();
-  const ortam = useOrtam();
+  const [ortam] = useOrtam();
   const acikModul = pathname.split("/")[1] ?? "";
   const gezilebilir = moduller.filter((m) => m.rotalar.length > 0);
 

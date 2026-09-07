@@ -101,3 +101,24 @@ export function taniYaz(
     // Tanı yazılamıyorsa uygulama yine de açılır.
   }
 }
+/**
+ * Bir ayar alanını kalıcı köke (kullanıcı verisi klasörü) yazar; varsa
+ * dosyadaki diğer alanlar korunur.
+ *
+ * Kurulum klasörüne değil buraya yazılıyor: orası her sürümde siliniyor.
+ */
+export function ayarKaydet(alan: string, deger: string): string {
+  const kok = kokler().at(-1) ?? ".";
+  const yol = join(kok, AYAR_ADLARI[0]);
+  let mevcut: Record<string, unknown> = {};
+  try {
+    const metin = okuyucu(yol);
+    if (metin) mevcut = JSON.parse(metin) as Record<string, unknown>;
+  } catch {
+    // Bozuk dosyanın üstüne yazılır; kurtarılacak bir şey yok.
+  }
+  mevcut[alan] = deger;
+  const govde = JSON.stringify(mevcut, null, 2) + "\r\n";
+  writeFileSync(yol, govde, "utf8");
+  return yol;
+}
