@@ -25,6 +25,8 @@ export type Yazma =
 export interface Ortam {
   dataDir: string;
   dataDirVar: boolean;
+  /** Ayarın konması önerilen yer; klasör bulunamayınca arayüz bunu gösterir. */
+  ayarYolu: string;
   surum: string;
   /** "win32" · "darwin" · "linux" — arayüz tarafında node tipleri yok, dizge. */
   platform: string;

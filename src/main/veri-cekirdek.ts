@@ -108,27 +108,45 @@ export async function sil(kokDizin: string, gorece: string): Promise<{ ok: boole
   return { ok: true };
 }
 
-/** Ayar dosyasından veri klasörünü çözer. Electron'suz da çalışır. */
-export function dataDirCoz(kok: string, ayarOkuyucu: (yol: string) => string | null): string {
-  const ortamYolu = process.env.ARGOS_DATA?.trim();
-  let ayarlanan = ortamYolu || "";
+/** Ayar dosyaları, okunma sırasıyla — yereli depoya girmez, o yüzden önce gelir. */
+export const AYAR_ADLARI = ["argos.config.local.json", "argos.config.json"];
 
-  if (!ayarlanan) {
-    for (const ad of ["argos.config.local.json", "argos.config.json"]) {
+/**
+ * Bir ayar alanını (`dataDir`, `gizliYolu`) kökler sırasıyla arar ve mutlak
+ * yola çevirir. Electron'suz da çalışır.
+ *
+ * Göreli yol, ayarı taşıyan dosyanın kendi köküne göre çözülür: yol o dosyanın
+ * yanından yazılmıştır. Hiçbir kökte bulunamazsa varsayılan ilk köke göre
+ * çözülür.
+ */
+export function ayarCoz(
+  kokler: string[],
+  alan: string,
+  varsayilan: string,
+  ayarOkuyucu: (yol: string) => string | null,
+  ortamYolu?: string,
+): string {
+  const ilkKok = kokler[0] ?? ".";
+  const mutlakla = (yol: string, kok: string): string =>
+    isAbsolute(yol) ? resolve(yol) : resolve(kok, yol);
+
+  const cevre = ortamYolu?.trim();
+  if (cevre) return mutlakla(cevre, ilkKok);
+
+  for (const kok of kokler) {
+    for (const ad of AYAR_ADLARI) {
       const metin = ayarOkuyucu(join(kok, ad));
       if (!metin) continue;
+      let deger: unknown;
       try {
-        const a = JSON.parse(metin) as { dataDir?: string };
-        if (a.dataDir) {
-          ayarlanan = a.dataDir;
-          break;
-        }
+        deger = (JSON.parse(metin) as Record<string, unknown>)[alan];
       } catch {
-        console.error(`[veri] ${ad} okunamadı, yok sayıldı`);
+        console.error(`[ayar] ${join(kok, ad)} okunamadı, yok sayıldı`);
+        continue;
       }
+      if (typeof deger === "string" && deger.trim()) return mutlakla(deger.trim(), kok);
     }
   }
 
-  if (!ayarlanan) ayarlanan = "../personnal_assistant/data";
-  return isAbsolute(ayarlanan) ? resolve(ayarlanan) : resolve(kok, ayarlanan);
+  return mutlakla(varsayilan, ilkKok);
 }

@@ -47,8 +47,7 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*",
-      "argos.config.json"
+      "out/**/*"
     ],
     "win": {
       "icon": "build/icon.ico",

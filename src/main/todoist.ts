@@ -1,7 +1,6 @@
-import { app } from "electron";
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { TodoistDurum, TodoistGorev, TodoistProje } from "../ortak/tipler";
+import { ayar } from "./ayar";
 import * as cekirdek from "./todoist-cekirdek";
 import { TodoistHata, type YeniGorev } from "./todoist-cekirdek";
 
@@ -12,31 +11,9 @@ import { TodoistHata, type YeniGorev } from "./todoist-cekirdek";
  * API anahtarı BU DOSYADAN çıkmaz — arayüz yalnızca sonuçları görür.
  */
 
-function kok(): string {
-  return app.isPackaged ? dirname(app.getPath("exe")) : process.cwd();
-}
-
 /** Anahtar dosyasının yolu; ayarlanabilir, varsayılan eski deponun yanı. */
-export function gizliYolu(): string {
-  let ayarlanan = process.env.ARGOS_GIZLI?.trim() || "";
-  if (!ayarlanan) {
-    for (const ad of ["argos.config.local.json", "argos.config.json"]) {
-      const f = join(kok(), ad);
-      if (!existsSync(f)) continue;
-      try {
-        const a = JSON.parse(readFileSync(f, "utf8")) as { gizliYolu?: string };
-        if (a.gizliYolu) {
-          ayarlanan = a.gizliYolu;
-          break;
-        }
-      } catch {
-        // Bozuk ayar yok sayılır; varsayılana düşer.
-      }
-    }
-  }
-  if (!ayarlanan) ayarlanan = "../personnal_assistant/gizli.json";
-  return isAbsolute(ayarlanan) ? resolve(ayarlanan) : resolve(kok(), ayarlanan);
-}
+export const gizliYolu = (): string =>
+  ayar("gizliYolu", "../personnal_assistant/gizli.json", process.env.ARGOS_GIZLI);
 
 /** Anahtarı her çağrıda diskten okur: dosya değişince yeniden başlatmak gerekmesin. */
 function anahtar(): string | null {

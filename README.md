@@ -44,6 +44,12 @@ dosyaları — hafta planları, kurallar, yol haritaları, hobi listeleri.
 Yol `argos.config.json`'dan gelir. Makineye özel değer için
 `argos.config.local.json` açılır; o dosya önce okunur ve depoya girmez.
 
+Geliştirmede dosyalar proje kökünden okunur. Kurulu sürümde iki yere
+bakılır, sırayla: **exe'nin yanı**, sonra **`%APPDATA%/argos`**. Kurulum klasörü
+her sürümde silinip yeniden yazılıyor — orada tutulan ayar güncellemede
+kaybolur, kalıcı yer ikincisi. Veri klasörü bulunamazsa uygulama üstte şerit
+açar ve dosyanın yazılacağı tam yolu söyler.
+
 ```json
 {
   "dataDir": "../personnal_assistant/data",
