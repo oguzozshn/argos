@@ -292,10 +292,7 @@ function HaftaIcerik({
         }
         const r = slotTasi(veri, kurallar, yuk.slot.id, gunNo);
         setTasimaNotu(r.not);
-        if (r.yeniId) {
-          void yaz(r.hafta);
-          setSeciliId(r.yeniId);
-        }
+        if (r.tasindi) void yaz(r.hafta);
         return;
       }
 
