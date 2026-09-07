@@ -1,7 +1,10 @@
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DURUM_ISARETI, type Hafta as HaftaTipi, type Slot } from "@ortak/plan";
 import { siklikMetni, siklikOku } from "@ortak/ozet";
+import { gunEkle } from "@ortak/gun";
+import { slotTasi } from "@ortak/plan-islem";
+import type { TodoistGorev } from "@ortak/tipler";
 import {
   dakika,
   gununSlotlari,
@@ -13,6 +16,13 @@ import {
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { useDosya } from "@/veri/kanca";
 import { saatMetni, usePlanVerisi } from "@/veri/plan";
+import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
+import {
+  hedefOzellikleri,
+  hedefSinifi,
+  kaynakOzellikleri,
+  useSurukle,
+} from "@/ui/surukle";
 import s from "./hafta.module.css";
 
 /**
@@ -27,6 +37,21 @@ import s from "./hafta.module.css";
  */
 
 const DURUM_SIRASI = ["planli", "yapildi", "kacti", "tasindi"];
+
+/* --- sürükleme ----------------------------------------------------------- */
+
+/**
+ * Hafta ekranında iki şey taşınıyor, o yüzden yük etiketli: hedef hangisini
+ * kabul ettiğini söyleyebilsin. Gün ikisini de alır, slot yalnızca görevi.
+ */
+type Yuk = { tur: "gorev"; gorev: TodoistGorev } | { tur: "slot"; slot: Slot };
+
+const GUN_ANAHTARI = (no: number) => `gun:${no}`;
+const SLOT_ANAHTARI = (id: string) => `slot:${id}`;
+const yalnizGorev = (y: Yuk) => y.tur === "gorev";
+
+const GOREV_SURUKLENMEZ = "Tekrarlı görev sürüklenmez — tekrar düzeni silinir";
+const SLOT_SURUKLENMEZ = "Taşınmış slot yeniden taşınmaz";
 
 /* --- yan panel ---------------------------------------------------------- */
 
@@ -233,11 +258,62 @@ function HaftaIcerik({
 }) {
   const { veri, yukleniyor, hata, disaridanDegisti, yaz } = useDosya<HaftaTipi>(`${kod}.json`);
   const [seciliId, setSeciliId] = useState<string | null>(null);
+  /** Elle taşımanın sonucu: reddedildiyse sebep, yapıldıysa kural uyarısı. */
+  const [tasimaNotu, setTasimaNotu] = useState<string | null>(null);
 
   const uyarilar = useMemo(
     () => (veri ? ihlaller(veri, kurallar) : []),
     [veri, kurallar],
   );
+
+  // Haftanın görevleri. Todoist süzgeci uç değerleri dışlıyor, bir gün pay
+  // bırakılıyor — takvimdeki sorguyla aynı.
+  const gunListesi = veri?.gunler ?? [];
+  const ilkGun = gunListesi[0]?.isoTarih ?? bugun;
+  const sonGun = gunListesi[gunListesi.length - 1]?.isoTarih ?? bugun;
+  const td = useTodoistAralik(gunEkle(ilkGun, -1), gunEkle(sonGun, 1), bugun);
+
+  const birakildi = useCallback(
+    (yuk: Yuk, anahtar: string) => {
+      if (!veri) return;
+      const ayrac = anahtar.indexOf(":");
+      const tur = anahtar.slice(0, ayrac);
+      const deger = anahtar.slice(ayrac + 1);
+      setTasimaNotu(null);
+
+      if (tur === "gun") {
+        const gunNo = Number(deger);
+        // Görev güne bırakılınca Todoist tarihi değişir; slot bırakılınca
+        // hafta dosyası yazılır. İki ayrı kaynak, tek hareket.
+        if (yuk.tur === "gorev") {
+          const g = veri.gunler.find((x) => x.no === gunNo);
+          if (g?.isoTarih) void td.tarihiDegistir(yuk.gorev, g.isoTarih);
+          return;
+        }
+        const r = slotTasi(veri, kurallar, yuk.slot.id, gunNo);
+        setTasimaNotu(r.not);
+        if (r.yeniId) {
+          void yaz(r.hafta);
+          setSeciliId(r.yeniId);
+        }
+        return;
+      }
+
+      // Görev slota bırakıldı: slotun konusu olur. Görevin tarihine
+      // dokunulmaz — bağlamak planı yazmaktır, görevi ertelemek değil.
+      if (tur === "slot" && yuk.tur === "gorev") {
+        void yaz({
+          ...veri,
+          slotlar: veri.slotlar.map((x) =>
+            x.id === deger ? { ...x, konu: yuk.gorev.icerik } : x,
+          ),
+        });
+      }
+    },
+    [veri, yaz, kurallar, td],
+  );
+
+  const surukle = useSurukle<Yuk>(birakildi);
 
   if (yukleniyor) {
     return (
@@ -490,11 +566,21 @@ function HaftaIcerik({
           )}
 
           <Kart dolgulu={false} baslik="Slotlar" not={`${veri.slotlar.length} slot`}>
+            {tasimaNotu && <p className={s.tasimaNotu}>{tasimaNotu}</p>}
             {veri.gunler.map((g) => {
               const gunSlot = gununSlotlari(veri, g.no);
               const ofis = (veri.ofisGunleri ?? []).includes(g.no);
+              const gunGorevleri = td.gunlere.get(g.isoTarih) ?? [];
               return (
-                <div key={g.no}>
+                <div
+                  key={g.no}
+                  className={
+                    [s.gunBlok, hedefSinifi(GUN_ANAHTARI(g.no), surukle)]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  {...hedefOzellikleri(GUN_ANAHTARI(g.no), surukle)}
+                >
                   <div className={s.gunBasi}>
                     <span className={s.gunAd}>{g.ad}</span>
                     <span className={s.gunTarih}>{g.tarih}</span>
@@ -510,11 +596,26 @@ function HaftaIcerik({
                     gunSlot.map((x) => (
                       <div
                         key={x.id}
-                        className={x.id === seciliId ? `${s.slot} ${s.slotSecili}` : s.slot}
+                        className={[
+                          s.slot,
+                          x.id === seciliId && s.slotSecili,
+                          hedefSinifi(SLOT_ANAHTARI(x.id), surukle, yalnizGorev),
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                         onClick={() => setSeciliId(x.id)}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => e.key === "Enter" && setSeciliId(x.id)}
+                        title={
+                          x.durum === "tasindi"
+                            ? SLOT_SURUKLENMEZ
+                            : "başka güne sürükle · üstüne görev bırakınca konusu olur"
+                        }
+                        {...kaynakOzellikleri({ tur: "slot", slot: x } as Yuk, surukle, {
+                          kapali: x.durum === "tasindi",
+                        })}
+                        {...hedefOzellikleri(SLOT_ANAHTARI(x.id), surukle, yalnizGorev)}
                       >
                         <button
                           type="button"
@@ -537,6 +638,34 @@ function HaftaIcerik({
                       </div>
                     ))
                   )}
+
+                  {gunGorevleri.map((gr) => (
+                    <div
+                      key={gr.id}
+                      className={gr.tekrarli ? `${s.gorevSatir} ${s.gorevTekrarli}` : s.gorevSatir}
+                      title={
+                        gr.tekrarli
+                          ? GOREV_SURUKLENMEZ
+                          : "başka güne sürükle, ya da bir slotun üstüne bırak"
+                      }
+                      {...kaynakOzellikleri({ tur: "gorev", gorev: gr } as Yuk, surukle, {
+                        kapali: gr.tekrarli,
+                      })}
+                    >
+                      <button
+                        type="button"
+                        className={s.gorevKutucuk}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void td.kapat(gr);
+                        }}
+                        title="Tamamla"
+                        aria-label={`${gr.icerik} görevini tamamla`}
+                      />
+                      <span className={s.gorevSaat}>{gorevSaati(gr) ?? ""}</span>
+                      <span className={s.gorevAd}>{gr.icerik}</span>
+                    </div>
+                  ))}
 
                   <div className={s.gunDip}>
                     <Dugme

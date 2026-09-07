@@ -6,7 +6,7 @@
  * sıkıştırılmaz. Buradaki testler o kuralın uygulandığını doğruluyor.
  */
 
-import { gunBosalt, gunTipi } from "../src/ortak/plan-islem.ts";
+import { gunBosalt, gunTipi, slotTasi } from "../src/ortak/plan-islem.ts";
 import type { KuralSeti } from "../src/ortak/kural.ts";
 import type { Hafta, Slot } from "../src/ortak/plan.ts";
 
@@ -147,6 +147,67 @@ console.log("\nMuafiyetler ve kayıt");
   kontrol("değişiklik günlüğüne satır yazılır", g?.length === 1);
   kontrol("günlükte tarih MM-DD biçiminde", g?.[0]?.tarih === "09-30", g?.[0]?.tarih);
   kontrol("günlük 'sıkıştırılmadı' der", g?.[0]?.not.includes("Sıkıştırılmadı"));
+}
+
+console.log("\nElle slot taşıma");
+{
+  const v = hafta([slot({ id: "A", gun: 1, saat: "19:00" })]);
+  const r = slotTasi(v, KURALLAR, "A", 2, AN);
+  const eski = r.hafta.slotlar.find((x) => x.id === "A");
+  const yeni = r.hafta.slotlar.find((x) => x.id === r.yeniId);
+  kontrol("yeni ID verilir", typeof r.yeniId === "string" && r.yeniId !== "A");
+  kontrol("eski slot yerinde kalır ve tasindi olur", eski?.durum === "tasindi");
+  kontrol("eski slotun günü değişmez", eski?.gun === 1);
+  kontrol(
+    "nereye gittiği yazılır",
+    (eski as { tasindigiYer?: string } | undefined)?.tasindigiYer === r.yeniId,
+  );
+  kontrol("yeni slot hedef günde planlı", yeni?.gun === 2 && yeni?.durum === "planli");
+  kontrol("saat korunur", yeni?.saat === "19:00");
+  kontrol("alan ve konu korunur", yeni?.alan === "AI" && yeni?.konu === "konu");
+  kontrol("yeni ID kullanılmışlara yazılır", r.hafta.kullanilmisIdler?.includes(r.yeniId!) === true);
+  kontrol("sorun yoksa not yok", r.not === null);
+  const g = (r.hafta as { degisiklikGunlugu?: { not: string }[] }).degisiklikGunlugu;
+  kontrol("değişiklik günlüğüne yazılır", g?.[0]?.not.includes("elle taşındı") === true);
+}
+{
+  const v = hafta([slot({ id: "A", gun: 1, saat: "19:00" })]);
+  const r = slotTasi(v, KURALLAR, "A", 1, AN);
+  kontrol("aynı güne taşıma bir şey yapmaz", r.yeniId === null && r.hafta === v);
+}
+{
+  const v = hafta([
+    slot({ id: "A", gun: 1, saat: "19:00" }),
+    slot({ id: "B", gun: 2, saat: "19:00" }),
+  ]);
+  const r = slotTasi(v, KURALLAR, "A", 2, AN);
+  kontrol("dolu saate taşınmaz", r.yeniId === null && r.hafta === v);
+  kontrol("sebebi söylenir", r.not?.includes("dolu") === true, r.not ?? "");
+}
+{
+  const v = hafta([slot({ id: "A", gun: 1, saat: "19:00", durum: "tasindi" })]);
+  const r = slotTasi(v, KURALLAR, "A", 2, AN);
+  kontrol("taşınmış slot yeniden taşınmaz", r.yeniId === null && r.not !== null);
+}
+{
+  // Ofis günü sınırı 2; hedefte iki dolu slot varken taşıma yine de yapılır.
+  const v = hafta(
+    [
+      slot({ id: "A", gun: 6, saat: "09:00" }),
+      slot({ id: "B", gun: 1, saat: "19:00" }),
+      slot({ id: "C", gun: 1, saat: "20:15" }),
+    ],
+    [1],
+  );
+  const r = slotTasi(v, KURALLAR, "A", 1, AN);
+  kontrol("kapasite engel değil, uyarı", r.yeniId !== null);
+  kontrol("kapasite uyarısı verilir", r.not?.includes("kapasite") === true, r.not ?? "");
+}
+{
+  const v = hafta([slot({ id: "A", gun: 1, saat: "18:00" })]);
+  const r = slotTasi(v, KURALLAR, "A", 6, AN);
+  kontrol("korumalı saate taşınabilir", r.yeniId !== null);
+  kontrol("korumalı uyarısı verilir", r.not?.includes("korumalı") === true, r.not ?? "");
 }
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
