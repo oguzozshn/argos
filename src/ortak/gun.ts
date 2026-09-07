@@ -97,3 +97,22 @@ export const gunAl = (iso: string): number => Number(iso.slice(8, 10));
 
 /** Ayın ilk günü. */
 export const ayBasi = (iso: string): string => `${iso.slice(0, 7)}-01`;
+
+/**
+ * Metnin sonundaki saati ayırır: "toplantı 18:00" → { icerik: "toplantı",
+ * saat: "18:00" }. Saat yoksa metin olduğu gibi döner.
+ *
+ * İki nokta zorunlu. "Sprint 15" bir saat değil; "18.00" da sayılmaz, çünkü
+ * "sürüm 1.30" gibi metinleri saate çevirirdi. Yalnızca son kelimeye bakılır
+ * ve önünde bir şey olmalı: "18:00" tek başına yazıldıysa görevin adıdır,
+ * saati değil — yoksa geriye adsız görev kalırdı.
+ */
+export function saatAyikla(metin: string): { icerik: string; saat: string | null } {
+  const duz = metin.trim();
+  const e = duz.match(/^(.*\S)\s+(\d{1,2}):(\d{2})$/);
+  if (!e) return { icerik: duz, saat: null };
+  const sa = Number(e[2]);
+  const dk = Number(e[3]);
+  if (sa > 23 || dk > 59) return { icerik: duz, saat: null };
+  return { icerik: e[1]!.trim(), saat: `${String(sa).padStart(2, "0")}:${String(dk).padStart(2, "0")}` };
+}

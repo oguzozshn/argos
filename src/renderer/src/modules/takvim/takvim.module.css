@@ -734,31 +734,31 @@
 
 /* --- görev ekleme --------------------------------------------------------- */
 
+/* Boş durumun devamı gibi okunmasın diye üstten ayrılıyor. */
 .gorevEkle {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
-  margin-top: var(--b2);
+  gap: var(--b2);
+  margin-top: var(--b3);
+  padding-top: var(--b3);
+  border-top: 1px solid var(--cizgi);
 }
 
+/* Metin alanı yeri alır; düğme kendi genişliğinde kalır. */
 .gorevEkle > *:first-child {
   flex: 1;
   min-width: 0;
 }
 
-.saatGiris {
-  width: 78px;
-  flex-shrink: 0;
-  font: inherit;
+.gorevEkleNot {
+  flex: 0 0 100%;
   font-size: var(--y5);
-  padding: 6px 6px;
-  border-radius: var(--r1);
-  border: 1px solid var(--cizgi);
-  background: var(--zemin);
-  color: var(--metin);
+  color: var(--metin-soluk);
+  line-height: 1.4;
 }
 
-.saatGiris:focus {
-  outline: none;
-  border-color: var(--vurgu);
+/* Saat yakalandığında ne olacağı okunur biçimde söylenir. */
+.gorevEkleNotSaat {
+  color: var(--vurgu);
 }
