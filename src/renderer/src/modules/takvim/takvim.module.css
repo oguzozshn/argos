@@ -654,18 +654,6 @@
 
 /* --- sürükleme ------------------------------------------------------------ */
 
-/* Sürükleme başlayınca her gün hedefe dönüşür; nereye bırakılabileceği görünsün. */
-.hedef {
-  outline: 1px dashed var(--cizgi-koyu);
-  outline-offset: -2px;
-}
-
-.hedefUstunde {
-  outline: 2px solid var(--vurgu);
-  outline-offset: -2px;
-  background: var(--vurgu-yumusak);
-}
-
 /* Tekrarlı görev sürüklenmez: tarihi yazmak tekrar düzenini siler. */
 .gorevCipTekrarli,
 .gorevRozetTekrarli {

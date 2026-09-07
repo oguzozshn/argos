@@ -128,3 +128,86 @@ export function gunBosalt(
 
   return { hafta, rapor };
 }
+
+export interface TasimaSonucu {
+  hafta: Hafta;
+  /** Taşındıysa hedef gündeki yeni slot ID'si; taşınmadıysa null. */
+  yeniId: string | null;
+  /** Taşınmadıysa sebep, taşındıysa kural uyarısı; sorun yoksa null. */
+  not: string | null;
+}
+
+/**
+ * Bir slotu elle başka güne taşır.
+ *
+ * Gövde `gunBosalt` ile aynı: slot yerinde DEĞİŞMEZ. Hedef güne yeni ID'yle
+ * kopyalanır, eskisi `tasindi` olur ve nereye gittiğini yazar. ID bir kez
+ * verilir, geri kullanılmaz (kural 2) — arşiv geçmişi eski ID'den okuyor,
+ * `gun` alanını değiştirmek geçmişi değiştirmek olurdu.
+ *
+ * Otomatik boşaltmadan farkı: kapasite ve korumalı saat burada engel değil,
+ * uyarı. Elle taşıma açık bir karar; sistem onu geri çevirmez, sonucunu
+ * söyler. Yalnızca aynı saatte dolu olan hedef reddedilir — çift kayıt olurdu.
+ */
+export function slotTasi(
+  v: Hafta,
+  kurallar: KuralSeti,
+  slotId: string,
+  hedefGun: number,
+  bugun = new Date(),
+): TasimaSonucu {
+  const kaynak = v.slotlar.find((x) => x.id === slotId);
+  if (!kaynak) throw new Error("slot bulunamadı");
+  const gun = v.gunler.find((g) => g.no === hedefGun);
+  if (!gun) throw new Error("gün bulunamadı");
+
+  if (kaynak.gun === hedefGun) return { hafta: v, yeniId: null, not: null };
+  if (kaynak.durum === "tasindi") {
+    return { hafta: v, yeniId: null, not: "Taşınmış slot yeniden taşınmaz." };
+  }
+  if (v.slotlar.some((x) => x.gun === hedefGun && x.saat === kaynak.saat && x.durum !== "tasindi")) {
+    return { hafta: v, yeniId: null, not: `${gun.ad} ${kaynak.saat} zaten dolu.` };
+  }
+
+  const kap = kurallar.kapasite;
+  const sinir = {
+    ofis: kap.ofisGunuMaxSlot,
+    ev: kap.evGunuMaxSlot,
+    haftaSonu: kap.haftaSonuMaxSlot,
+  }[gunTipi(hedefGun, v.ofisGunleri ?? [])];
+  const dolu = v.slotlar.filter(
+    (x) => x.gun === hedefGun && x.durum === "planli" && x.alan !== "Serbest" && x.alan !== "Kapanış",
+  ).length;
+
+  const uyarilar: string[] = [];
+  if (dolu >= sinir) uyarilar.push(`${gun.ad} kapasitesi aşıldı (${dolu + 1}/${sinir})`);
+  if (
+    (kurallar.korumaliAlanlar ?? []).some(
+      (k) => k.gunler.includes(hedefGun) && dakika(kaynak.saat) >= dakika(k.saattenSonra ?? "99:99"),
+    )
+  ) {
+    uyarilar.push("korumalı saate kondu");
+  }
+
+  const slotlar: Slot[] = v.slotlar.map((x) => ({ ...x }));
+  const kullanilmisIdler = [...(v.kullanilmisIdler ?? [])];
+  const yeniId = yeniSlotId({ ...v, slotlar, kullanilmisIdler }, hedefGun, kaynak.saat);
+  kullanilmisIdler.push(yeniId);
+
+  const eski = slotlar.find((x) => x.id === slotId)!;
+  eski.durum = "tasindi";
+  (eski as Slot & { tasindigiYer?: string }).tasindigiYer = yeniId;
+  slotlar.push({ ...kaynak, id: yeniId, gun: hedefGun, durum: "planli" });
+
+  const p = (n: number) => String(n).padStart(2, "0");
+  const hafta: Hafta = { ...v, slotlar, kullanilmisIdler };
+  (hafta as Hafta & { degisiklikGunlugu?: unknown[] }).degisiklikGunlugu = [
+    ...(((v as Hafta & { degisiklikGunlugu?: unknown[] }).degisiklikGunlugu ?? []) as unknown[]),
+    {
+      tarih: `${p(bugun.getMonth() + 1)}-${p(bugun.getDate())}`,
+      not: `${slotId} elle taşındı → ${gun.ad} ${kaynak.saat} (${yeniId}).`,
+    },
+  ];
+
+  return { hafta, yeniId, not: uyarilar.length ? uyarilar.join(" · ") : null };
+}

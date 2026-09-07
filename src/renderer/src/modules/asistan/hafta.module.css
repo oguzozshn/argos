@@ -354,3 +354,73 @@
   padding-top: var(--b3);
   border-top: 1px solid var(--cizgi);
 }
+
+/* --- görevler ve taşıma --------------------------------------------------- */
+
+/* Gün bloğu bırakma hedefi; çerçeve içeriye çizilsin diye konumlanır. */
+.gunBlok {
+  position: relative;
+}
+
+/* Slot satırının kardeşi ama onun yerine geçmez: görev plan değil. */
+.gorevSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: 6px var(--b6);
+  border-top: 1px dashed var(--cizgi);
+  cursor: grab;
+  color: var(--metin-orta);
+}
+
+.gorevSatir:hover {
+  background: var(--kart-hover);
+}
+
+.gorevTekrarli {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.gorevKutucuk {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--r-tam);
+  border: 1.5px solid var(--cizgi-koyu);
+  background: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.gorevKutucuk:hover {
+  border-color: var(--iyi);
+}
+
+.gorevSaat {
+  font-variant-numeric: tabular-nums;
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  width: 42px;
+  flex-shrink: 0;
+}
+
+.gorevAd {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--y4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Taşımanın sonucu: reddedildiyse sebep, yapıldıysa kural uyarısı. */
+.tasimaNotu {
+  margin: 0 var(--b6) var(--b2);
+  padding: var(--b2) var(--b3);
+  font-size: var(--y5);
+  color: var(--uyari);
+  background: var(--uyari-yumusak);
+  border: 1px solid var(--uyari);
+  border-radius: var(--r1);
+}

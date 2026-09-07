@@ -1,5 +1,5 @@
 import { CalendarOff, ChevronLeft, ChevronRight, History, Plus, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
@@ -7,6 +7,13 @@ import { dakika, gununSlotlari, yeniSlotId, type KuralSeti } from "@ortak/kural"
 import { gunBosalt, gunTipi, type BosaltRaporu } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import {
+  hedefOzellikleri,
+  hedefSinifi,
+  kaynakOzellikleri,
+  useSurukle,
+  type SurukleDurumu,
+} from "@/ui/surukle";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
@@ -52,57 +59,18 @@ const haftaninPazartesisi = (iso: string): string => gunEkle(iso, -haftaninGunu(
 /* --- sürükleme ----------------------------------------------------------- */
 
 /**
- * Görevi başka güne sürükleme. Tek yerde durur çünkü üç görünüm de aynı
- * sözleşmeyi kullanıyor: ay hücresi, hafta sütunu, gün boyu şeridi.
+ * Takvimde yalnızca görev taşınıyor; gövde ortak (`ui/surukle`), buradaki
+ * tek kural tekrarlı görevin sürüklenmemesi.
  *
- * Tekrarlı görev sürüklenmez. Tarihi `due_string` ile yazmak tekrar düzenini
- * siler — alışkanlık görevini bir kez taşımak onu tümden bitirir.
+ * Tarihi `due_string` ile yazmak tekrar düzenini siler — alışkanlık görevini
+ * bir kez taşımak onu tümden bitirir.
  */
-interface Surukle {
-  aktif: TodoistGorev | null;
-  hedef: string | null;
-  basla: (g: TodoistGorev) => void;
-  bitir: () => void;
-  uzerinde: (iso: string | null) => void;
-  birak: (iso: string) => void;
-}
+type Surukle = SurukleDurumu<TodoistGorev>;
 
 const SURUKLENMEZ = "Tekrarlı görev sürüklenmez — tekrar düzeni silinir";
 
-/** Sürüklenen görevi taşıyan öğenin nitelikleri. */
-function kaynakOzellikleri(g: TodoistGorev, sr: Surukle) {
-  if (g.tekrarli) return { draggable: false };
-  return {
-    draggable: true,
-    onDragStart: (e: DragEvent) => {
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", g.id);
-      sr.basla(g);
-    },
-    onDragEnd: () => sr.bitir(),
-  };
-}
-
-/** Bir günü bırakma hedefi yapan nitelikler. */
-function hedefOzellikleri(iso: string, sr: Surukle) {
-  if (!sr.aktif) return {};
-  return {
-    onDragOver: (e: DragEvent) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move" as const;
-    },
-    onDragEnter: () => sr.uzerinde(iso),
-    onDragLeave: () => sr.uzerinde(null),
-    onDrop: (e: DragEvent) => {
-      e.preventDefault();
-      sr.birak(iso);
-    },
-  };
-}
-
-/** Sürükleme sırasında hedefin görünür sınıfı. */
-const hedefSinifi = (iso: string, sr: Surukle): string | false =>
-  Boolean(sr.aktif) && (sr.hedef === iso ? s.hedefUstunde : s.hedef);
+const gorevKaynagi = (g: TodoistGorev, sr: Surukle) =>
+  kaynakOzellikleri(g, sr, { kapali: g.tekrarli });
 
 /* --- görev parçaları ----------------------------------------------------- */
 
@@ -241,7 +209,7 @@ function EksenSutunu({
           className={`${s.blok} ${s.gorevBlok}${dar ? ` ${s.blokKucuk}` : ""}`}
           style={{ top: yerDk(dakika(gorevSaati(g)!)), height: 24 }}
           title={`${gorevSaati(g)} · ${g.icerik}${g.tekrarli ? ` — ${SURUKLENMEZ}` : ""}`}
-          {...kaynakOzellikleri(g, surukle)}
+          {...gorevKaynagi(g, surukle)}
         >
           <span className={s.blokBas}>{g.icerik}</span>
         </div>
@@ -274,8 +242,6 @@ export function Takvim() {
   const [secili, setSecili] = useState(bugun);
   const [seciliSlot, setSeciliSlot] = useState<string | null>(null);
   const [simdi, setSimdi] = useState(() => new Date());
-  const [surunen, setSurunen] = useState<TodoistGorev | null>(null);
-  const [surukleHedefi, setSurukleHedefi] = useState<string | null>(null);
 
   const kuralSeti = kurallar as KuralSeti;
 
@@ -299,21 +265,9 @@ export function Takvim() {
   // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
   const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1), bugun);
 
-  const surukle: Surukle = {
-    aktif: surunen,
-    hedef: surukleHedefi,
-    basla: setSurunen,
-    bitir: () => {
-      setSurunen(null);
-      setSurukleHedefi(null);
-    },
-    uzerinde: setSurukleHedefi,
-    birak: (iso) => {
-      if (surunen) void td.tarihiDegistir(surunen, iso);
-      setSurunen(null);
-      setSurukleHedefi(null);
-    },
-  };
+  const surukle = useSurukle<TodoistGorev>(
+    useCallback((g: TodoistGorev, iso: string) => void td.tarihiDegistir(g, iso), [td]),
+  );
 
   const yil = Number(ayAnahtari.slice(0, 4));
   const ayNo = Number(ayAnahtari.slice(5, 7));
@@ -654,7 +608,7 @@ function AyIzgarasi({
                     key={g.id}
                     className={g.tekrarli ? `${s.gorevRozet} ${s.gorevRozetTekrarli}` : s.gorevRozet}
                     title={g.tekrarli ? `${g.icerik} — ${SURUKLENMEZ}` : `${g.icerik} — başka güne sürükleyebilirsin`}
-                    {...kaynakOzellikleri(g, surukle)}
+                    {...gorevKaynagi(g, surukle)}
                   >
                     {g.icerik}
                   </span>
@@ -898,7 +852,7 @@ function GorevBolumu({
       <p className={s.panelBolum}>Görevler</p>
       {gorevler.length === 0 && <p className={s.aciklama}>Bu güne görev yok.</p>}
       {gorevler.map((g) => (
-        <div key={g.id} className={s.panelGorev} {...kaynakOzellikleri(g, surukle)}>
+        <div key={g.id} className={s.panelGorev} {...gorevKaynagi(g, surukle)}>
           <button
             type="button"
             className={s.gorevKutucuk}
