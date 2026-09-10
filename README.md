@@ -18,6 +18,7 @@ alıyor ve üstüne kendi modüllerini ekliyor.
 | **Asistan** | Hafta (slot düzenleme, günlük ızgara, kural uyarıları) · Odak (pomodoro, kronometre) · Hatırla · Arşiv · Yol haritaları |
 | **Takvim** | Ay ızgarası ve gün ekseni. Sorusu tek: hangi güne ne sığar. |
 | **Yapılacaklar** | Todoist'in kendisi — ayrı bir liste tutulmuyor |
+| **Harcama** | Defter, hesaplar, bütçeler, düzenli işlemler, kart borç tahmini. Tutar kuruş cinsinden tam sayı. |
 | **Hobiler** | Oyun, dizi, film, kitap listeleri. Envanter, plan değil. |
 
 Yeni modül eklemek bir klasör ve `src/renderer/src/modules/index.ts`'e bir
@@ -39,7 +40,13 @@ npm run paket   # kurulum dosyası (Windows, NSIS)
 ## Veri
 
 Uygulama kendi veritabanını tutmaz. Kaynak `data/` klasöründeki JSON
-dosyaları — hafta planları, kurallar, yol haritaları, hobi listeleri.
+dosyaları — hafta planları, kurallar, yol haritaları, hobi listeleri,
+harcama defteri.
+
+Harcama modülü `data/harcama/` altında durur: tanımlar (ayarlar, kategoriler,
+hesaplar, bütçeler, düzenli kurallar) tek dosyada, işlemler takvim ayına göre
+`2026-09.json` gibi bölünmüş. Defter yıllarla büyüyor; tek dosya her
+düzenlemede baştan yazılırdı.
 
 Yol `argos.config.json`'dan gelir. Makineye özel değer için
 `argos.config.local.json` açılır; o dosya önce okunur ve depoya girmez.
@@ -64,6 +71,21 @@ sonra dışarıdan değiştiyse yazma iptal edilir.
 `gizliYolu` Todoist API anahtarını taşır (`{"todoistToken": "…"}`). Anahtar
 yalnızca ana süreçte okunur, arayüze inmez ve depoya girmez.
 
+## Harcama defterini taşımak
+
+Modül, ayrı bir uygulama olan ExpenseTracker'ın (Blazor + SQLite) yerini
+alıyor. Eski defter bir kez aktarılır:
+
+```bash
+python araclar/harcama-aktar.py --db "%LOCALAPPDATA%/ExpenseTracker/expenses.db"
+```
+
+Dış bağımlılık yok, `--kuru` ile önce ne olacağı görülebilir. Mevcut
+`harcama/` dosyalarının üzerine `--uzerine-yaz` verilmedikçe yazmaz.
+
+Ekstre içe aktarma henüz taşınmadı; ekstre parmak izi taşınıyor ki mükerrer
+satır ileride geçmişe dönük yakalanabilsin.
+
 ## Mimari
 
 ```
@@ -71,6 +93,7 @@ src/
   main/       Electron ana süreç — tek fs ve ağ erişimi burada
   preload/    contextBridge, tipli köprü
   ortak/      saf mantık: ozet · kural · odak · plan-islem · gun · plan
+              para · donem · harcama · duzenli · tahmin
   renderer/   arayüz: modules · ui · veri · app
 araclar/      testler ve parite koşumu
 ```
@@ -84,11 +107,15 @@ düz Node ile koşuyor, ileride başka bir çağıran da aynı gövdeyi kullanab
 npm test
 ```
 
-Yedi takım. Bunlardan biri **parite koşumu**: eski Python uygulamasının
+Sekiz takım. Bunlardan biri **parite koşumu**: eski Python uygulamasının
 (`personnal_assistant/app.py`) çıktısını doğrudan onun kendisinden üretip
 TypeScript sürümüyle karşılaştırıyor. Arşiv, zaman özeti, alışkanlık serileri,
 takvim, yol haritası tahminleri ve hedefler aynı veriden aynı sayıyı vermek
 zorunda. Eski uygulama bulunamazsa o takım atlanır.
+
+Harcama takımı da bir paritedir: para ayrıştırma, dönem sınırları, düzenli
+tekrar, bütçe kapsamı ve kart tahmini iddiaları ExpenseTracker'ın kendi
+testlerinden geliyor. Aynı defterden aynı sayı çıkmak zorunda.
 
 Todoist testinin canlı bölümü yalnızca okuma yapar; yazma yolları sahte
 `fetch` ile, istek gönderilmeden doğrulanır.
