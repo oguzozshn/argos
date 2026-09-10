@@ -10,6 +10,11 @@
  * pahalı — "1.500" girdisini 1,50 ₺ okumak gerçek bir ödemeden üç hane siler.
  */
 
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { listele, oku, yaz } from "../src/main/veri-cekirdek.ts";
 import { paraCoz, paraGiris, paraIsaretli, paraMetni } from "../src/ortak/para.ts";
 import {
   baslangicGunuDuzelt,
@@ -410,6 +415,41 @@ kontrol(
   "csv noktalı virgül taşıyan metni tırnaklar",
   csvUret([islem({ id: "7", kategoriId: "market", tur: "gider", kurus: 100, tarih: "2026-08-01", not: 'a;b"c' })], kategoriler, []).includes('"a;b""c"'),
 );
+
+/* --- disk sözleşmesi ----------------------------------------------------- */
+
+console.log("\nDisk sözleşmesi");
+
+const kokDizin = await mkdtemp(join(tmpdir(), "argos-harcama-"));
+
+const ilkYazma = await yaz(kokDizin, "harcama/2026-08.json", { ay: "2026-08", islemler: defter.slice(0, 2) }, null);
+kontrol("ay dosyası yazılır (klasör açılır)", ilkYazma.ok === true);
+
+const metin = await readFile(join(kokDizin, "harcama/2026-08.json"), "utf8");
+kontrol("dosya sonu satır başıyla biter", metin.endsWith("\n"));
+kontrol("iki boşluk girintili", metin.includes('\n  "ay"'));
+
+const geriOkuma = await oku<{ ay: string; islemler: Islem[] }>(kokDizin, "harcama/2026-08.json");
+kontrol(
+  "gidiş-dönüş kaydı bozmaz",
+  JSON.stringify(geriOkuma.veri?.islemler) === JSON.stringify(defter.slice(0, 2)),
+);
+
+const listelenen = await listele(kokDizin, "harcama");
+kontrol("ay dosyası klasörde listelenir", listelenen.includes("2026-08.json"));
+
+// Tanımlar dosyası da aynı klasörde; ay dosyaları desenle ayrılıyor.
+await yaz(kokDizin, "harcama/tanimlar.json", { ayarlar: { simge: "₺" } }, null);
+const AY_DESENI = /^\d{4}-\d{2}\.json$/;
+kontrol(
+  "tanımlar dosyası ay sanılmaz",
+  (await listele(kokDizin, "harcama")).filter((d) => AY_DESENI.test(d)).length === 1,
+);
+
+const bayat = await yaz(kokDizin, "harcama/2026-08.json", { ay: "2026-08", islemler: [] }, 1);
+kontrol("bayat mtime ile yazma reddedilir", bayat.ok === false && bayat.sebep === "cakisma");
+
+await rm(kokDizin, { recursive: true, force: true });
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
 if (kalan > 0) process.exitCode = 1;

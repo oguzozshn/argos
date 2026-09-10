@@ -1,0 +1,450 @@
+/* Renk, boşluk, yarıçap ve süre değerleri token.css'ten. Tutar taşıyan her
+   yerde tabular-nums: sayılar sütun hâlinde hizalansın. */
+
+.duzen {
+  display: grid;
+  gap: var(--b5);
+}
+
+.ikiSutun {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--b5);
+  align-items: start;
+}
+
+@media (max-width: 940px) {
+  .ikiSutun {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tutar {
+  font-family: var(--aile-sayi);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--sik-orta);
+  /* Tutar bölünmez: "−1.250,75 ₺" iki satıra düşünce sütun okunmaz olur. */
+  white-space: nowrap;
+}
+
+.gider {
+  color: var(--hata);
+}
+
+.gelir {
+  color: var(--iyi);
+}
+
+.soluk {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}
+
+.orta {
+  color: var(--metin-orta);
+  font-size: var(--y5);
+}
+
+/* --- dönem gezinti ------------------------------------------------------ */
+
+.donem {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+}
+
+.donemAd {
+  min-width: 148px;
+  text-align: center;
+  font-size: var(--y4);
+  font-weight: var(--sik-orta);
+  color: var(--metin);
+}
+
+/* --- döşemeler ---------------------------------------------------------- */
+
+.dosemeler {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--b4);
+}
+
+@media (max-width: 860px) {
+  .dosemeler {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.doseme {
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  box-shadow: var(--golge1);
+  padding: var(--b4) var(--b5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dosemeBaslik {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dosemeDeger {
+  font-family: var(--aile-sayi);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--y2);
+  font-weight: var(--sik-kalin);
+  color: var(--metin);
+}
+
+/* --- listeler ----------------------------------------------------------- */
+
+.liste {
+  display: flex;
+  flex-direction: column;
+}
+
+.satirlar > * + * {
+  border-top: 1px solid var(--cizgi);
+}
+
+.rozet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--y5);
+  color: var(--metin-orta);
+  white-space: nowrap;
+}
+
+.nokta {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-tam);
+  flex: none;
+}
+
+.tarihSutun {
+  font-family: var(--aile-sayi);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+  min-width: 58px;
+}
+
+/* --- formlar ------------------------------------------------------------ */
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--b3);
+  align-items: end;
+}
+
+@media (max-width: 940px) {
+  .form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.alan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.etiket {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.genis {
+  grid-column: 1 / -1;
+}
+
+.secim,
+.metin {
+  box-sizing: border-box;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  padding: 0 var(--b2);
+  height: 36px;
+  font-size: var(--y4);
+  font-family: inherit;
+  color: var(--metin);
+  outline: none;
+  transition: border-color var(--sure-hizli) var(--egri);
+}
+
+.alan .secim,
+.alan .metin {
+  width: 100%;
+}
+
+.secim {
+  cursor: pointer;
+}
+
+.secim:focus-visible,
+.metin:focus-visible {
+  border-color: var(--vurgu);
+}
+
+.sayiAlani {
+  font-family: var(--aile-sayi);
+  font-variant-numeric: tabular-nums;
+}
+
+.eylemler {
+  display: flex;
+  gap: var(--b2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Satır sonundaki ikon düğmeleri dar hücrede alt alta düşmesin. */
+.satirEylem {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.kutu {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  cursor: pointer;
+}
+
+.uyari {
+  margin: 0;
+  padding: var(--b2) var(--b3);
+  border-radius: var(--r1);
+  background: var(--hata-yumusak);
+  color: var(--hata);
+  font-size: var(--y4);
+}
+
+/* --- süzgeç ------------------------------------------------------------- */
+
+.suzgecArama {
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+  display: flex;
+}
+
+.suzgec {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--b2);
+  padding: var(--b3) var(--b5);
+  border-bottom: 1px solid var(--cizgi);
+  background: var(--kart-hover);
+  align-items: center;
+}
+
+/* --- bütçe çubuğu -------------------------------------------------------- */
+
+.butceSatir {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--b3) var(--b5);
+}
+
+.cubuk {
+  height: 7px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  overflow: hidden;
+}
+
+.dolgu {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-tam);
+  background: var(--iyi);
+  transition: width var(--sure) var(--egri);
+}
+
+.dolguYaklasti {
+  background: var(--uyari);
+}
+
+.dolguAsti {
+  background: var(--hata);
+}
+
+.aralik {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--b3);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+/* --- günlük grafik ------------------------------------------------------- */
+
+.grafik {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 132px;
+  padding: 0 var(--b5) var(--b3);
+}
+
+.sutun {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  border-radius: 2px 2px 0 0;
+  overflow: hidden;
+}
+
+.sutunGider {
+  background: var(--vurgu);
+  opacity: 0.85;
+  border-radius: 2px 2px 0 0;
+}
+
+.sutunBugun {
+  background: var(--vurgu-yumusak);
+}
+
+/* --- eğilim -------------------------------------------------------------- */
+
+.egilim {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--b3);
+  height: 120px;
+  padding: 0 var(--b5);
+}
+
+.egilimSutun {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
+.egilimDolgu {
+  width: 100%;
+  background: var(--vurgu-yumusak);
+  border: 1px solid var(--vurgu);
+  border-radius: var(--r1) var(--r1) 0 0;
+  min-height: 2px;
+}
+
+.egilimSecili .egilimDolgu {
+  background: var(--vurgu);
+}
+
+.egilimAd {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+}
+
+/* --- kategori dağılımı ---------------------------------------------------- */
+
+.dagilim {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+  padding: var(--b4) var(--b5);
+}
+
+.dagilimSatir {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px var(--b3);
+  align-items: center;
+}
+
+.dagilimCubuk {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  overflow: hidden;
+}
+
+.dagilimDolgu {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-tam);
+}
+
+/* --- hesap şeridi --------------------------------------------------------- */
+
+.hesaplar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--b6);
+  padding: var(--b4) var(--b5);
+}
+
+.hesapKutu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* --- tablo ---------------------------------------------------------------- */
+
+.kaydir {
+  overflow-x: auto;
+}
+
+.tablo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--y4);
+}
+
+.tablo th {
+  text-align: left;
+  font-weight: var(--sik-orta);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  padding: var(--b2) var(--b3);
+  border-bottom: 1px solid var(--cizgi);
+  white-space: nowrap;
+}
+
+.tablo td {
+  padding: var(--b2) var(--b3);
+  border-bottom: 1px solid var(--cizgi);
+  vertical-align: middle;
+}
+
+.tablo tr:last-child td {
+  border-bottom: none;
+}
+
+.sag {
+  text-align: right;
+}
+
+.buyu {
+  width: 99%;
+  color: var(--metin-orta);
+}
