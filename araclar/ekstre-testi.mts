@@ -40,7 +40,9 @@ import {
   type Kural,
   type Satir,
 } from "../src/ortak/ekstre-aktar.ts";
+import { xlsxTablosu } from "../src/ortak/ekstre-xlsx.ts";
 import type { Kategori } from "../src/ortak/harcama.ts";
+import { crc32, deflateRawSync } from "node:zlib";
 
 let gecen = 0;
 let kalan = 0;
@@ -406,6 +408,142 @@ console.log("\nKurallar");
 kontrol(
   "kategori çözümü olmayan kategoriye null döner",
   kategoriCoz(KATEGORILER, "yok", "gider") === "" && kategoriCoz(KATEGORILER, "market", "gider") === "market",
+);
+
+
+/* --- xlsx -------------------------------------------------------------------- */
+
+console.log("\nxlsx");
+
+/**
+ * Test için elle bir .xlsx kuruluyor: okuyucunun ZIP dizinini, paylaşılan
+ * dizgeleri, satır içi metni, tarih biçimini ve sıkıştırılmamış girdiyi
+ * gerçekten çözdüğünü görmek için. Dış bağımlılık yok — zip de elle yazılıyor.
+ */
+function xlsxKur(dosyalar: Record<string, string>, sikistirmasiz: string[] = []): Uint8Array {
+  const kodla = (m: string) => new TextEncoder().encode(m);
+  const parcalar: Uint8Array[] = [];
+  const dizin: Uint8Array[] = [];
+  let konum = 0;
+
+  const u16 = (n: number) => [n & 0xff, (n >> 8) & 0xff];
+  const u32 = (n: number) => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff];
+
+  for (const [ad, icerik] of Object.entries(dosyalar)) {
+    const ham = kodla(icerik);
+    const saklanan = sikistirmasiz.includes(ad);
+    const govde = saklanan ? ham : new Uint8Array(deflateRawSync(ham));
+    const adBayt = kodla(ad);
+    const kontrol = crc32(ham);
+
+    const yerel = new Uint8Array([
+      ...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(saklanan ? 0 : 8), ...u16(0), ...u16(0),
+      ...u32(kontrol), ...u32(govde.length), ...u32(ham.length), ...u16(adBayt.length), ...u16(0),
+      ...adBayt,
+    ]);
+
+    dizin.push(
+      new Uint8Array([
+        ...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(saklanan ? 0 : 8), ...u16(0), ...u16(0),
+        ...u32(kontrol), ...u32(govde.length), ...u32(ham.length), ...u16(adBayt.length),
+        ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(konum), ...adBayt,
+      ]),
+    );
+
+    parcalar.push(yerel, govde);
+    konum += yerel.length + govde.length;
+  }
+
+  const dizinBoyut = dizin.reduce((a, d) => a + d.length, 0);
+  const son = new Uint8Array([
+    ...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(dizin.length), ...u16(dizin.length),
+    ...u32(dizinBoyut), ...u32(konum), ...u16(0),
+  ]);
+
+  const tumu = [...parcalar, ...dizin, son];
+  const cikti = new Uint8Array(tumu.reduce((a, p) => a + p.length, 0));
+  let yer = 0;
+  for (const p of tumu) {
+    cikti.set(p, yer);
+    yer += p.length;
+  }
+  return cikti;
+}
+
+const ORNEK_XLSX = xlsxKur(
+  {
+    "xl/workbook.xml":
+      '<workbook xmlns:r="r"><sheets><sheet name="Ekstre" sheetId="1" r:id="rId7"/></sheets></workbook>',
+    "xl/_rels/workbook.xml.rels":
+      '<Relationships><Relationship Id="rId7" Target="worksheets/sayfa.xml"/></Relationships>',
+    "xl/sharedStrings.xml":
+      '<sst count="4"><si><t>Tarih</t></si><si><t>Açıklama</t></si><si><t>Tutar</t></si>' +
+      '<si><r><t>M&#304;GROS </t></r><r><t>KADIK&#214;Y</t></r></si></sst>',
+    "xl/styles.xml":
+      '<styleSheet><numFmts><numFmt numFmtId="165" formatCode="dd\\.mm\\.yyyy"/></numFmts>' +
+      '<cellXfs count="3"><xf numFmtId="0"/><xf numFmtId="165"/><xf numFmtId="14"/></cellXfs></styleSheet>',
+    "xl/worksheets/sayfa.xml":
+      "<worksheet><sheetData>" +
+      '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row>' +
+      '<row r="2"><c r="A2" s="1"><v>46237</v></c><c r="B2" t="s"><v>3</v></c><c r="C2"><v>-125.4</v></c></row>' +
+      '<row r="3"><c r="A3" s="2"><v>59</v></c><c r="B3" t="inlineStr"><is><t>&#350;OK MARKET</t></is></c>' +
+      '<c r="C3"><f>1+1</f><v>-85</v></c></row>' +
+      // Boş B sütunu: hücre XML'de hiç yazılmıyor, adresten doldurulmalı.
+      '<row r="4"><c r="A4" s="2"><v>61</v></c><c r="C4"><v>1250.5</v></c></row>' +
+      "</sheetData></worksheet>",
+  },
+  ["xl/_rels/workbook.xml.rels"],
+);
+
+{
+  const tablo = await xlsxTablosu(ORNEK_XLSX);
+
+  kontrol(
+    "paylaşılan dizgeler başlık olur",
+    JSON.stringify(tablo.sutunlar) === JSON.stringify(["Tarih", "Açıklama", "Tutar"]),
+    tablo.sutunlar.join(","),
+  );
+  kontrol("gövde satırları okunur", tablo.satirlar.length === 3, String(tablo.satirlar.length));
+  kontrol(
+    "özel biçimli tarih ISO'ya çevrilir",
+    hucre(tablo.satirlar[0]!, 0) === "2026-08-03",
+    hucre(tablo.satirlar[0]!, 0),
+  );
+  kontrol(
+    "zengin metin parçaları birleşir",
+    hucre(tablo.satirlar[0]!, 1) === "MİGROS KADIKÖY",
+    hucre(tablo.satirlar[0]!, 1),
+  );
+  kontrol("sayı noktalı biçimde kalır", hucre(tablo.satirlar[0]!, 2) === "-125.4", hucre(tablo.satirlar[0]!, 2));
+  kontrol("satır içi metin okunur", hucre(tablo.satirlar[1]!, 1) === "ŞOK MARKET", hucre(tablo.satirlar[1]!, 1));
+  kontrol("formül sonucu değeri kullanılır", hucre(tablo.satirlar[1]!, 2) === "-85");
+  // 1900'ün var olmayan 29 Şubat'ı seri 60'ta duruyor; iki yanı da doğru düşmeli.
+  kontrol("gömülü tarih biçimi ve 1900 kayması", hucre(tablo.satirlar[1]!, 0) === "1900-02-28", hucre(tablo.satirlar[1]!, 0));
+  kontrol("60'tan sonraki seri bir gün geri alınır", hucre(tablo.satirlar[2]!, 0) === "1900-03-01", hucre(tablo.satirlar[2]!, 0));
+  kontrol("yazılmamış hücre boş gelir", hucre(tablo.satirlar[2]!, 1) === "" && hucre(tablo.satirlar[2]!, 2) === "1250.5");
+}
+
+{
+  const tablo = await xlsxTablosu(ORNEK_XLSX);
+  const eslem = sutunTahmini(tablo.sutunlar);
+  const satirlar = await onizlemeKur(tablo, eslem, new Set(), [], KATEGORILER);
+  kontrol(
+    "xlsx tablosu doğrudan önizlemeye girer",
+    satirlar.length === 3 && satirlar[0]!.tarih === "2026-08-03" && satirlar[0]!.isaretliKurus === -12540,
+    JSON.stringify(satirlar.map((s) => [s.tarih, s.isaretliKurus, s.hata])),
+  );
+}
+
+kontrol(
+  "bozuk dosya anlaşılır hata verir",
+  await (async () => {
+    try {
+      await xlsxTablosu(new TextEncoder().encode("bu bir xlsx değil"));
+      return false;
+    } catch (e) {
+      return e instanceof Error && e.message.includes("ZIP");
+    }
+  })(),
 );
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
