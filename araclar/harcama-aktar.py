@@ -4,7 +4,8 @@
 
 Kaynak, ExpenseTracker'ın SQLite dosyası (varsayılan
 `%LOCALAPPDATA%/ExpenseTracker/expenses.db`). Hedef, Argos'un veri klasöründeki
-`harcama/` altı: tanımlar tek dosyada, işlemler takvim ayına göre bölünmüş.
+`harcama/` altı: tanımlar tek dosyada, işlemler takvim ayına göre bölünmüş,
+kategori kuralları ve içe aktarma partileri `ekstre.json`'da.
 
 Dış bağımlılık yok — Python'un yerleşik `sqlite3`'ü yetiyor. Bir kez
 çalıştırılır; mevcut dosyaların üzerine `--uzerine-yaz` verilmedikçe yazmaz.
@@ -172,6 +173,36 @@ def main() -> int:
         ],
     }
 
+    # Kurallar ve partiler ekstre ekranının dosyasına gider. Kurallar olmadan
+    # kullanıcı işyerlerini importer'a yeniden öğretmek zorunda kalırdı; partiler
+    # olmadan da eski aktarmalar geri alınamazdı.
+    ekstre = {
+        "kurallar": [
+            {
+                "id": kimlik(k["Id"]),
+                "icerir": k["Contains"],
+                "kategoriId": kimlik(k["CategoryId"]),
+                "transfer": bool(al(k, "MarksTransfer", 0)),
+                "kullanim": al(k, "TimesApplied", 0),
+            }
+            for k in satirlar(baglanti, "CategoryRules")
+        ],
+        "partiler": [
+            {
+                "id": kimlik(p["Id"]),
+                "hesapId": kimlik(p["AccountId"]),
+                "dosya": al(p, "FileName", ""),
+                "zaman": str(al(p, "ImportedAtUtc", "")),
+                "aktarilan": al(p, "Imported", 0),
+                "atlanan": al(p, "Skipped", 0),
+                "ilk": tarih(al(p, "FirstDate")),
+                "son": tarih(al(p, "LastDate")),
+            }
+            # En yeni parti başta: ekran da öyle listeliyor.
+            for p in sorted(satirlar(baglanti, "ImportBatches"), key=lambda r: r["Id"], reverse=True)
+        ],
+    }
+
     islem_sutunlari = sutunlar(baglanti, "Transactions")
     aylar: dict[str, list[dict]] = defaultdict(list)
 
@@ -208,6 +239,8 @@ def main() -> int:
     baglanti.close()
 
     yaz(hedef / "tanimlar.json", tanimlar, secenek.kuru)
+    if ekstre["kurallar"] or ekstre["partiler"]:
+        yaz(hedef / "ekstre.json", ekstre, secenek.kuru)
     for ay in sorted(aylar):
         aylar[ay].sort(key=lambda x: (x["tarih"], x["id"]))
         yaz(hedef / f"{ay}.json", {"ay": ay, "islemler": aylar[ay]}, secenek.kuru)
@@ -221,6 +254,7 @@ def main() -> int:
         f"Tanım  : {len(tanimlar['kategoriler'])} kategori · {len(tanimlar['hesaplar'])} hesap · "
         f"{len(tanimlar['butceler'])} bütçe · {len(tanimlar['duzenliler'])} düzenli kural"
     )
+    print(f"Ekstre : {len(ekstre['kurallar'])} kategori kuralı · {len(ekstre['partiler'])} içe aktarma partisi")
     print(f"İşlem  : {toplam} kayıt, {len(aylar)} ay dosyası")
     if gunler:
         print(f"Aralık : {gunler[0]} … {gunler[-1]}")
