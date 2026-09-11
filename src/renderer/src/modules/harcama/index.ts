@@ -6,6 +6,7 @@ import { Hesaplar } from "./Hesaplar";
 import { Butceler } from "./Butceler";
 import { Duzenli } from "./Duzenli";
 import { Kategoriler } from "./Kategoriler";
+import { Ekstre } from "./Ekstre";
 import { Ayarlar } from "./Ayarlar";
 import { HarcamaOzet } from "./Ozet";
 
@@ -21,6 +22,7 @@ export const harcamaModulu: Modul = {
     { yol: "butceler", ad: "Bütçeler", Ekran: Butceler },
     { yol: "duzenli", ad: "Düzenli", Ekran: Duzenli },
     { yol: "kategoriler", ad: "Kategoriler", Ekran: Kategoriler },
+    { yol: "ice-aktar", ad: "İçe aktar", Ekran: Ekstre },
     { yol: "ayarlar", ad: "Ayarlar", Ekran: Ayarlar },
   ],
   Ozet: HarcamaOzet,

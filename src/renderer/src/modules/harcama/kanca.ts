@@ -43,6 +43,8 @@ export interface HarcamaVerisi {
   islemSil: (id: string) => Promise<boolean>;
   /** Kural silinince üretilmiş işlemlerin kuralla bağını koparır. */
   duzenliBaginiKaldir: (duzenliId: string) => Promise<void>;
+  /** Bir içe aktarmanın yazdığı her şeyi siler; kaç kayıt gittiğini döner. */
+  partiGeriAl: (partiId: string) => Promise<number>;
 }
 
 const KOPRU_YOK = "Uygulama köprüsü yüklenmedi — veri okunamıyor.";
@@ -239,6 +241,23 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
   );
 
   /**
+   * İçe aktarmayı geri alma: gerçek bir defterde ekstre denemesini geri
+   * dönülebilir bir karar yapan emniyet ağı.
+   */
+  const partiGeriAl = useCallback(
+    async (partiId: string): Promise<number> => {
+      const silinecek = islemler.filter((i) => i.partiId === partiId);
+      const aylar = new Set(silinecek.map((i) => ayinAdi(i.tarih)));
+      for (const ay of aylar) {
+        await ayiDegistir(ay, (m) => m.filter((i) => i.partiId !== partiId));
+      }
+      await tazele();
+      return silinecek.length;
+    },
+    [islemler, ayiDegistir, tazele],
+  );
+
+  /**
    * Kurulum: tanımlar dosyası yoksa varsayılanlarla açılır, sonra vadesi gelmiş
    * düzenli işlemler yazılır. Uygulama bir hafta kapalı kaldıysa aradaki aylar
    * burada tamamlanıyor — kaydın kimliği `(kural, tarih)` çiftiyle korunduğu
@@ -271,6 +290,7 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     islemlerEkle,
     islemSil,
     duzenliBaginiKaldir,
+    partiGeriAl,
   };
 }
 

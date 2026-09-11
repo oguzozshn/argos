@@ -1,4 +1,5 @@
 import { AY_ADLARI } from "@ortak/gun";
+import type { EkstreDosyasi, Kural, Parti } from "@ortak/ekstre-aktar";
 import type { Ayarlar, Duzenli, Hesap, Islem, Kategori, Tanimlar } from "@ortak/harcama";
 
 /**
@@ -15,6 +16,13 @@ import type { Ayarlar, Duzenli, Hesap, Islem, Kategori, Tanimlar } from "@ortak/
  */
 
 export const TANIM_YOLU = "harcama/tanimlar.json";
+
+/**
+ * Kategori kuralları ve içe aktarma partileri ayrı dosyada: tohum kurallar
+ * altmışa yakın ve yalnızca ekstre ekranı okuyor, her ekranın açtığı
+ * `tanimlar.json`'ı şişirmelerinin sebebi yok.
+ */
+export const EKSTRE_YOLU = "harcama/ekstre.json";
 
 /** Klasörde tanımlar dosyası da var; ay dosyaları bu desenle ayrılıyor. */
 export const AY_DESENI = /^\d{4}-\d{2}\.json$/;
@@ -227,4 +235,44 @@ export function karsiTaraflar(islemler: Islem[], adet = 40): string[] {
     if (gorulen.length >= adet) break;
   }
   return gorulen;
+}
+
+/* --- ekstre dosyası ------------------------------------------------------ */
+
+export const BOS_EKSTRE: EkstreDosyasi = { kurallar: [], partiler: [] };
+
+export function normalizeEkstre(ham: unknown): EkstreDosyasi {
+  if (!ham || typeof ham !== "object") return BOS_EKSTRE;
+  const e = ham as Record<string, unknown>;
+
+  const kurallar = dizi(e.kurallar)
+    .map((x, i): Kural => {
+      const k = x as Record<string, unknown>;
+      return {
+        id: metin(k.id) || `k${i}`,
+        icerir: metin(k.icerir),
+        kategoriId: metin(k.kategoriId),
+        transfer: evet(k.transfer),
+        kullanim: Math.max(0, Math.trunc(sayi(k.kullanim))),
+      };
+    })
+    .filter((k) => k.icerir && k.kategoriId);
+
+  const partiler = dizi(e.partiler)
+    .map((x, i): Parti => {
+      const p = x as Record<string, unknown>;
+      return {
+        id: metin(p.id) || `p${i}`,
+        hesapId: metin(p.hesapId),
+        dosya: metin(p.dosya),
+        zaman: metin(p.zaman),
+        aktarilan: Math.trunc(sayi(p.aktarilan)),
+        atlanan: Math.trunc(sayi(p.atlanan)),
+        ilk: typeof p.ilk === "string" ? p.ilk : null,
+        son: typeof p.son === "string" ? p.son : null,
+      };
+    })
+    .filter((p) => p.id);
+
+  return { kurallar, partiler };
 }

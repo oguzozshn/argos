@@ -448,3 +448,88 @@
   width: 99%;
   color: var(--metin-orta);
 }
+
+/* --- ekstre içe aktarma --------------------------------------------------- */
+
+.bilgi {
+  margin: 0;
+  padding: var(--b2) var(--b3);
+  border-radius: var(--r1);
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu-koyu);
+  font-size: var(--y4);
+}
+
+.dosyaSec {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.gizliGiris {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dosyaDugme {
+  flex: none;
+  padding: 8px var(--b4);
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  color: var(--metin);
+  font-size: var(--y4);
+  font-weight: var(--sik-orta);
+  transition: background var(--sure-hizli) var(--egri);
+}
+
+.dosyaSec:hover .dosyaDugme {
+  background: var(--zemin-alt);
+}
+
+.gizliGiris:focus-visible + .dosyaDugme {
+  border-color: var(--vurgu);
+}
+
+/* Aktarılmayacak satır: okunur kalsın ama gözü çekmesin. */
+.sonuk {
+  opacity: 0.55;
+}
+
+.ozet {
+  cursor: pointer;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  list-style: none;
+}
+
+.ozet::-webkit-details-marker {
+  display: none;
+}
+
+.ozet::before {
+  content: "▸ ";
+}
+
+details[open] > .ozet::before {
+  content: "▾ ";
+}
+
+.ozetDugme {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--y3);
+  font-weight: var(--sik-orta);
+  color: var(--metin);
+  cursor: pointer;
+}
