@@ -11,7 +11,7 @@ import s from "./harcama.module.css";
 
 export function Ayarlar() {
   const defter = useHarcama(true);
-  const ortam = useOrtam();
+  const [ortam] = useOrtam();
   const [simge, setSimge] = useState<string | null>(null);
   const [gun, setGun] = useState<string | null>(null);
 
