@@ -13,6 +13,7 @@ import { ayarCoz, listele, oku, sil, tamYol, yaz } from "../src/main/veri-cekird
 
 let gecen = 0;
 let kalan = 0;
+let atlanan = 0;
 
 function kontrol(ad: string, kosul: boolean, ek = ""): void {
   if (kosul) {
@@ -24,19 +25,46 @@ function kontrol(ad: string, kosul: boolean, ek = ""): void {
   }
 }
 
+/**
+ * Bu platformda anlamı olmayan iddia. Geçmiş sayılmıyor: sayıya karışsa
+ * koşulmayan bir şey koşmuş gibi görünürdü, sebebi de kaybolurdu.
+ */
+function atla(ad: string, sebep: string): void {
+  atlanan++;
+  console.log(`  ⊘ ${ad} — ${sebep}`);
+}
+
 async function calis(): Promise<void> {
   const kokDizin = await mkdtemp(join(tmpdir(), "argos-test-"));
   console.log("Geçici veri klasörü:", kokDizin, "\n");
 
   console.log("Yol kilidi");
-  for (const kotu of ["../disari.json", "..\\disari.json", "a/../../disari.json"]) {
-    let reddedildi = false;
+  const kacmayiDene = (kotu: string): boolean => {
     try {
       tamYol(kokDizin, kotu);
+      return false;
     } catch {
-      reddedildi = true;
+      return true;
     }
-    kontrol(`"${kotu}" reddedilir`, reddedildi);
+  };
+
+  for (const kotu of ["../disari.json", "a/../../disari.json"]) {
+    kontrol(`"${kotu}" reddedilir`, kacmayiDene(kotu));
+  }
+
+  // Ters bölü yalnızca Windows'ta yol ayracı. Başka yerde dosya adının bir
+  // parçası: `resolve` onu klasörün İÇİNDE, adında ters bölü olan bir dosya
+  // olarak çözüyor — yani kaçış denemesi değil, kilidin yakalayacağı bir şey
+  // de yok. Uygulamanın hedefi Windows olduğu için iddia orada koşuyor.
+  const tersBolu = "..\\disari.json";
+  if (process.platform === "win32") {
+    kontrol(`"${tersBolu}" reddedilir`, kacmayiDene(tersBolu));
+  } else {
+    atla(`"${tersBolu}" reddedilir`, "ters bölü yalnızca Windows'ta yol ayracı");
+    kontrol(
+      `"${tersBolu}" burada klasörün içinde kalıyor`,
+      tamYol(kokDizin, tersBolu).startsWith(kokDizin + "/"),
+    );
   }
   kontrol("normal yol kabul edilir", tamYol(kokDizin, "hobiler/a.json").startsWith(kokDizin));
 
@@ -172,7 +200,7 @@ async function calis(): Promise<void> {
 
   await rm(kokDizin, { recursive: true, force: true });
 
-  console.log(`\n${gecen} geçti, ${kalan} kaldı`);
+  console.log(`\n${gecen} geçti, ${kalan} kaldı${atlanan > 0 ? `, ${atlanan} atlandı` : ""}`);
   if (kalan > 0) process.exitCode = 1;
 }
 
