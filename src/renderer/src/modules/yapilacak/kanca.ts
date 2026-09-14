@@ -19,13 +19,15 @@ export function useProjeler() {
   const [hata, setHata] = useState<string | null>(null);
   const [yukleniyor, setYukleniyor] = useState(true);
 
-  useEffect(() => {
+  const yukle = useCallback(() => {
     const k = kopru();
     if (!k) {
       setAnahtarVar(false);
       setYukleniyor(false);
       return;
     }
+    setYukleniyor(true);
+    setHata(null);
     void (async () => {
       try {
         const d = await k.todoist.durum();
@@ -49,7 +51,9 @@ export function useProjeler() {
     })();
   }, []);
 
-  return { projeler, anahtarVar, gizliYolu, hata, yukleniyor };
+  useEffect(yukle, [yukle]);
+
+  return { projeler, anahtarVar, gizliYolu, hata, yukleniyor, yenile: yukle };
 }
 
 export function useGorevler(projeId: string | null) {

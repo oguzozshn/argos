@@ -70,7 +70,9 @@ yazmadan önce `.bak` bırakır ve çakışma kontrolü yapar: dosya okunduktan
 sonra dışarıdan değiştiyse yazma iptal edilir.
 
 `gizliYolu` Todoist API anahtarını taşır (`{"todoistToken": "…"}`). Anahtar
-yalnızca ana süreçte okunur, arayüze inmez ve depoya girmez.
+yalnızca ana süreçte okunur, arayüze inmez ve depoya girmez. Anahtar
+bulunamaz ya da reddedilirse Yapılacaklar ekranındaki **Dosya seç** ile dosya
+uygulama içinden gösterilebilir; seçilen yol kalıcı ayara yazılır.
 
 ## Harcama defterini taşımak
 

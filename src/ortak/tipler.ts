@@ -87,6 +87,12 @@ export interface ArgosApi {
    * kalmamak için var: klasör bulunamadığında tek yapılabilir şey buydu.
    */
   klasorSec(): Promise<Ortam | null>;
+  /**
+   * Todoist anahtar dosyasını kullanıcıya seçtirir ve yolu kalıcı ayara
+   * yazar. İptal edilirse null döner. Anahtarın kendisi arayüze inmez —
+   * dönen yalnızca durum.
+   */
+  gizliSec(): Promise<TodoistDurum | null>;
   veri: {
     oku<T = unknown>(yol: string): Promise<Okuma<T>>;
     yaz(yol: string, icerik: unknown, mtime: number | null): Promise<Yazma>;
@@ -137,6 +143,7 @@ export const KANAL = {
   tdBugun: "todoist:bugun",
   tdAralik: "todoist:aralik",
   ayarKlasor: "ayar:klasor-sec",
+  ayarGizli: "ayar:gizli-sec",
 } as const;
 
 /**
