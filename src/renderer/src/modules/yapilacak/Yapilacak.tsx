@@ -13,6 +13,7 @@ import { useState } from "react";
 import type { TodoistGorev } from "@ortak/tipler";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { maddeGecisi } from "@/ui/hareket";
+import { kopru } from "@/veri/kanca";
 import { OBEK_SIRASI, useGorevler, useObekler, useProjeler } from "./kanca";
 import s from "./yapilacak.module.css";
 
@@ -259,7 +260,14 @@ function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }
 }
 
 export function Yapilacak() {
-  const { projeler, anahtarVar, gizliYolu, hata, yukleniyor } = useProjeler();
+  const { projeler, anahtarVar, gizliYolu, hata, yukleniyor, yenile } = useProjeler();
+
+  // Anahtar yolunu elle JSON düzenleyerek kurmak tek yol olmasın.
+  const gizliSec = async () => {
+    const k = kopru();
+    if (!k) return;
+    if (await k.gizliSec()) yenile();
+  };
   const [secili, setSecili] = useState<string | null>(null);
 
   const aktif = projeler.find((p) => p.id === secili) ?? projeler[0] ?? null;
@@ -281,6 +289,11 @@ export function Yapilacak() {
             ikon={<KeyRound size={34} strokeWidth={1.4} />}
             baslik="Todoist anahtarı bulunamadı"
             metin={`Anahtar şurada aranıyor: ${gizliYolu} — içinde {"todoistToken": "…"} olmalı.`}
+            eylem={
+              <Dugme tur="dolu" onClick={() => void gizliSec()}>
+                Dosya seç
+              </Dugme>
+            }
           />
         </Kart>
       ) : hata ? (
@@ -289,6 +302,10 @@ export function Yapilacak() {
             ikon={<AlertTriangle size={34} strokeWidth={1.4} />}
             baslik="Todoist'e ulaşılamadı"
             metin={hata}
+            eylem={
+              // Yanlış dosya seçildiyse (401) geri dönüş yolu burada kalmasın.
+              <Dugme onClick={() => void gizliSec()}>Anahtar dosyasını değiştir</Dugme>
+            }
           />
         </Kart>
       ) : !aktif ? (

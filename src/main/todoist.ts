@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import type { TodoistDurum, TodoistGorev, TodoistProje } from "../ortak/tipler";
-import { ayar } from "./ayar";
+import { ayar, ayarKaydet } from "./ayar";
 import * as cekirdek from "./todoist-cekirdek";
 import { TodoistHata, type YeniGorev } from "./todoist-cekirdek";
 
@@ -14,6 +14,15 @@ import { TodoistHata, type YeniGorev } from "./todoist-cekirdek";
 /** Anahtar dosyasının yolu; ayarlanabilir, varsayılan eski deponun yanı. */
 export const gizliYolu = (): string =>
   ayar("gizliYolu", "../personnal_assistant/gizli.json", process.env.ARGOS_GIZLI);
+
+/**
+ * Kullanıcının seçtiği anahtar dosyasını kalıcı ayara yazar.
+ *
+ * Sıfırlanacak bir şey yok: `gizliYolu` her çağrıda diskten okunuyor.
+ */
+export function gizliAyarla(yol: string): void {
+  ayarKaydet("gizliYolu", yol.split("\\").join("/"));
+}
 
 /** Anahtarı her çağrıda diskten okur: dosya değişince yeniden başlatmak gerekmesin. */
 function anahtar(): string | null {

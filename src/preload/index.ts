@@ -5,12 +5,14 @@ import {
   type ArgosApi,
   type Okuma,
   type Ortam,
+  type TodoistDurum,
   type Yazma,
 } from "../ortak/tipler";
 
 const argos: ArgosApi = {
   ortam: (): Promise<Ortam> => ipcRenderer.invoke(KANAL.ortam),
   klasorSec: (): Promise<Ortam | null> => ipcRenderer.invoke(KANAL.ayarKlasor),
+  gizliSec: (): Promise<TodoistDurum | null> => ipcRenderer.invoke(KANAL.ayarGizli),
 
   veri: {
     oku: <T = unknown,>(yol: string): Promise<Okuma<T>> => ipcRenderer.invoke(KANAL.veriOku, yol),

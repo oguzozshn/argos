@@ -38,6 +38,26 @@ export function ipcKur(): void {
     return ortam();
   });
 
+  /**
+   * Anahtar dosyasını seçtirir. Klasör seçicinin eşi: ayarın ikinci yarısı
+   * da uygulama içinden kurulabilsin.
+   */
+  ipcMain.handle(KANAL.ayarGizli, async (olay) => {
+    const p = BrowserWindow.fromWebContents(olay.sender);
+    const secenekler = {
+      title: "Todoist anahtar dosyasını seç",
+      properties: ["openFile" as const],
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      defaultPath: td.gizliYolu(),
+    };
+    const sonuc = p ? await dialog.showOpenDialog(p, secenekler) : await dialog.showOpenDialog(secenekler);
+    const secilen = sonuc.filePaths[0];
+    if (sonuc.canceled || !secilen) return null;
+
+    td.gizliAyarla(secilen);
+    return td.durum();
+  });
+
   ipcMain.handle(KANAL.veriOku, (_o, yol: string) => oku(yol));
   ipcMain.handle(KANAL.veriYaz, (_o, yol: string, icerik: unknown, mtime: number | null) =>
     yaz(yol, icerik, mtime),
