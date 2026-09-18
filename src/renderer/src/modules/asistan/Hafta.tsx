@@ -352,7 +352,9 @@ function HaftaIcerik({
   /** Durum işaretine tıklayınca sırayla döner: ☐ → ☑ → ⊘ → ☐. */
   const durumDondur = (x: Slot) => {
     const i = DURUM_SIRASI.indexOf(x.durum);
-    const yeni = DURUM_SIRASI[(i + 1) % 3] ?? "planli";
+    // Döngü ilk üç durumda; "taşındı" döngüde değil, tıklanınca plana döner —
+    // yoksa taşınmış slot tek tıkla "yapıldı" oluyordu.
+    const yeni = i >= 0 && i < 3 ? DURUM_SIRASI[(i + 1) % 3]! : "planli";
     slotDegis({ ...x, durum: yeni });
   };
 

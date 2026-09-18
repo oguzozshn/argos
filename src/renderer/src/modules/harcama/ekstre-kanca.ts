@@ -17,38 +17,48 @@ export interface EkstreVerisi {
   partiler: Parti[];
   yukleniyor: boolean;
   hata: string | null;
+  /** Açıklama kural olamayacak kadar kısaysa null; dosya yazılamazsa hata fırlatır. */
   kuralKaydet: (icerir: string, kategoriId: string, transfer: boolean) => Promise<Kural | null>;
-  kuralSil: (id: string) => Promise<void>;
+  kuralSil: (id: string) => Promise<boolean>;
   /**
    * Partiyi ve uygulanan kuralların sayacını tek yazmada kaydeder. İkisi ayrı
    * yazılsaydı ikincisi, birincinin eklediğini görmeyen bir kopyanın üstüne
    * yazıp partiyi düşürürdü.
    */
   aktarmayiKaydet: (parti: Parti, kuralIdler: string[]) => Promise<boolean>;
-  partiSil: (id: string) => Promise<void>;
+  partiSil: (id: string) => Promise<boolean>;
 }
 
 let tohumlandi = false;
 
-export function useEkstre(kategoriler: Kategori[]): EkstreVerisi {
+/**
+ * `kategorilerHazir`: kategoriler diskten gerçekten okundu mu. Defter kancası
+ * okuma bitene dek varsayılan kategorileri veriyor; tohum kuralları onlarla
+ * kurulsa var olmayan kategori kimliklerine bağlanırdı.
+ */
+export function useEkstre(kategoriler: Kategori[], kategorilerHazir: boolean): EkstreVerisi {
   const dosya = useDosya<EkstreDosyasi>(EKSTRE_YOLU);
   const veri = useMemo(() => normalizeEkstre(dosya.veri), [dosya.veri]);
   const tohumSuruyor = useRef(false);
 
   useEffect(() => {
     if (dosya.yukleniyor || dosya.veri !== null || tohumlandi || tohumSuruyor.current) return;
-    if (kategoriler.length === 0) return;
+    if (!kategorilerHazir || kategoriler.length === 0) return;
     tohumlandi = true;
     tohumSuruyor.current = true;
-    void dosya.yaz({ kurallar: tohumKurallari(kategoriler), partiler: [] });
-  }, [dosya, kategoriler]);
+    void dosya.yaz({ kurallar: tohumKurallari(kategoriler), partiler: [] }).then((ok) => {
+      // Düşen tohum bu oturumda yeniden denenebilsin.
+      if (!ok) tohumlandi = false;
+      tohumSuruyor.current = false;
+    });
+  }, [dosya, kategoriler, kategorilerHazir]);
 
   const kuralKaydet = useCallback(
     async (icerir: string, kategoriId: string, transfer: boolean): Promise<Kural | null> => {
       const id = yeniId();
       const kurallar = kuralYerlestir(veri.kurallar, { icerir, kategoriId, transfer }, id);
       if (!kurallar) return null;
-      await dosya.yaz({ ...veri, kurallar });
+      if (!(await dosya.yaz({ ...veri, kurallar }))) throw new Error("dosya yazılamadı");
       // Yerleştirme ya yeni kuralı ekledi ya da aynı deseni taşıyanı güncelledi.
       return kurallar.find((k) => k.id === id) ?? kurallar.find((k) => k.kategoriId === kategoriId) ?? null;
     },
@@ -56,9 +66,7 @@ export function useEkstre(kategoriler: Kategori[]): EkstreVerisi {
   );
 
   const kuralSil = useCallback(
-    async (id: string) => {
-      await dosya.yaz({ ...veri, kurallar: veri.kurallar.filter((k) => k.id !== id) });
-    },
+    (id: string) => dosya.yaz({ ...veri, kurallar: veri.kurallar.filter((k) => k.id !== id) }),
     [veri, dosya],
   );
 
@@ -74,9 +82,7 @@ export function useEkstre(kategoriler: Kategori[]): EkstreVerisi {
   );
 
   const partiSil = useCallback(
-    async (id: string) => {
-      await dosya.yaz({ ...veri, partiler: veri.partiler.filter((p) => p.id !== id) });
-    },
+    (id: string) => dosya.yaz({ ...veri, partiler: veri.partiler.filter((p) => p.id !== id) }),
     [veri, dosya],
   );
 

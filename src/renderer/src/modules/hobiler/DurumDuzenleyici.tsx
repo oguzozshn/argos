@@ -26,6 +26,19 @@ export function DurumDuzenleyici({
   const [tasiHedef, setTasiHedef] = useState<string>("");
   const [surukleniyor, setSurukleniyor] = useState<number | null>(null);
   const [uzerinde, setUzerinde] = useState<number | null>(null);
+  /**
+   * Ad yazılırken tuş tuş kaydedilmiyor. Ad bir an boş kalınca durum listeden
+   * düşüyor, maddeleri de boş durumla kalıyordu; başka bir durumun adından
+   * geçerken de harfler yutuluyordu. Taslak, alandan çıkınca yazılır.
+   */
+  const [taslak, setTaslak] = useState<{ i: number; ad: string } | null>(null);
+
+  const taslagiYaz = () => {
+    if (!taslak) return;
+    const ad = taslak.ad.trim();
+    setTaslak(null);
+    if (ad && ad !== alan.durumlar[taslak.i]?.ad) adDegistir(taslak.i, ad);
+  };
 
   const yaz = (durumlar: Durum[], maddeler = alan.maddeler) =>
     onDegis({ ...alan, durumlar, maddeler });
@@ -131,8 +144,13 @@ export function DurumDuzenleyici({
               />
               <input
                 className={s.durumGiris}
-                value={d.ad}
-                onChange={(e) => adDegistir(i, e.target.value)}
+                value={taslak?.i === i ? taslak.ad : d.ad}
+                onChange={(e) => setTaslak({ i, ad: e.target.value })}
+                onBlur={taslagiYaz}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") setTaslak(null);
+                }}
                 aria-label="Durum adı"
               />
               {alan.durumlar.length > 1 && (

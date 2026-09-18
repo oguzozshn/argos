@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Gamepad2, LayoutGrid, List, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { bugunIso } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { maddeGecisi } from "@/ui/hareket";
 import { useDosya } from "@/veri/kanca";
@@ -208,7 +209,8 @@ function AlanEkrani({
       ad,
       durum: varsayilanDurum,
       not: "",
-      eklendi: new Date().toISOString().slice(0, 10),
+      // Yerel gün: UTC ile gece 00-03 arası eklenen madde düne yazılıyordu.
+      eklendi: bugunIso(),
     };
     maddeleriKaydet([madde, ...veri.maddeler]);
     setYeni("");

@@ -35,6 +35,8 @@ export interface HarcamaVerisi {
   disaridanDegisti: boolean;
   /** Tanımlar dosyası hiç yoksa modül henüz kurulmamıştır. */
   kurulu: boolean;
+  /** Son okuma eksiksiz geldi mi — varsayılan tanımlar değil, gerçekleri ekranda. */
+  yuklendi: boolean;
   tazele: () => Promise<void>;
   tanimlariYaz: (t: Tanimlar) => Promise<boolean>;
   islemKaydet: (islem: Islem) => Promise<boolean>;
@@ -43,7 +45,8 @@ export interface HarcamaVerisi {
   /** Kural silinince üretilmiş işlemlerin kuralla bağını koparır. */
   duzenliBaginiKaldir: (duzenliId: string) => Promise<void>;
   /** Bir içe aktarmanın yazdığı her şeyi siler; kaç kayıt gittiğini döner. */
-  partiGeriAl: (partiId: string) => Promise<number>;
+  /** Silinen işlem sayısı; bir ay yazılamadıysa null. */
+  partiGeriAl: (partiId: string) => Promise<number | null>;
 }
 
 const KOPRU_YOK = "Uygulama köprüsü yüklenmedi — veri okunamıyor.";
@@ -60,7 +63,13 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
   const [islemler, setIslemler] = useState<Islem[]>([]);
   const [kurulu, setKurulu] = useState(false);
   const [yukleniyor, setYukleniyor] = useState(true);
-  const [hata, setHata] = useState<string | null>(null);
+  // Okuma ve yazma hataları ayrı: her yazmanın ardından `tazele` çalışıyor ve
+  // başarılı okuma, az önce düşen yazmanın hatasını silmemeli.
+  const [okumaHatasi, setOkumaHatasi] = useState<string | null>(null);
+  const [yazmaHatasi, setYazmaHatasi] = useState<string | null>(null);
+  const hata = yazmaHatasi ?? okumaHatasi;
+  /** Son okuma eksiksiz geldi mi. Kurulum yalnızca buna güvenir. */
+  const [yuklendi, setYuklendi] = useState(false);
   const [disaridanDegisti, setDisaridan] = useState(false);
   /**
    * Kendi yazmamız izleyiciyi tetikliyor; onu "dışarıdan" saymayalım. Tek bir
@@ -80,7 +89,7 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
   const tazele = useCallback(async () => {
     const k = kopru();
     if (!k) {
-      setHata(KOPRU_YOK);
+      setOkumaHatasi(KOPRU_YOK);
       setYukleniyor(false);
       return;
     }
@@ -97,9 +106,11 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
         }),
       );
       setIslemler(okunan.flat());
-      setHata(null);
+      setOkumaHatasi(null);
+      setYuklendi(true);
     } catch (e) {
-      setHata(e instanceof Error ? e.message : String(e));
+      setYuklendi(false);
+      setOkumaHatasi(e instanceof Error ? e.message : String(e));
     } finally {
       setYukleniyor(false);
     }
@@ -125,7 +136,7 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     async (yeni: Tanimlar): Promise<boolean> => {
       const k = kopru();
       if (!k) {
-        setHata(KOPRU_YOK);
+        setYazmaHatasi(KOPRU_YOK);
         return false;
       }
       setTanimlar(yeni);
@@ -134,12 +145,12 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
       const sonuc = await k.veri.yaz(TANIM_YOLU, yeni, mevcut.mtime);
       if (!sonuc.ok) {
         kendiYazmalarimiz.current.delete(TANIM_YOLU);
-        setHata(cakismaMetni(sonuc.sebep));
+        setYazmaHatasi(cakismaMetni(sonuc.sebep));
         await tazele();
         return false;
       }
       setKurulu(true);
-      setHata(null);
+      setYazmaHatasi(null);
       return true;
     },
     [tazele, kendiYazdik],
@@ -150,7 +161,7 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     async (ay: string, degistir: (mevcut: Islem[]) => Islem[]): Promise<boolean> => {
       const k = kopru();
       if (!k) {
-        setHata(KOPRU_YOK);
+        setYazmaHatasi(KOPRU_YOK);
         return false;
       }
       const okuma = await k.veri.oku(dosyaYolu(ay));
@@ -160,10 +171,10 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
       const sonuc = await k.veri.yaz(dosyaYolu(ay), { ay, islemler: kalanlar }, okuma.mtime);
       if (!sonuc.ok) {
         kendiYazmalarimiz.current.delete(dosyaYolu(ay));
-        setHata(cakismaMetni(sonuc.sebep));
+        setYazmaHatasi(cakismaMetni(sonuc.sebep));
         return false;
       }
-      setHata(null);
+      setYazmaHatasi(null);
       return true;
     },
     [kendiYazdik],
@@ -192,14 +203,18 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
       const onceki = islemler.find((i) => i.id === islem.id);
       const yeniAy = ayinAdi(islem.tarih);
 
-      // Tarih başka aya taşındıysa kayıt eski dosyadan çıkar: aynı işlem iki
-      // dosyada birden durursa her rapor onu iki kez sayar.
-      if (onceki && ayinAdi(onceki.tarih) !== yeniAy) {
-        const temiz = await ayiDegistir(ayinAdi(onceki.tarih), (m) => m.filter((i) => i.id !== islem.id));
-        if (!temiz) return false;
+      // Önce yeni aya yazılır, sonra eskisinden çıkarılır. Tersi sırada ikinci
+      // yazma düşerse kayıt iki dosyadan da kaybolurdu; bu sırada en kötü
+      // ihtimal geçici bir kopya, o da hata olarak görünür.
+      let ok = await ayiDegistir(yeniAy, (m) => [...m.filter((i) => i.id !== islem.id), islem]);
+      if (ok && onceki && ayinAdi(onceki.tarih) !== yeniAy) {
+        ok = await ayiDegistir(ayinAdi(onceki.tarih), (m) => m.filter((i) => i.id !== islem.id));
+        if (!ok) {
+          setYazmaHatasi(
+            `İşlem ${yeniAy} ayına yazıldı ama ${ayinAdi(onceki.tarih)} dosyasından silinemedi — iki ayda birden görünebilir.`,
+          );
+        }
       }
-
-      const ok = await ayiDegistir(yeniAy, (m) => [...m.filter((i) => i.id !== islem.id), islem]);
       if (ok && onceki && onceki.tarih !== islem.tarih) await tekrariAtla(onceki);
       await tazele();
       return ok;
@@ -264,14 +279,17 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
    * dönülebilir bir karar yapan emniyet ağı.
    */
   const partiGeriAl = useCallback(
-    async (partiId: string): Promise<number> => {
+    async (partiId: string): Promise<number | null> => {
       const silinecek = islemler.filter((i) => i.partiId === partiId);
       const aylar = new Set(silinecek.map((i) => ayinAdi(i.tarih)));
+      let tumu = true;
       for (const ay of aylar) {
-        await ayiDegistir(ay, (m) => m.filter((i) => i.partiId !== partiId));
+        if (!(await ayiDegistir(ay, (m) => m.filter((i) => i.partiId !== partiId)))) tumu = false;
       }
       await tazele();
-      return silinecek.length;
+      // Null: bir ay yazılamadı. Parti kaydı silinirse kalan işlemler bir daha
+      // geri alınamaz; çağıran onu tutmalı.
+      return tumu ? silinecek.length : null;
     },
     [islemler, ayiDegistir, tazele],
   );
@@ -286,14 +304,17 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
    * modüle hiç girmemişken dosya açmasın.
    */
   useEffect(() => {
-    if (!kurulum || yukleniyor || kurulumYapildi || !kopru()) return;
+    // Yalnızca eksiksiz bir okumadan sonra: tanım dosyası geçici olarak
+    // okunamadıysa varsayılanlar gerçek tanımların üstüne yazılır, bir ay
+    // dosyası okunamadıysa o ayın düzenli kayıtları yeniden üretilirdi.
+    if (!kurulum || yukleniyor || !yuklendi || kurulumYapildi || !kopru()) return;
     kurulumYapildi = true;
     void (async () => {
       if (!kurulu) await tanimlariYaz(VARSAYILAN_TANIMLAR);
       const bekleyen = vadesiGelenler(tanimlar.duzenliler, islemler, bugun);
       if (bekleyen.length > 0) await islemlerEkle(bekleyen);
     })();
-  }, [kurulum, yukleniyor, kurulu, tanimlar.duzenliler, islemler, bugun, tanimlariYaz, islemlerEkle]);
+  }, [kurulum, yukleniyor, yuklendi, kurulu, tanimlar.duzenliler, islemler, bugun, tanimlariYaz, islemlerEkle]);
 
   return {
     tanimlar,
@@ -303,6 +324,7 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     hata,
     disaridanDegisti,
     kurulu,
+    yuklendi,
     tazele,
     tanimlariYaz,
     islemKaydet,

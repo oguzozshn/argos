@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Pause, Pencil, Play, Plus, Trash2, X } from "lucide-react";
 import { paraCoz, paraGiris, paraMetni } from "@ortak/para";
-import { sonrakiTekrar, tekSeferlik } from "@ortak/duzenli";
+import { duzenlemeyeUyarla, sonrakiTekrar, tekSeferlik } from "@ortak/duzenli";
 import { ODEME_ADLARI, TUR_ADLARI, type Duzenli as Kural, type Hesap, type Kategori, type Odeme } from "@ortak/harcama";
 import { bugunIso } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Satir, Yuklenirken } from "@/ui/bilesenler";
@@ -41,13 +41,22 @@ export function Duzenli() {
     if (!ad || !kategori || kural.kurus <= 0) return;
     // Tür kategoriden kopyalanır; kural sonradan yön değiştirse geçmiş bozulmasın.
     const tam: Kural = { ...kural, ad, tur: kategori.tur };
-    const varOlan = tanimlar.duzenliler.some((d) => d.id === kural.id);
-    yaz(varOlan ? tanimlar.duzenliler.map((d) => (d.id === kural.id ? tam : d)) : [...tanimlar.duzenliler, tam]);
+    const varOlan = tanimlar.duzenliler.find((d) => d.id === kural.id);
+    // Günü ya da başlangıcı değişen kural geçmişi yeniden üretmesin.
+    yaz(
+      varOlan
+        ? tanimlar.duzenliler.map((d) => (d.id === kural.id ? duzenlemeyeUyarla(varOlan, tam, islemler, bugun) : d))
+        : [...tanimlar.duzenliler, tam],
+    );
     setDuzenlenen(null);
   };
 
   const durdur = (kural: Kural, durdu: boolean) =>
-    yaz(tanimlar.duzenliler.map((d) => (d.id === kural.id ? { ...d, durdu } : d)));
+    yaz(
+      tanimlar.duzenliler.map((d) =>
+        d.id === kural.id ? duzenlemeyeUyarla(d, { ...d, durdu }, islemler, bugun) : d,
+      ),
+    );
 
   const sil = (kural: Kural) => {
     const uretilen = islemler.filter((i) => i.duzenliId === kural.id).length;

@@ -34,7 +34,8 @@ export interface AralikDurumu {
   tazele: () => Promise<void>;
   kapat: (g: TodoistGorev) => Promise<void>;
   /** Yeni görev — Inbox'a gider, tarihi verilen gün. */
-  ekle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  /** Eklendiyse true; hata `hata`da. Çağıran metni yalnızca başarıda temizlesin. */
+  ekle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
   /** Görevi başka güne taşır; saati varsa saat korunur. */
   tarihiDegistir: (g: TodoistGorev, iso: string) => Promise<void>;
 }
@@ -133,10 +134,10 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
   );
 
   const ekle = useCallback(
-    async (iso: string, icerik: string, saat?: string | null) => {
+    async (iso: string, icerik: string, saat?: string | null): Promise<boolean> => {
       const k = kopru();
       const metin = icerik.trim();
-      if (!k || !metin) return;
+      if (!k || !metin) return false;
       try {
         if (!inbox.current) {
           const p = await k.todoist.projeler();
@@ -151,8 +152,10 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
         });
         setGorevler((x) => [...x, yeni]);
         setHata(null);
+        return true;
       } catch (e) {
         setHata(mesaj(e));
+        return false;
       }
     },
     [],

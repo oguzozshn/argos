@@ -109,3 +109,44 @@ export function tekrarAtla(kural: Duzenli, tarih: string): Duzenli {
   if (mevcut.includes(tarih)) return kural;
   return { ...kural, atlananlar: [...mevcut, tarih].sort() };
 }
+
+/**
+ * Var olan bir kural düzenlenince (ayın günü, başlangıç) ya da durdurulmuşken
+ * sürdürülünce, geçmişe dönük yeni tekrarlar doğmasın.
+ *
+ * Mükerrer kontrolü `(kural, tarih)` çiftine bakıyor. Günü 1'den 5'e çekilen
+ * bir kiranın her ay "-01" kaydı var ama "-05" kaydı yok; kural olduğu gibi
+ * yazılsa başlangıçtan bugüne her ay ikinci bir kira üretilirdi. Burada o
+ * tekrarlar atlanmış sayılır:
+ * - O kural için zaten kaydı olan aylardaki tekrarlar her zaman atlanır.
+ * - Durdurulmuş kural sürdürülünce, durduğu süredeki tekrarlar da atlanır —
+ *   durdurmak "bu arada yazma" demekti, sürdürmek geçmişi doldurmak değil.
+ * - Kaydı olmayan aylar atlanmaz: başlangıç geriye çekildiyse o aylar
+ *   bilerek doldurulur.
+ *
+ * Yeni kural döner; verilen değişmez. Değişecek bir şey yoksa `yeni` aynen döner.
+ */
+export function duzenlemeyeUyarla(
+  eski: Duzenli,
+  yeni: Duzenli,
+  mevcut: Islem[],
+  bugun: string,
+): Duzenli {
+  const kayitliAylar = new Set(mevcut.filter((i) => i.duzenliId === yeni.id).map((i) => i.tarih.slice(0, 7)));
+  const surduruldu = eski.durdu && !yeni.durdu;
+
+  // vadesiGelenler tek geçişte en fazla TEK_GECISTE_EN_FAZLA döndürür; çok eski
+  // bir başlangıçta sonrası kalmasın diye geçişler, yeni atlanacak kalmayana
+  // dek sürer. Atlanmayan tekrarlar "yazılmış" sayılarak ilerlenir.
+  let sonuc = yeni;
+  const gorulen = [...mevcut];
+  for (;;) {
+    const bekleyen = vadesiGelenler([sonuc], gorulen, bugun);
+    if (bekleyen.length === 0) break;
+    for (const b of bekleyen) {
+      if (surduruldu || kayitliAylar.has(b.tarih.slice(0, 7))) sonuc = tekrarAtla(sonuc, b.tarih);
+      else gorulen.push({ ...b, id: "" });
+    }
+  }
+  return sonuc;
+}

@@ -25,6 +25,7 @@ import {
   satirTutari,
   tersGorunuyor,
   yazilabilir,
+  type Kural,
   type Parti,
   type Satir,
 } from "@ortak/ekstre-aktar";
@@ -42,7 +43,7 @@ const XLSX_DESENI = /\.(xlsx|xlsm)$/i;
 
 export function Ekstre() {
   const defter = useHarcama(true);
-  const ekstre = useEkstre(defter.tanimlar.kategoriler);
+  const ekstre = useEkstre(defter.tanimlar.kategoriler, defter.yuklendi);
 
   const [hesapSecimi, setHesapSecimi] = useState("");
   const [dosyaAdi, setDosyaAdi] = useState<string | null>(null);
@@ -68,19 +69,20 @@ export function Ekstre() {
   const ozet = satirlar ? onizlemeOzeti(satirlar) : null;
 
   /** Mükerrer yakalama hesap bazında: aynı satır başka bir hesaba meşru biçimde girebilir. */
-  const mevcutIzler = useMemo(
-    () =>
-      new Set(
-        islemler.filter((i) => i.hesapId === hesap?.id && i.ekstreIzi).map((i) => i.ekstreIzi as string),
-      ),
-    [islemler, hesap?.id],
-  );
+  const izlerSec = (hesapId: string | undefined) =>
+    new Set(islemler.filter((i) => i.hesapId === hesapId && i.ekstreIzi).map((i) => i.ekstreIzi as string));
 
+  /**
+   * Hesap parametre olarak geliyor: hesap değiştirildiği anda state henüz
+   * eskisini gösteriyor, önizleme eski hesabın izleriyle kurulurdu.
+   */
   const onizlemeKur_ = async (
     kaynak: EkstreTablosu,
     kullanilan: SutunEslemi,
     isaretiTahminEt = false,
+    hedef = hesap,
   ): Promise<void> => {
+    const mevcutIzler = izlerSec(hedef?.id);
     if (!eslemTam(kullanilan)) {
       setSatirlar(null);
       return;
@@ -90,7 +92,7 @@ export function Ekstre() {
     let yeni = await onizlemeKur(kaynak, etkin, mevcutIzler, ekstre.kurallar, tanimlar.kategoriler);
 
     // Kart ekstresi harcamaları artı yazar; sezilen işaret öneriliyor, zorlanmıyor.
-    if (isaretiTahminEt && hesap && tersGorunuyor(yeni, hesap.tur)) {
+    if (isaretiTahminEt && hedef && tersGorunuyor(yeni, hedef.tur)) {
       etkin = { ...etkin, tersCevir: true };
       setEslem(etkin);
       yeni = await onizlemeKur(kaynak, etkin, mevcutIzler, ekstre.kurallar, tanimlar.kategoriler);
@@ -155,28 +157,35 @@ export function Ekstre() {
 
   const hesapDegisti = async (id: string) => {
     setHesapSecimi(id);
-    if (tablo.satirlar.length > 0) await onizlemeKur_(tablo, eslem);
+    const yeniHesap = hesaplar.find((h) => h.id === id) ?? hesaplar[0];
+    if (tablo.satirlar.length > 0) await onizlemeKur_(tablo, eslem, false, yeniHesap);
   };
 
   const satirGuncelle = (sira: number, degisiklik: Partial<Satir>) =>
     setSatirlar((mevcut) => mevcut?.map((x) => (x.sira === sira ? { ...x, ...degisiklik } : x)) ?? null);
 
   const kuralYap = async (satir: Satir) => {
-    const kural = await ekstre.kuralKaydet(satir.aciklama, satir.kategoriId, satir.transfer);
+    let kural: Kural | null;
+    try {
+      kural = await ekstre.kuralKaydet(satir.aciklama, satir.kategoriId, satir.transfer);
+    } catch (e) {
+      setHata(`Kural kaydedilemedi: ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    }
     if (!kural) {
       setHata("Kural oluşturulamadı: açıklama çok kısa.");
       return;
     }
 
-    // Kategorisi hâlâ boş olan benzer satırlara da uygulanıyor.
-    let uygulanan = 0;
+    // Kategorisi hâlâ boş olan benzer satırlara da uygulanıyor. Sayaç
+    // güncelleyicinin dışında: React onu geç ya da iki kez çalıştırabilir.
+    const k = kural;
+    const eslesir = (x: Satir) => yazilabilir(x) && x.kategoriId === "" && metinIcerir(x.aciklama, k.icerir);
+    const uygulanan = satirlar?.filter(eslesir).length ?? 0;
     setSatirlar(
       (mevcut) =>
-        mevcut?.map((x) => {
-          if (!yazilabilir(x) || x.kategoriId !== "" || !metinIcerir(x.aciklama, kural.icerir)) return x;
-          uygulanan++;
-          return { ...x, kategoriId: kural.kategoriId, transfer: kural.transfer, kuralId: kural.id };
-        }) ?? null,
+        mevcut?.map((x) => (eslesir(x) ? { ...x, kategoriId: k.kategoriId, transfer: k.transfer, kuralId: k.id } : x)) ??
+        null,
     );
 
     setHata(null);
@@ -204,11 +213,23 @@ export function Ekstre() {
 
       // Parti önce yazılıyor: işlemler yazılırken bir şey ters giderse geri
       // alınacak kayıt zaten duruyor olsun.
-      await ekstre.aktarmayiKaydet(
+      // Parti yazılamadıysa işlemler de yazılmaz: geri alma kaydı olmayan bir
+      // aktarma tek tıkla geri alınamaz.
+      const partiYazildi = await ekstre.aktarmayiKaydet(
         parti,
         satirlar.filter((x) => yazilabilir(x) && x.kuralId).map((x) => x.kuralId as string),
       );
-      await defter.islemlerEkle(islemeCevir(satirlar, hesap.id, partiId, zaman));
+      if (!partiYazildi) {
+        setHata("İçe aktarma başlamadı: aktarma kaydı yazılamadı. Hiçbir işlem eklenmedi.");
+        return;
+      }
+      const eklendi = await defter.islemlerEkle(islemeCevir(satirlar, hesap.id, partiId, zaman));
+      if (!eklendi) {
+        // Önizleme silinmiyor: kullanıcı ne olduğunu görebilsin. Yazılan kısım
+        // partiye bağlı, aktarma listesinden geri alınabilir.
+        setHata("İşlemlerin bir kısmı yazılamadı. Yazılanlar aktarma listesinden geri alınabilir.");
+        return;
+      }
 
       setMesaj(`${o.hazir} işlem içe aktarıldı, ${satirlar.length - o.hazir} satır atlandı.`);
       sifirla();
@@ -221,8 +242,18 @@ export function Ekstre() {
 
   const geriAl = async (parti: Parti) => {
     setOnayBekleyen(null);
+    setMesaj(null);
     const silinen = await defter.partiGeriAl(parti.id);
-    await ekstre.partiSil(parti.id);
+    if (silinen === null) {
+      // Parti kaydı duruyor: kalan işlemler yeniden denenerek geri alınabilir.
+      setHata("Geri alma tamamlanamadı. Tekrar deneyin.");
+      return;
+    }
+    if (!(await ekstre.partiSil(parti.id))) {
+      setHata(`${silinen} işlem silindi ama aktarma kaydı listeden kaldırılamadı.`);
+      return;
+    }
+    setHata(null);
     setMesaj(`${silinen} işlem silindi.`);
   };
 
@@ -259,6 +290,8 @@ export function Ekstre() {
       />
 
       {hata && <p className={s.uyari}>{hata}</p>}
+      {/* Dosya düzeyindeki hatalar (çakışma, kilit) da görünsün. */}
+      {(defter.hata || ekstre.hata) && <p className={s.uyari}>{defter.hata ?? ekstre.hata}</p>}
       {mesaj && <p className={s.bilgi}>{mesaj}</p>}
 
       <div className={s.duzen}>

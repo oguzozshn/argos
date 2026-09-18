@@ -43,7 +43,7 @@ import {
   type Islem,
   type Kategori,
 } from "../src/ortak/harcama.ts";
-import { sonrakiTekrar, tekrarAtla, tekSeferlik, vadesiGelenler, TEK_GECISTE_EN_FAZLA } from "../src/ortak/duzenli.ts";
+import { duzenlemeyeUyarla, sonrakiTekrar, tekrarAtla, tekSeferlik, vadesiGelenler, TEK_GECISTE_EN_FAZLA } from "../src/ortak/duzenli.ts";
 import { agirlikliOrtalama, dogrusalTahmin, donemdekiTekrarSayisi } from "../src/ortak/tahmin.ts";
 import type { Duzenli } from "../src/ortak/harcama.ts";
 
@@ -269,6 +269,60 @@ kontrol(
   tekrarAtla(atlanmis, "2026-02-01").atlananlar?.length === 1,
 );
 kontrol("atlama kuralın kendisini değiştirmez", kural(1, "2026-01-01").atlananlar === undefined);
+
+// Günü 1'den 5'e çekilen kira: her ayın "-01" kaydı var, "-05" kaydı yok.
+// Kural olduğu gibi yazılsa geçmişin her ayına ikinci bir kira doğardı.
+{
+  const eski = kural(1, "2026-01-01");
+  const yeni = duzenlemeyeUyarla(eski, kural(5, "2026-01-01"), mevcut, "2026-04-15");
+  kontrol(
+    "günü değişen kural geçmiş ayları yeniden üretmez",
+    vadesiGelenler([yeni], mevcut, "2026-04-15").length === 0,
+    vadesiGelenler([yeni], mevcut, "2026-04-15").map((i) => i.tarih).join(","),
+  );
+  kontrol(
+    "günü değişen kural gelecek ayda yeni günde çalışır",
+    vadesiGelenler([yeni], mevcut, "2026-05-10").map((i) => i.tarih).join(",") === "2026-05-05",
+  );
+  const bosAy = mevcut.filter((i) => !i.tarih.startsWith("2026-03"));
+  kontrol(
+    "kaydı olmayan ay atlanmaz — o ay gerçekten eksik",
+    vadesiGelenler([duzenlemeyeUyarla(eski, kural(5, "2026-01-01"), bosAy, "2026-04-15")], bosAy, "2026-04-15")
+      .map((i) => i.tarih)
+      .join(",") === "2026-03-05",
+  );
+  kontrol(
+    "değişmeyen kural aynen döner",
+    duzenlemeyeUyarla(eski, eski, mevcut, "2026-04-15") === eski,
+  );
+}
+
+// Tek geçiş sınırından (120) eski geçmiş: uyarlama da sonuna kadar gitmeli.
+{
+  const eskiKural = kural(1, "2000-01-01");
+  const hepsi: Islem[] = [];
+  for (let gecis = 0; gecis < 5; gecis++) {
+    hepsi.push(...vadesiGelenler([eskiKural], hepsi, "2026-04-15").map((i, n) => ({ ...i, id: `u${gecis}-${n}` })));
+  }
+  const uyarlanmis = duzenlemeyeUyarla(eskiKural, kural(5, "2000-01-01"), hepsi, "2026-04-15");
+  kontrol(
+    "120'den uzun geçmişte de hiçbir ay yeniden üretilmez",
+    vadesiGelenler([uyarlanmis], hepsi, "2026-04-15").length === 0,
+    String(vadesiGelenler([uyarlanmis], hepsi, "2026-04-15").length),
+  );
+}
+
+// Durdurulup sürdürülen kural, durduğu aylar için geriye dönük kayıt yazmasın.
+{
+  const ilkIki = mevcut.slice(0, 2);
+  const durmus = kural(1, "2026-01-01", null, true);
+  const surdu = duzenlemeyeUyarla(durmus, { ...durmus, durdu: false }, ilkIki, "2026-04-15");
+  kontrol("sürdürülen kural durduğu ayları doldurmaz", vadesiGelenler([surdu], ilkIki, "2026-04-15").length === 0);
+  kontrol(
+    "sürdürülen kural sonraki ay çalışır",
+    vadesiGelenler([surdu], ilkIki, "2026-05-02").map((i) => i.tarih).join(",") === "2026-05-01",
+  );
+}
 
 /* --- tahmin ------------------------------------------------------------- */
 

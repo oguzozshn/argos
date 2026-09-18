@@ -18,6 +18,7 @@ export function Butceler() {
   const defter = useHarcama(true);
   const [kaydirma, setKaydirma] = useDonemKaydirmasi();
   const [duzenlenen, setDuzenlenen] = useState<{ kategoriId: string; deger: string } | null>(null);
+  const [gecersiz, setGecersiz] = useState(false);
 
   const { tanimlar, islemler, bugun } = defter;
   const simge = tanimlar.ayarlar.simge;
@@ -38,6 +39,19 @@ export function Butceler() {
   );
 
   /** Sınır sıfır ya da altındaysa bütçe silinir: sıfır sınır bir bütçe değildir. */
+  /**
+   * Boş alan "sınırı kaldır" demek; okunamayan metin ise hiçbir şey demek
+   * değil. Önceden ikisi de 0 oluyor, bir yazım hatası bütçeyi siliyordu.
+   */
+  const girileniKoy = (kategoriId: string, metin: string) => {
+    const kurus = metin.trim() === "" ? 0 : paraCoz(metin);
+    if (kurus === null || kurus < 0) {
+      setGecersiz(true);
+      return;
+    }
+    sinirKoy(kategoriId, kurus);
+  };
+
   const sinirKoy = (kategoriId: string, kurus: number) => {
     const kalanlar = tanimlar.butceler.filter((b) => b.kategoriId !== kategoriId);
     const yeni: Butce[] = kurus > 0 ? [...kalanlar, { kategoriId, sinirKurus: kurus }] : kalanlar;
@@ -175,13 +189,19 @@ export function Butceler() {
                           value={duzenlenen.deger}
                           inputMode="decimal"
                           autoFocus
-                          onChange={(e) => setDuzenlenen({ kategoriId: k.id, deger: e.target.value })}
+                          aria-invalid={gecersiz}
+                          title={gecersiz ? "Tutar okunamadı" : undefined}
+                          onChange={(e) => {
+                            setGecersiz(false);
+                            setDuzenlenen({ kategoriId: k.id, deger: e.target.value });
+                          }}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") sinirKoy(k.id, paraCoz(duzenlenen.deger) ?? 0);
+                            if (e.key === "Enter") girileniKoy(k.id, duzenlenen.deger);
                             if (e.key === "Escape") setDuzenlenen(null);
                           }}
                         />
-                        <Dugme tur="dolu" onClick={() => sinirKoy(k.id, paraCoz(duzenlenen.deger) ?? 0)}>
+                        {gecersiz && <span className={s.soluk}>Tutar okunamadı</span>}
+                        <Dugme tur="dolu" onClick={() => girileniKoy(k.id, duzenlenen.deger)}>
                           Kaydet
                         </Dugme>
                         <Dugme tur="sade" onClick={() => setDuzenlenen(null)}>
@@ -195,7 +215,10 @@ export function Butceler() {
                         </span>
                         <Dugme
                           tur="sade"
-                          onClick={() => setDuzenlenen({ kategoriId: k.id, deger: sinir > 0 ? paraGiris(sinir) : "" })}
+                          onClick={() => {
+                            setGecersiz(false);
+                            setDuzenlenen({ kategoriId: k.id, deger: sinir > 0 ? paraGiris(sinir) : "" });
+                          }}
                         >
                           {sinir > 0 ? "Değiştir" : "Sınır koy"}
                         </Dugme>

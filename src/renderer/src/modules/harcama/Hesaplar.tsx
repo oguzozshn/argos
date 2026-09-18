@@ -206,6 +206,8 @@ function HesapFormu({
   const [simge, setSimge] = useState(baslangic.simge);
   const [acilis, setAcilis] = useState(paraGiris(baslangic.acilisKurus));
   const [referans, setReferans] = useState(baslangic.referans);
+  // Okunamayan açılış bakiyesi 0 sayılsa hesabın bütün bakiye geçmişi kayardı.
+  const acilisKurus = acilis.trim() === "" ? 0 : paraCoz(acilis);
 
   return (
     <div className={s.duzen}>
@@ -247,17 +249,20 @@ function HesapFormu({
         </label>
       </div>
       <div className={s.eylemler}>
+        {acilisKurus === null && <span className={s.soluk}>Açılış bakiyesi okunamadı</span>}
         <Dugme
           tur="dolu"
           ikon={<Check size={15} />}
+          disabled={acilisKurus === null}
           onClick={() =>
+            acilisKurus !== null &&
             onKaydet({
               ...baslangic,
               ad,
               tur,
               renk,
               simge: simge.trim(),
-              acilisKurus: paraCoz(acilis) ?? 0,
+              acilisKurus,
               referans: referans.trim(),
             })
           }

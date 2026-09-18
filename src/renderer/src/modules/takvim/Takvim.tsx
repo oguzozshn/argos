@@ -851,7 +851,7 @@ function GorevBolumu({
   iso: string;
   gorevler: TodoistGorev[];
   onKapat: (g: TodoistGorev) => Promise<void>;
-  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
   surukle: Surukle;
 }) {
   return (
@@ -881,7 +881,7 @@ function GorevEkle({
   onEkle,
 }: {
   iso: string;
-  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
 }) {
   const [metin, setMetin] = useState("");
   const [gonderiliyor, setGonderiliyor] = useState(false);
@@ -893,8 +893,8 @@ function GorevEkle({
     e.preventDefault();
     if (!icerik || gonderiliyor) return;
     setGonderiliyor(true);
-    await onEkle(iso, icerik, saat);
-    setMetin("");
+    // Eklenemediyse yazılan metin kaybolmasın; hata üstte gösteriliyor.
+    if (await onEkle(iso, icerik, saat)) setMetin("");
     setGonderiliyor(false);
   };
 
@@ -928,7 +928,7 @@ function GunPaneliPlansiz({
   iso: string;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
-  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
   surukle: Surukle;
 }) {
   return (
@@ -974,7 +974,7 @@ function GunPaneliDosyali({
   kurallar: KuralSeti;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
-  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<void>;
+  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
   surukle: Surukle;
 }) {
   const { veri, yukleniyor, yaz } = useDosya<HaftaTipi>(`${kod}.json`);

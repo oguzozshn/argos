@@ -18,17 +18,27 @@ export function useAlanlar() {
       setYukleniyor(false);
       return;
     }
-    const dosyalar = await k.veri.listele("hobiler");
-    const okunan = await Promise.all(
-      dosyalar.map(async (d) => {
-        const slug = d.replace(/\.json$/, "");
-        const o = await k.veri.oku(`hobiler/${d}`);
-        const veri = normalize(o.veri, slug);
-        return { slug, ad: veri?.ad || slug, adet: veri?.maddeler.length ?? 0, veri };
-      }),
-    );
-    setAlanlar(okunan);
-    setYukleniyor(false);
+    try {
+      const dosyalar = await k.veri.listele("hobiler");
+      const okunan = await Promise.all(
+        dosyalar.map(async (d) => {
+          const slug = d.replace(/\.json$/, "");
+          // Tek bozuk dosya bütün listeyi götürmesin: o alan boş görünür,
+          // diğerleri açılır.
+          const veri = await k.veri
+            .oku(`hobiler/${d}`)
+            .then((o) => normalize(o.veri, slug))
+            .catch(() => null);
+          return { slug, ad: veri?.ad || slug, adet: veri?.maddeler.length ?? 0, veri };
+        }),
+      );
+      setAlanlar(okunan);
+    } catch (e) {
+      console.error("[hobiler]", e);
+    } finally {
+      // Hata olsa da iskelet ekranda sonsuza dek kalmasın.
+      setYukleniyor(false);
+    }
   }, []);
 
   useEffect(() => {
