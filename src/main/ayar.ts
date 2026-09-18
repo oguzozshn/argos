@@ -1,7 +1,7 @@
 import { app } from "electron";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { AYAR_ADLARI, ayarCoz } from "./veri-cekirdek";
+import { AYAR_ADLARI, ayarCoz, yenidenAdlandir } from "./veri-cekirdek";
 
 /**
  * Ayarın nerede aranacağı. Tek yerde durur, çünkü aynı dosyalar iki şeyi
@@ -107,18 +107,35 @@ export function taniYaz(
  *
  * Kurulum klasörüne değil buraya yazılıyor: orası her sürümde siliniyor.
  */
-export function ayarKaydet(alan: string, deger: string): string {
+export async function ayarKaydet(alan: string, deger: string): Promise<string> {
   const kok = kokler().at(-1) ?? ".";
   const yol = join(kok, AYAR_ADLARI[0]);
-  let mevcut: Record<string, unknown> = {};
+  // `okuyucu` burada kullanılmıyor: o her hatayı "yok" sayıyor. Kilitli bir
+  // dosya boş sanılırsa diğer alanlar (ör. `gizliYolu`) silinirdi. Yalnızca
+  // gerçekten olmayan dosya boş başlar; okunamayan dosyada kayıt durur.
+  let metin: string | null = null;
   try {
-    const metin = okuyucu(yol);
-    if (metin) mevcut = JSON.parse(metin) as Record<string, unknown>;
-  } catch {
-    // Bozuk dosyanın üstüne yazılır; kurtarılacak bir şey yok.
+    metin = readFileSync(yol, "utf8");
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+  }
+  let mevcut: Record<string, unknown> = {};
+  if (metin) {
+    try {
+      mevcut = JSON.parse(metin) as Record<string, unknown>;
+    } catch {
+      // Bozuk dosyanın üstüne yazılır; kurtarılacak bir şey yok.
+    }
   }
   mevcut[alan] = deger;
   const govde = JSON.stringify(mevcut, null, 2) + "\r\n";
-  writeFileSync(yol, govde, "utf8");
+  // Yarım yazılmış ayar dosyası bir sonraki açılışta iki alanı birden kaybettirir.
+  const gecici = `${yol}.${process.pid}.tmp`;
+  writeFileSync(gecici, govde, "utf8");
+  // OneDrive ya da virüs tarayıcı dosyayı bir an kilitleyebilir.
+  await yenidenAdlandir(gecici, yol).catch((e: unknown) => {
+    rmSync(gecici, { force: true });
+    throw e;
+  });
   return yol;
 }

@@ -1,6 +1,7 @@
 import { BrowserWindow, app, screen, shell } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { ipcKur } from "./ipc";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { durumuDogrula, type PencereDurumu } from "./pencere-durumu";
@@ -69,7 +70,9 @@ if (!app.requestSingleInstanceLock()) {
       titleBarOverlay: { color: "#F5F4F0", symbolColor: "#5A574F", height: 44 },
       webPreferences: {
         preload: join(__dirname, "../preload/index.js"),
-        sandbox: false,
+        // Preload yalnızca contextBridge/ipcRenderer kullanıyor ve paketli;
+        // Node erişimi gerekmiyor.
+        sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
       },
@@ -89,6 +92,23 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     const devSunucu = process.env["ELECTRON_RENDERER_URL"];
+
+    // Pencere yerinde başka bir sayfaya gidemesin: o sayfa `window.argos` ile
+    // veri klasörünü okuyup yazabilirdi. Dış bağlantı tarayıcıda açılır.
+    // file: için yalnızca kendi sayfamız: pencereye sürüklenen bir HTML dosyası
+    // da preload'la açılır ve `window.argos`'a erişirdi.
+    const sayfaYolu = pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+    const kendiAdresi = (url: string) =>
+      url.split("#")[0] === sayfaYolu || (!!devSunucu && url.startsWith(devSunucu));
+    pencere.webContents.on("will-navigate", (olay, url) => {
+      if (kendiAdresi(url)) return;
+      olay.preventDefault();
+      if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+    });
+    pencere.webContents.on("will-redirect", (olay, url) => {
+      if (!kendiAdresi(url)) olay.preventDefault();
+    });
+
     if (devSunucu) pencere.loadURL(devSunucu);
     else pencere.loadFile(join(__dirname, "../renderer/index.html"));
 

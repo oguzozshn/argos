@@ -53,12 +53,28 @@ function Yonlendirme() {
 function Icerik() {
   const [kaydirildi, setKaydirildi] = useState(false);
   const [ortam, setOrtam] = useOrtam();
+  const [secimHatasi, setSecimHatasi] = useState<string | null>(null);
 
   const klasorSec = async () => {
     const k = kopru();
     if (!k) return;
-    const yeni = await k.klasorSec();
-    if (yeni) setOrtam(yeni);
+    let yeni: Awaited<ReturnType<typeof k.klasorSec>>;
+    try {
+      yeni = await k.klasorSec();
+    } catch (e) {
+      // Ayar dosyası kilitliyse seçim kaydedilmedi; sessiz kalırsa kullanıcı seçtim sanır.
+      setSecimHatasi(`Seçim kaydedilemedi: ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    }
+    setSecimHatasi(null);
+    if (!yeni) return;
+    // Açık ekranlar eski (ya da olmayan) klasörden okudu; izleyici yeni
+    // klasörde `ignoreInitial` ile başladığı için kendiliğinden tazelenmezler.
+    if (yeni.dataDirVar && !yeni.ayarUyarisi) {
+      window.location.reload();
+      return;
+    }
+    setOrtam(yeni);
   };
 
   return (
@@ -100,6 +116,18 @@ function Icerik() {
                 ))}
               </span>
             </span>
+          </div>
+        )}
+        {secimHatasi && (
+          <div className={s.serit}>
+            <AlertTriangle size={16} strokeWidth={2} />
+            <span>{secimHatasi}</span>
+          </div>
+        )}
+        {ortam?.ayarUyarisi && (
+          <div className={s.serit}>
+            <AlertTriangle size={16} strokeWidth={2} />
+            <span>{ortam.ayarUyarisi}</span>
           </div>
         )}
         <Yonlendirme />

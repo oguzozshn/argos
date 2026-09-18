@@ -1,4 +1,5 @@
 import { BrowserWindow, dialog, ipcMain, nativeTheme } from "electron";
+import { resolve } from "node:path";
 import { BASLIK_RENKLERI, KANAL } from "../ortak/tipler";
 import * as td from "./todoist";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
@@ -30,12 +31,18 @@ export function ipcKur(): void {
     const secilen = sonuc.filePaths[0];
     if (sonuc.canceled || !secilen) return null;
 
-    klasorAyarla(secilen);
+    await klasorAyarla(secilen);
     if (p && !p.isDestroyed()) {
       await izlemeyiDurdur();
       izlemeyeBasla(p);
     }
-    return ortam();
+    const o = ortam();
+    if (resolve(o.dataDir).toLowerCase() !== resolve(secilen).toLowerCase()) {
+      o.ayarUyarisi = process.env.ARGOS_DATA?.trim()
+        ? "Seçim kaydedildi ama ARGOS_DATA ortam değişkeni ağır basıyor."
+        : `Seçim ${o.ayarYolu} dosyasına kaydedildi ama daha önce okunan bir ayar dosyası ağır basıyor.`;
+    }
+    return o;
   });
 
   /**
@@ -54,7 +61,7 @@ export function ipcKur(): void {
     const secilen = sonuc.filePaths[0];
     if (sonuc.canceled || !secilen) return null;
 
-    td.gizliAyarla(secilen);
+    await td.gizliAyarla(secilen);
     return td.durum();
   });
 

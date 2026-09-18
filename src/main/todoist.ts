@@ -20,8 +20,8 @@ export const gizliYolu = (): string =>
  *
  * Sıfırlanacak bir şey yok: `gizliYolu` her çağrıda diskten okunuyor.
  */
-export function gizliAyarla(yol: string): void {
-  ayarKaydet("gizliYolu", yol.split("\\").join("/"));
+export async function gizliAyarla(yol: string): Promise<void> {
+  await ayarKaydet("gizliYolu", yol.split("\\").join("/"));
 }
 
 /** Anahtarı her çağrıda diskten okur: dosya değişince yeniden başlatmak gerekmesin. */

@@ -2,7 +2,7 @@ import { watch, type FSWatcher } from "chokidar";
 import type { BrowserWindow } from "electron";
 import { relative, sep } from "node:path";
 import { KANAL, type DegisimOlayi } from "../ortak/tipler";
-import { dataDir } from "./veri";
+import { dataDir, klasorDegisince } from "./veri";
 
 /**
  * Veri klasörü iki uygulama tarafından yazılıyor: burası ve eski app.py
@@ -11,11 +11,23 @@ import { dataDir } from "./veri";
  */
 
 let izleyici: FSWatcher | null = null;
+let izlenen: string | null = null;
 
 export function izlemeyeBasla(pencere: BrowserWindow): void {
   if (izleyici) return;
 
-  izleyici = watch(dataDir(), {
+  // Açılışta klasör bulunamadıysa izleyici olmayan bir yeri dinler. Klasör
+  // sonradan bulununca yeni yere taşınır; yoksa dış değişiklikler görünmez.
+  klasorDegisince((yeni) => {
+    // Kurulum sırasındaki ilk çözüm de buraya düşer; izleyici henüz yokken
+    // yeniden başlatmak çift izleyici demek.
+    if (!izleyici || yeni === izlenen || pencere.isDestroyed()) return;
+    void izlemeyiDurdur().then(() => izlemeyeBasla(pencere));
+  });
+
+  const kok = dataDir();
+  izlenen = kok;
+  izleyici = watch(kok, {
     ignoreInitial: true,
     depth: 4,
     // Yedek ve geçici dosyalar olay üretmesin; kendi yazmamız da .tmp kullanıyor.
@@ -26,7 +38,7 @@ export function izlemeyeBasla(pencere: BrowserWindow): void {
 
   const bildir = (tur: DegisimOlayi["tur"]) => (tamYol: string) => {
     if (pencere.isDestroyed()) return;
-    const yol = relative(dataDir(), tamYol).split(sep).join("/");
+    const yol = relative(kok, tamYol).split(sep).join("/");
     pencere.webContents.send(KANAL.degisim, { yol, tur } satisfies DegisimOlayi);
   };
 
@@ -38,6 +50,8 @@ export function izlemeyeBasla(pencere: BrowserWindow): void {
 }
 
 export async function izlemeyiDurdur(): Promise<void> {
-  await izleyici?.close();
+  const eski = izleyici;
   izleyici = null;
+  izlenen = null;
+  await eski?.close();
 }

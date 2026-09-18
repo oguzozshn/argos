@@ -266,8 +266,14 @@ export function Yapilacak() {
   const gizliSec = async () => {
     const k = kopru();
     if (!k) return;
-    if (await k.gizliSec()) yenile();
+    try {
+      setSecimHatasi(null);
+      if (await k.gizliSec()) yenile();
+    } catch (e) {
+      setSecimHatasi(`Seçim kaydedilemedi: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
+  const [secimHatasi, setSecimHatasi] = useState<string | null>(null);
   const [secili, setSecili] = useState<string | null>(null);
 
   const aktif = projeler.find((p) => p.id === secili) ?? projeler[0] ?? null;
@@ -278,6 +284,8 @@ export function Yapilacak() {
         baslik="Yapılacaklar"
         altyazi="Todoist'in kendisi — ayrı bir liste tutulmuyor, aynı görevler."
       />
+
+      {secimHatasi && <div className={s.hataSerit}>{secimHatasi}</div>}
 
       {yukleniyor ? (
         <Kart>

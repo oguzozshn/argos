@@ -6,7 +6,8 @@
  * dosya dışarıdan değiştiyse üzerine yazılmamalı.
  */
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { ayarCoz, listele, oku, sil, tamYol, yaz } from "../src/main/veri-cekirdek.ts";
@@ -68,6 +69,22 @@ async function calis(): Promise<void> {
     );
   }
   kontrol("normal yol kabul edilir", tamYol(kokDizin, "hobiler/a.json").startsWith(kokDizin));
+  kontrol("adı iki noktayla başlayan dosya klasörün içindedir", !kacmayiDene("..notlar.json"));
+  if (process.platform === "win32") {
+    // Sürücü kökünde `kok + sep` "D:\\" olurdu ve her yol dışarıda sayılırdı.
+    kontrol("sürücü kökü veri klasörü olabilir", tamYol("D:\\", "a.json") === "D:\\a.json");
+    const kokKacis = (() => {
+      try {
+        tamYol("D:\\x", "..\\..\\y.json");
+        return false;
+      } catch {
+        return true;
+      }
+    })();
+    kontrol("sürücü kökünden de kaçılamaz", kokKacis);
+  } else {
+    kontrol("dosya sistemi kökü veri klasörü olabilir", tamYol("/", "a.json") === "/a.json");
+  }
 
   console.log("\nOkuma");
   const yokOkuma = await oku(kokDizin, "yok.json");
@@ -342,6 +359,28 @@ async function calis(): Promise<void> {
     await bekci2.olay(); // kendi son hâlimiz: mtime aynı
     kontrol("kendi yazmamızın olayı dış değişiklik sayılmaz", uygulananlar.length === once);
   }
+
+  console.log("\nAynı dosyaya eşzamanlı yazma");
+  // İki yazma aynı damgayla aynı anda gelirse ikisi de kontrolü geçip biri
+  // ötekini sessizce eziyordu. Sırayla işlenince ikincisi çakışma görür.
+  const es = "hobiler/es.json";
+  const esBas = await yaz(kokDizin, es, { n: 0 }, null);
+  const esMt = esBas.ok ? esBas.mtime : null;
+  await new Promise((r) => setTimeout(r, 20));
+  const [e1, e2] = await Promise.all([yaz(kokDizin, es, { n: 1 }, esMt), yaz(kokDizin, es, { n: 2 }, esMt)]);
+  kontrol("biri yazılır, öteki çakışır", e1.ok && !e2.ok && e2.sebep === "cakisma", JSON.stringify([e1.ok, e2.ok]));
+  kontrol("dosyada yazılan durur", (await oku<{ n: number }>(kokDizin, es)).veri?.n === 1);
+  const artik = (await readdir(join(kokDizin, "hobiler"))).filter((d) => d.endsWith(".tmp"));
+  kontrol("geçici dosya kalmaz", artik.length === 0, artik.join(","));
+
+  console.log("\nVeri klasörü yokken");
+  // Ayar henüz okunamamışken yazma yanlış yerde klasör açıp kendini
+  // toparlamayı kilitliyordu.
+  const yokKok = join(kokDizin, "olmayan-veri");
+  const yokYazma = await yaz(yokKok, "harcama/tanimlar.json", { a: 1 }, null);
+  kontrol("kök yoksa yazma reddedilir", !yokYazma.ok && yokYazma.sebep === "hata");
+  kontrol("kök klasör açılmaz", !existsSync(yokKok));
+  kontrol("tanımsız içerik yazılmaz", !(await yaz(kokDizin, "hobiler/bos.json", undefined, null)).ok);
 
   await rm(kokDizin, { recursive: true, force: true });
 

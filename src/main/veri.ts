@@ -27,20 +27,32 @@ let _arananlar: { yol: string; bulundu: boolean }[] = [];
  */
 export function dataDir(): string {
   if (_dataDir && existsSync(_dataDir)) return _dataDir;
+  const onceki = _dataDir;
   _arananlar = arananYollar();
   _dataDir = ayar("dataDir", "../personnal_assistant/data", process.env.ARGOS_DATA);
+  const var_ = existsSync(_dataDir);
   // Her çözüm denemesi tanıya yazılır: dosya son durumu gösterir, ilk
   // denemeyi değil. Toparlanma da böyle görünüyor.
-  taniYaz(_dataDir, existsSync(_dataDir), _arananlar);
+  taniYaz(_dataDir, var_, _arananlar);
+  // Klasör kendiliğinden bulunduysa izleyici hâlâ eski (olmayan) yeri
+  // dinliyor olabilir; haber verilir.
+  if (var_ && _dataDir !== onceki) klasorDinleyici?.(_dataDir);
   return _dataDir;
+}
+
+let klasorDinleyici: ((yeni: string) => void) | null = null;
+
+/** Çözülen veri klasörü değişince çağrılır. Tek dinleyici: izleyici. */
+export function klasorDegisince(f: ((yeni: string) => void) | null): void {
+  klasorDinleyici = f;
 }
 
 /**
  * Kullanıcının seçtiği klasörü kalıcı ayara yazar ve çözümü sıfırlar.
  * Bir sonraki `dataDir()` yeni değeri okur.
  */
-export function klasorAyarla(yol: string): void {
-  ayarKaydet("dataDir", yol.split("\\").join("/"));
+export async function klasorAyarla(yol: string): Promise<void> {
+  await ayarKaydet("dataDir", yol.split("\\").join("/"));
   _dataDir = null;
 }
 

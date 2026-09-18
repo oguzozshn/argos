@@ -33,6 +33,11 @@ export interface Ortam {
   /** "win32" · "darwin" · "linux" — arayüz tarafında node tipleri yok, dizge. */
   platform: string;
   paketli: boolean;
+  /**
+   * Seçilen klasör ayara yazıldı ama başka bir kaynak (ortam değişkeni, exe
+   * yanındaki ayar) ağır bastı. Sessizce eski klasörde kalmak yerine söylenir.
+   */
+  ayarUyarisi?: string;
 }
 
 /** İzleyiciden gelen olay. `yol` dataDir'e göreli, ileri eğik çizgiyle. */

@@ -1,5 +1,5 @@
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Okuma, Yazma } from "../ortak/tipler";
 
 /**
@@ -20,17 +20,32 @@ export function tamYol(kokDizin: string, gorece: string): string {
   if (!gorece || typeof gorece !== "string") throw new Error("yol boş");
   if (isAbsolute(gorece)) throw new Error("mutlak yol kabul edilmez");
   const hedef = resolve(kokDizin, gorece);
-  if (hedef !== kokDizin && !hedef.startsWith(kokDizin + sep)) {
+  // `kok + sep` sürücü kökünde ("D:\") çift ayraç olurdu; göreli yol her
+  // durumda doğru cevabı veriyor.
+  const ic = relative(resolve(kokDizin), hedef);
+  if (ic === ".." || ic.startsWith(".." + sep) || isAbsolute(ic)) {
     throw new Error("yol veri klasörünün dışında");
   }
   return hedef;
 }
 
+/**
+ * İçerik ve damga aynı ana ait olmalı. Okuma ile `stat` arasında dosya
+ * dışarıdan değişirse eski içerik yeni damgayla eşleşir, sonraki yazma
+ * çakışmayı göremeden dış değişikliği ezerdi. Damga okumanın iki yanında
+ * aynı değilse yeniden okunur.
+ */
 export async function oku<T = unknown>(kokDizin: string, gorece: string): Promise<Okuma<T>> {
   const f = tamYol(kokDizin, gorece);
   try {
-    const [metin, s] = await Promise.all([readFile(f, "utf8"), stat(f)]);
-    return { veri: JSON.parse(metin) as T, mtime: s.mtimeMs, yol: gorece };
+    for (let deneme = 0; ; deneme++) {
+      const once = (await stat(f)).mtimeMs;
+      const metin = await readFile(f, "utf8");
+      const sonra = (await stat(f)).mtimeMs;
+      if (once === sonra || deneme >= 2) {
+        return { veri: JSON.parse(metin) as T, mtime: sonra, yol: gorece };
+      }
+    }
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
       // Dosya yokluğu hata değil: henüz oluşmamış olabilir.
@@ -54,6 +69,57 @@ export async function yaz(
   beklenenMtime: number | null,
 ): Promise<Yazma> {
   const f = tamYol(kokDizin, gorece);
+  // Aynı dosyaya iki yazma aynı anda gelirse ikisi de aynı damgayı görüp
+  // kontrolü geçerdi; sonra biri diğerini sessizce ezerdi. Dosya başına sıra.
+  const onceki = yazmaSirasi.get(f) ?? Promise.resolve();
+  const bu = onceki.then(() => yazSirali(kokDizin, f, gorece, icerik, beklenenMtime));
+  const kuyruk = bu.then(
+    () => undefined,
+    () => undefined,
+  );
+  yazmaSirasi.set(f, kuyruk);
+  void kuyruk.then(() => {
+    if (yazmaSirasi.get(f) === kuyruk) yazmaSirasi.delete(f);
+  });
+  return bu;
+}
+
+const yazmaSirasi = new Map<string, Promise<void>>();
+let geciciSayac = 0;
+
+/** Windows'ta dosya açık tutan biri (OneDrive, virüs tarayıcı, app.py) rename'i kısa süre kilitler. */
+const GECICI_KILIT = new Set(["EPERM", "EBUSY", "EACCES"]);
+
+export async function yenidenAdlandir(kaynak: string, hedef: string): Promise<void> {
+  for (let deneme = 0; ; deneme++) {
+    try {
+      await rename(kaynak, hedef);
+      return;
+    } catch (e) {
+      const kod = (e as NodeJS.ErrnoException).code ?? "";
+      if (!GECICI_KILIT.has(kod) || deneme >= 5) throw e;
+      await new Promise((r) => setTimeout(r, 40 * (deneme + 1)));
+    }
+  }
+}
+
+async function yazSirali(
+  kokDizin: string,
+  f: string,
+  gorece: string,
+  icerik: unknown,
+  beklenenMtime: number | null,
+): Promise<Yazma> {
+  if (icerik === undefined) {
+    return { ok: false, sebep: "hata", mesaj: "yazılacak içerik yok" };
+  }
+  // Kök yoksa ayar henüz okunamamış demektir (kilit, eşitleme). Burada
+  // açılırsa yanlış yerde boş bir klasör doğar ve kendini toparlama —
+  // "klasör yoksa yeniden ara" — bir daha hiç devreye girmez.
+  if (!(await klasorVar(kokDizin))) {
+    return { ok: false, sebep: "hata", mesaj: `veri klasörü bulunamadı: ${kokDizin}` };
+  }
+  let gecici: string | null = null;
   try {
     let mevcut: string | null = null;
     let diskMtime: number | null = null;
@@ -71,13 +137,24 @@ export async function yaz(
     await mkdir(dirname(f), { recursive: true });
     if (mevcut !== null) await writeFile(f + ".bak", mevcut, "utf8");
 
-    const gecici = `${f}.${process.pid}.tmp`;
+    gecici = `${f}.${process.pid}-${++geciciSayac}.tmp`;
     await writeFile(gecici, JSON.stringify(icerik, null, 2) + "\n", "utf8");
-    await rename(gecici, f);
+    await yenidenAdlandir(gecici, f);
+    gecici = null;
 
     return { ok: true, mtime: (await stat(f)).mtimeMs };
   } catch (e) {
+    // Yarım kalan geçici dosya klasörde birikmesin; izleyici onu görmez.
+    if (gecici) await rm(gecici, { force: true }).catch(() => undefined);
     return { ok: false, sebep: "hata", mesaj: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+async function klasorVar(yol: string): Promise<boolean> {
+  try {
+    return (await stat(yol)).isDirectory();
+  } catch {
+    return false;
   }
 }
 
@@ -96,9 +173,27 @@ export async function listele(kokDizin: string, goreceKlasor: string): Promise<s
   }
 }
 
-/** Dosyayı siler. Yedeği kalır — geri dönüş yolu kapanmasın. */
+/**
+ * Dosyayı siler. Yedeği kalır — geri dönüş yolu kapanmasın.
+ *
+ * Yazmalarla aynı sıraya girer: sürmekte olan bir yazmanın rename'i silmeden
+ * sonra düşerse dosya geri doğardı.
+ */
 export async function sil(kokDizin: string, gorece: string): Promise<{ ok: boolean }> {
   const f = tamYol(kokDizin, gorece);
+  const bu = (yazmaSirasi.get(f) ?? Promise.resolve()).then(() => silSirali(f));
+  const kuyruk = bu.then(
+    () => undefined,
+    () => undefined,
+  );
+  yazmaSirasi.set(f, kuyruk);
+  void kuyruk.then(() => {
+    if (yazmaSirasi.get(f) === kuyruk) yazmaSirasi.delete(f);
+  });
+  return bu;
+}
+
+async function silSirali(f: string): Promise<{ ok: boolean }> {
   try {
     await writeFile(f + ".bak", await readFile(f, "utf8"), "utf8");
   } catch (e) {
