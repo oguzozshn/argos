@@ -4,6 +4,7 @@ import { useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { moduller } from "@/modules";
 import { ekranGecisi } from "@/ui/hareket";
+import { ToastAlani } from "@/ui/toast";
 import { KOPRU_VAR, kopru, useOrtam } from "@/veri/kanca";
 import { BaslikCubugu } from "./BaslikCubugu";
 import { Bugun } from "./Bugun";
@@ -132,6 +133,7 @@ function Icerik() {
         )}
         <Yonlendirme />
       </main>
+      <ToastAlani />
     </div>
   );
 }

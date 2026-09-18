@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Etiket, Kart, Satir } from "@/ui/bilesenler";
+import { silVeBildir } from "@/ui/toast";
 import { kopru } from "@/veri/kanca";
 import s from "./yapilacak.module.css";
 
@@ -23,15 +24,31 @@ export function YapilacakOzet() {
       .catch(() => setGorevler([]));
   }, []);
 
-  const kapat = async (g: TodoistGorev) => {
+  const kapat = (g: TodoistGorev) => {
     const k = kopru();
     if (!k) return;
+    const geriEkle = () => setGorevler((x) => [g, ...(x ?? []).filter((y) => y.id !== g.id)]);
     setGorevler((x) => (x ?? []).filter((y) => y.id !== g.id));
-    try {
-      await k.todoist.kapat(g.id);
-    } catch {
-      setGorevler((x) => [g, ...(x ?? [])]);
-    }
+    silVeBildir({
+      metin: `"${g.icerik}" tamamlandı.`,
+      hataMetni: "Görev tamamlanamadı.",
+      sil: () =>
+        k.todoist.kapat(g.id).then(
+          () => true,
+          () => {
+            geriEkle();
+            return false;
+          },
+        ),
+      geriKoy: () =>
+        k.todoist.ac(g.id).then(
+          () => {
+            geriEkle();
+            return true;
+          },
+          () => false,
+        ),
+    });
   };
 
   if (!gorevler || gorevler.length === 0) return null;

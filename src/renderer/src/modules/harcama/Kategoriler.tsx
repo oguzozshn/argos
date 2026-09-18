@@ -3,6 +3,7 @@ import { Archive, ArchiveRestore, Check, ChevronDown, ChevronUp, Pencil, Plus, T
 import type { Kategori, Tur } from "@ortak/harcama";
 import { TUR_ADLARI } from "@ortak/harcama";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Satir, Yuklenirken } from "@/ui/bilesenler";
+import { silVeBildir } from "@/ui/toast";
 import { useHarcama } from "./kanca";
 import { kategoriSirasi, yeniId } from "./tipler";
 import s from "./harcama.module.css";
@@ -57,11 +58,24 @@ export function Kategoriler() {
   });
 
   const sil = (kategori: Kategori) => {
-    if (!confirm(`"${kategori.ad}" kategorisi silinecek.`)) return;
-    yaz(
-      tanimlar.kategoriler.filter((k) => k.id !== kategori.id),
-      tanimlar.butceler.filter((b) => b.kategoriId !== kategori.id),
-    );
+    // Kategoriyle birlikte bütçesi de gidiyor; geri alma ikisini de koyar.
+    const butce = tanimlar.butceler.find((b) => b.kategoriId === kategori.id);
+    silVeBildir({
+      metin: `"${kategori.ad}" kategorisi silindi.`,
+      sil: () =>
+        defter.tanimlariDegistir((t) => ({
+          ...t,
+          kategoriler: t.kategoriler.filter((k) => k.id !== kategori.id),
+          butceler: t.butceler.filter((b) => b.kategoriId !== kategori.id),
+        })),
+      geriKoy: () =>
+        defter.tanimlariDegistir((t) => ({
+          ...t,
+          kategoriler: t.kategoriler.some((k) => k.id === kategori.id) ? t.kategoriler : [...t.kategoriler, kategori],
+          butceler:
+            butce && !t.butceler.some((b) => b.kategoriId === kategori.id) ? [...t.butceler, butce] : t.butceler,
+        })),
+    });
   };
 
   const arsivle = (kategori: Kategori, arsiv: boolean) =>

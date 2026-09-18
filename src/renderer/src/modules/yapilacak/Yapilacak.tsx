@@ -7,7 +7,6 @@ import {
   KeyRound,
   RefreshCw,
   Repeat,
-  RotateCcw,
 } from "lucide-react";
 import { useState } from "react";
 import type { TodoistGorev } from "@ortak/tipler";
@@ -155,7 +154,7 @@ function GorevSatiri({
 }
 
 function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }) {
-  const { gorevler, yukleniyor, hata, sonKapatilan, tazele, kapat, geriAl, ekle, tarihVer } =
+  const { gorevler, yukleniyor, hata, tazele, kapat, ekle, tarihVer } =
     useGorevler(projeId);
   const obekler = useObekler(gorevler);
   const [yeni, setYeni] = useState("");
@@ -213,23 +212,6 @@ function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }
         </div>
       )}
 
-      <AnimatePresence initial={false}>
-        {sonKapatilan && (
-          <motion.div
-            className={s.geriAl}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
-          >
-            <Check size={15} />
-            <span className={s.geriAlAd}>{sonKapatilan.icerik}</span>
-            <Dugme tur="sade" ikon={<RotateCcw size={14} />} onClick={() => void geriAl()}>
-              Geri al
-            </Dugme>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {yukleniyor ? (
         <Yuklenirken />

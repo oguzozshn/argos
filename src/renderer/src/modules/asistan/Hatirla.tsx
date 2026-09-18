@@ -2,6 +2,7 @@ import { Archive, Plus, RotateCcw, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { bugunIso, hatirlaBugun, type HatirlaMaddesi } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { silVeBildir } from "@/ui/toast";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
 import s from "./asistan.module.css";
@@ -27,7 +28,7 @@ const yeniId = (): string =>
 
 export function Hatirla() {
   const { kurallar } = usePlanVerisi();
-  const { veri, yukleniyor, hata, yaz } = useDosya<HatirlaDosyasi>("hatirla.json");
+  const { veri, yukleniyor, hata, yaz, degistir } = useDosya<HatirlaDosyasi>("hatirla.json");
   const [yeni, setYeni] = useState("");
 
   const gunlukAdet = kurallar.hatirla?.gunlukAdet ?? 3;
@@ -121,9 +122,18 @@ export function Hatirla() {
                 aria-label="Tamamen sil"
                 title="Tamamen sil"
                 onClick={() => {
-                  if (confirm(`Bu madde tamamen silinecek:\n\n${m.metin}`)) {
-                    kaydet(maddeler.filter((x) => x.id !== m.id));
-                  }
+                  const yer = maddeler.findIndex((x) => x.id === m.id);
+                  silVeBildir({
+                    metin: `"${m.metin}" silindi.`,
+                    sil: () => degistir((d) => ({ ...(d ?? {}), maddeler: (d?.maddeler ?? []).filter((x) => x.id !== m.id) })),
+                    // Eski yerine döner; o arada başka madde eklendiyse sıra kayabilir, madde kaybolmaz.
+                    geriKoy: () =>
+                      degistir((d) => {
+                        const liste = (d?.maddeler ?? []).filter((x) => x.id !== m.id);
+                        liste.splice(Math.min(yer, liste.length), 0, m);
+                        return { ...(d ?? {}), maddeler: liste };
+                      }),
+                  });
                 }}
               />
             </div>

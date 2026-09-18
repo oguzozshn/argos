@@ -5,6 +5,7 @@ import { duzenlemeyeUyarla, sonrakiTekrar, tekSeferlik } from "@ortak/duzenli";
 import { ODEME_ADLARI, TUR_ADLARI, type Duzenli as Kural, type Hesap, type Kategori, type Odeme } from "@ortak/harcama";
 import { bugunIso } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Satir, Yuklenirken } from "@/ui/bilesenler";
+import { silVeBildir } from "@/ui/toast";
 import { useHarcama } from "./kanca";
 import { hesapSirasi, kategoriAdi, kategoriSirasi, kisaTarih, yeniId } from "./tipler";
 import s from "./harcama.module.css";
@@ -60,9 +61,34 @@ export function Duzenli() {
 
   const sil = (kural: Kural) => {
     const uretilen = islemler.filter((i) => i.duzenliId === kural.id).length;
-    if (!confirm(`"${kural.ad}" kuralı silinecek. Ürettiği ${uretilen} işlem defterde kalır.`)) return;
-    yaz(tanimlar.duzenliler.filter((d) => d.id !== kural.id));
-    void defter.duzenliBaginiKaldir(kural.id);
+    // Bağı koparılan işlemler hatırlanır: geri alma onları kurala yeniden bağlar.
+    let baglilar: string[] = [];
+    silVeBildir({
+      metin:
+        uretilen > 0
+          ? `"${kural.ad}" kuralı silindi. Ürettiği ${uretilen} işlem defterde kaldı.`
+          : `"${kural.ad}" kuralı silindi.`,
+      // Önce kural gider: kural yoksa üretim de yok. Bağ koparma düşerse
+      // işlemler kurala bağlı kalır — zararsız, hata şeritte görünür.
+      sil: async () => {
+        const ok = await defter.tanimlariDegistir((t) => ({
+          ...t,
+          duzenliler: t.duzenliler.filter((d) => d.id !== kural.id),
+        }));
+        if (!ok) return false;
+        baglilar = (await defter.duzenliBaginiKaldir(kural.id)) ?? [];
+        return true;
+      },
+      // Önce işlemler bağlanır, kural en son döner. Tersi sırada bağlama yarım
+      // kalırsa kural geri gelmiş olur ve bağsız kalan aylar için bir sonraki
+      // açılışta yinelenen kayıt üretirdi.
+      geriKoy: async () => {
+        if (baglilar.length > 0 && !(await defter.duzenliBaginiGeriKoy(kural.id, baglilar))) return false;
+        return defter.tanimlariDegistir((t) =>
+          t.duzenliler.some((d) => d.id === kural.id) ? t : { ...t, duzenliler: [...t.duzenliler, kural] },
+        );
+      },
+    });
   };
 
   if (defter.yukleniyor) {

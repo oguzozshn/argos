@@ -1,0 +1,79 @@
+/* Alt ortada tek bildirim. Alan tıklamayı engellemez, yalnızca kart engeller. */
+.alan {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--b6);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  max-width: min(560px, calc(100vw - 2 * var(--b6)));
+  padding: var(--b2) var(--b2) var(--b2) var(--b4);
+  background: var(--metin);
+  color: var(--zemin);
+  border-radius: var(--r2);
+  box-shadow: var(--golge3);
+  font-size: var(--y4);
+}
+
+.hata {
+  background: var(--hata);
+  color: var(--kart);
+}
+
+.metin {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geriAl,
+.kapat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--b1);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--r1);
+  transition: background var(--sure-hizli) var(--egri);
+}
+
+.geriAl {
+  padding: var(--b1) var(--b3);
+  font-weight: var(--sik-kalin);
+}
+
+.kapat {
+  padding: var(--b1);
+  opacity: 0.7;
+}
+
+.geriAl:hover:not(:disabled),
+.kapat:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  opacity: 1;
+}
+
+.geriAl:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.geriAl:focus-visible,
+.kapat:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}

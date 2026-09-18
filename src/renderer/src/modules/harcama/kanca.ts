@@ -39,13 +39,24 @@ export interface HarcamaVerisi {
   yuklendi: boolean;
   tazele: () => Promise<void>;
   tanimlariYaz: (t: Tanimlar) => Promise<boolean>;
+  /**
+   * Diskteki güncel tanımlar üzerinden değişiklik. Geri alma gibi saniyeler
+   * sonra (belki başka ekrandan) çalışan işler için: aradaki düzenlemeleri ezmez.
+   */
+  tanimlariDegistir: (f: (mevcut: Tanimlar) => Tanimlar) => Promise<boolean>;
   islemKaydet: (islem: Islem) => Promise<boolean>;
   islemlerEkle: (yeniler: Omit<Islem, "id">[]) => Promise<boolean>;
   islemSil: (id: string) => Promise<boolean>;
-  /** Kural silinince üretilmiş işlemlerin kuralla bağını koparır. */
-  duzenliBaginiKaldir: (duzenliId: string) => Promise<void>;
-  /** Bir içe aktarmanın yazdığı her şeyi siler; kaç kayıt gittiğini döner. */
-  /** Silinen işlem sayısı; bir ay yazılamadıysa null. */
+  /** Silinmiş işlemi aynı kimlikle geri koyar; düzenli kuraldaki atlama işaretini kaldırır. */
+  islemGeriYukle: (islem: Islem) => Promise<boolean>;
+  /**
+   * Kural silinince üretilmiş işlemlerin kuralla bağını koparır. Bağı
+   * koparılan işlemlerin kimliklerini döner (geri alma için); yazılamadıysa null.
+   */
+  duzenliBaginiKaldir: (duzenliId: string) => Promise<string[] | null>;
+  /** `duzenliBaginiKaldir`ın tersi: verilen işlemleri kurala yeniden bağlar. */
+  duzenliBaginiGeriKoy: (duzenliId: string, islemIdleri: string[]) => Promise<boolean>;
+  /** Bir içe aktarmanın yazdığı her şeyi siler. Silinen işlem sayısı; bir ay yazılamadıysa null. */
   partiGeriAl: (partiId: string) => Promise<number | null>;
 }
 
@@ -156,6 +167,33 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     [tazele, kendiYazdik],
   );
 
+  const tanimlariDegistir = useCallback(
+    async (f: (mevcut: Tanimlar) => Tanimlar): Promise<boolean> => {
+      const k = kopru();
+      if (!k) {
+        setYazmaHatasi(KOPRU_YOK);
+        return false;
+      }
+      const okuma = await k.veri.oku(TANIM_YOLU);
+      const mevcut = okuma.veri === null ? VARSAYILAN_TANIMLAR : normalizeTanimlar(okuma.veri);
+      const yeni = f(mevcut);
+      if (yeni === mevcut) return true;
+      setTanimlar(yeni);
+      kendiYazdik(TANIM_YOLU);
+      const sonuc = await k.veri.yaz(TANIM_YOLU, yeni, okuma.mtime);
+      if (!sonuc.ok) {
+        kendiYazmalarimiz.current.delete(TANIM_YOLU);
+        setYazmaHatasi(cakismaMetni(sonuc.sebep));
+        await tazele();
+        return false;
+      }
+      setKurulu(true);
+      setYazmaHatasi(null);
+      return true;
+    },
+    [tazele, kendiYazdik],
+  );
+
   /** Bir ay dosyasını oku → değiştir → yaz. Dosya yoksa `mtime` null olur, yenisi açılır. */
   const ayiDegistir = useCallback(
     async (ay: string, degistir: (mevcut: Islem[]) => Islem[]): Promise<boolean> => {
@@ -186,16 +224,36 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
    */
   const tekrariAtla = useCallback(
     async (islem: Islem): Promise<void> => {
-      const kural = tanimlar.duzenliler.find((d) => d.id === islem.duzenliId);
-      if (!kural) return;
-      const yeni = tekrarAtla(kural, islem.tarih);
-      if (yeni === kural) return;
-      await tanimlariYaz({
-        ...tanimlar,
-        duzenliler: tanimlar.duzenliler.map((d) => (d.id === kural.id ? yeni : d)),
+      if (!islem.duzenliId) return;
+      await tanimlariDegistir((t) => {
+        const kural = t.duzenliler.find((d) => d.id === islem.duzenliId);
+        const yeni = kural && tekrarAtla(kural, islem.tarih);
+        if (!kural || yeni === kural) return t;
+        return { ...t, duzenliler: t.duzenliler.map((d) => (d.id === kural.id ? yeni! : d)) };
       });
     },
-    [tanimlar, tanimlariYaz],
+    [tanimlariDegistir],
+  );
+
+  const islemGeriYukle = useCallback(
+    async (islem: Islem): Promise<boolean> => {
+      const ok = await ayiDegistir(ayinAdi(islem.tarih), (m) => [...m.filter((i) => i.id !== islem.id), islem]);
+      // Silerken kural bu tekrarı "yapıldı" saymıştı; geri gelince işaret kalkmalı.
+      if (ok && islem.duzenliId) {
+        await tanimlariDegistir((t) => {
+          const kural = t.duzenliler.find((d) => d.id === islem.duzenliId);
+          if (!kural?.atlananlar?.includes(islem.tarih)) return t;
+          const atlananlar = kural.atlananlar.filter((x) => x !== islem.tarih);
+          return {
+            ...t,
+            duzenliler: t.duzenliler.map((d) => (d.id === kural.id ? { ...d, atlananlar } : d)),
+          };
+        });
+      }
+      await tazele();
+      return ok;
+    },
+    [ayiDegistir, tanimlariDegistir, tazele],
   );
 
   const islemKaydet = useCallback(
@@ -262,16 +320,43 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
    * ekliyor, kuralı olmayan bir işaret o tutarı ikisinden de düşürürdü.
    */
   const duzenliBaginiKaldir = useCallback(
-    async (duzenliId: string) => {
-      const aylar = new Set(islemler.filter((i) => i.duzenliId === duzenliId).map((i) => ayinAdi(i.tarih)));
+    async (duzenliId: string): Promise<string[] | null> => {
+      const bagli = islemler.filter((i) => i.duzenliId === duzenliId);
+      const aylar = new Set(bagli.map((i) => ayinAdi(i.tarih)));
+      let tumu = true;
       for (const ay of aylar) {
-        await ayiDegistir(ay, (m) =>
+        const ok = await ayiDegistir(ay, (m) =>
           m.map((i) => (i.duzenliId === duzenliId ? { ...i, duzenliId: undefined } : i)),
         );
+        if (!ok) tumu = false;
       }
       await tazele();
+      return tumu ? bagli.map((i) => i.id) : null;
     },
     [islemler, ayiDegistir, tazele],
+  );
+
+  const duzenliBaginiGeriKoy = useCallback(
+    async (duzenliId: string, islemIdleri: string[]): Promise<boolean> => {
+      const k = kopru();
+      if (!k) return false;
+      const idler = new Set(islemIdleri);
+      // Ay, silme anındaki kayıttan değil diskten bulunur: işlem arada başka
+      // aya taşınmış olabilir. Bağlanamayan tek kayıt bile varsa başarı sayılmaz.
+      const dosyalar = (await k.veri.listele("harcama")).filter((d) => AY_DESENI.test(d));
+      let baglanan = 0;
+      let tumu = true;
+      for (const d of dosyalar) {
+        const ay = d.slice(0, 7);
+        const icinde = normalizeAy((await k.veri.oku(dosyaYolu(ay))).veri, ay).filter((i) => idler.has(i.id)).length;
+        if (icinde === 0) continue;
+        if (await ayiDegistir(ay, (m) => m.map((i) => (idler.has(i.id) ? { ...i, duzenliId } : i)))) baglanan += icinde;
+        else tumu = false;
+      }
+      await tazele();
+      return tumu && baglanan === idler.size;
+    },
+    [ayiDegistir, tazele],
   );
 
   /**
@@ -327,10 +412,13 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     yuklendi,
     tazele,
     tanimlariYaz,
+    tanimlariDegistir,
     islemKaydet,
     islemlerEkle,
     islemSil,
+    islemGeriYukle,
     duzenliBaginiKaldir,
+    duzenliBaginiGeriKoy,
     partiGeriAl,
   };
 }

@@ -4,6 +4,7 @@ import { donemIceren, donemIcerir, donemKaydir, donemEtiketi } from "@ortak/done
 import { paraIsaretli, paraMetni } from "@ortak/para";
 import { csvUret, donemIslemleri, ODEME_ADLARI, type Islem, type Tur } from "@ortak/harcama";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { silVeBildir } from "@/ui/toast";
 import { useDonemKaydirmasi, useHarcama } from "./kanca";
 import { bosIslem, hesapSirasi, karsiTaraflar, kategoriSirasi, kisaTarih } from "./tipler";
 import { DonemGezinti } from "./parcalar/DonemGezinti";
@@ -69,11 +70,12 @@ export function Islemler() {
     URL.revokeObjectURL(adres);
   };
 
-  const sil = (islem: Islem) => {
-    if (confirm(`${kisaTarih(islem.tarih)} · ${paraMetni(islem.kurus, simge)} kaydı silinecek.`)) {
-      void defter.islemSil(islem.id);
-    }
-  };
+  const sil = (islem: Islem) =>
+    silVeBildir({
+      metin: `${kisaTarih(islem.tarih)} · ${paraMetni(islem.kurus, simge)} kaydı silindi.`,
+      sil: () => defter.islemSil(islem.id),
+      geriKoy: () => defter.islemGeriYukle(islem),
+    });
 
   if (defter.yukleniyor) {
     return (

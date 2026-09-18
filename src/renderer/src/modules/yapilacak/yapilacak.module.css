@@ -191,27 +191,6 @@
   opacity: 1;
 }
 
-/* --- geri alma şeridi --------------------------------------------------- */
-
-.geriAl {
-  display: flex;
-  align-items: center;
-  gap: var(--b3);
-  padding: var(--b3) var(--b5);
-  background: var(--iyi-yumusak);
-  color: var(--iyi);
-  font-size: var(--y4);
-  border-bottom: 1px solid var(--cizgi);
-}
-
-.geriAlAd {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* --- hata şeridi -------------------------------------------------------- */
 
 .hataSerit {

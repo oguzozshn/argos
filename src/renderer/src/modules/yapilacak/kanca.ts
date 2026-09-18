@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PLAN_PROJESI, type TodoistGorev, type TodoistProje } from "@ortak/tipler";
+import { silVeBildir } from "@/ui/toast";
 import { kopru } from "@/veri/kanca";
 
 /**
@@ -60,9 +61,6 @@ export function useGorevler(projeId: string | null) {
   const [gorevler, setGorevler] = useState<TodoistGorev[]>([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hata, setHata] = useState<string | null>(null);
-  /** Az önce kapatılan görev — geri alma şeridi için. */
-  const [sonKapatilan, setSonKapatilan] = useState<TodoistGorev | null>(null);
-  const zamanlayici = useRef<number | null>(null);
 
   const tazele = useCallback(async () => {
     const k = kopru();
@@ -85,37 +83,37 @@ export function useGorevler(projeId: string | null) {
     void tazele();
   }, [tazele]);
 
-  useEffect(() => () => window.clearTimeout(zamanlayici.current ?? undefined), []);
-
-  const kapat = useCallback(async (g: TodoistGorev) => {
+  /** Görevi tamamlar; alttaki bildirimden (ya da Ctrl+Z) geri alınabilir. */
+  const kapat = useCallback((g: TodoistGorev) => {
     const k = kopru();
     if (!k) return;
     // İyimser: satır hemen listeden çıkar, hata dönerse geri gelir.
     setGorevler((x) => x.filter((y) => y.id !== g.id));
-    setSonKapatilan(g);
-    window.clearTimeout(zamanlayici.current ?? undefined);
-    zamanlayici.current = window.setTimeout(() => setSonKapatilan(null), 9000);
-    try {
-      await k.todoist.kapat(g.id);
-    } catch (e) {
-      setHata(mesaj(e));
-      setGorevler((x) => [g, ...x]);
-      setSonKapatilan(null);
-    }
+    silVeBildir({
+      metin: `"${g.icerik}" tamamlandı.`,
+      hataMetni: "Görev tamamlanamadı.",
+      sil: async () => {
+        try {
+          await k.todoist.kapat(g.id);
+          return true;
+        } catch (e) {
+          setHata(mesaj(e));
+          setGorevler((x) => [g, ...x]);
+          return false;
+        }
+      },
+      geriKoy: async () => {
+        try {
+          await k.todoist.ac(g.id);
+          setGorevler((x) => [g, ...x.filter((y) => y.id !== g.id)]);
+          return true;
+        } catch (e) {
+          setHata(mesaj(e));
+          return false;
+        }
+      },
+    });
   }, []);
-
-  const geriAl = useCallback(async () => {
-    const k = kopru();
-    if (!k || !sonKapatilan) return;
-    const g = sonKapatilan;
-    setSonKapatilan(null);
-    try {
-      await k.todoist.ac(g.id);
-      setGorevler((x) => [g, ...x]);
-    } catch (e) {
-      setHata(mesaj(e));
-    }
-  }, [sonKapatilan]);
 
   const ekle = useCallback(
     async (icerik: string, tarihMetni?: string) => {
@@ -144,7 +142,7 @@ export function useGorevler(projeId: string | null) {
     }
   }, []);
 
-  return { gorevler, yukleniyor, hata, sonKapatilan, tazele, kapat, geriAl, ekle, tarihVer };
+  return { gorevler, yukleniyor, hata, tazele, kapat, ekle, tarihVer };
 }
 
 /* --- tarihe göre öbekleme ---------------------------------------------- */

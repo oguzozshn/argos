@@ -3,6 +3,7 @@ import { Gamepad2, LayoutGrid, List, Plus, SlidersHorizontal, Trash2 } from "luc
 import { useEffect, useMemo, useState } from "react";
 import { bugunIso } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { silVeBildir } from "@/ui/toast";
 import { maddeGecisi } from "@/ui/hareket";
 import { useDosya } from "@/veri/kanca";
 import { DurumDuzenleyici } from "./DurumDuzenleyici";
@@ -147,7 +148,8 @@ function AlanEkrani({
 }: {
   slug: string;
   yan: React.ReactNode;
-  onAlanSil: () => void;
+  /** Silinen alanın son hâli geri alma için verilir. */
+  onAlanSil: (alan: Alan) => void;
 }) {
   const { veri: ham, yukleniyor, hata, disaridanDegisti, yaz } = useDosya<unknown>(dosyaYolu(slug));
   const [yeni, setYeni] = useState("");
@@ -267,7 +269,7 @@ function AlanEkrani({
               tur="sade"
               ikon={<Trash2 size={15} />}
               onClick={() => {
-                if (confirm(`"${veri.ad}" alanı silinecek. Yedeği .bak olarak kalır.`)) onAlanSil();
+                onAlanSil(veri);
               }}
               title="Alanı sil"
               aria-label="Alanı sil"
@@ -449,7 +451,18 @@ export function Hobiler() {
         <AlanEkrani
           key={secili}
           slug={secili}
-          onAlanSil={() => void alanSil(secili)}
+          onAlanSil={(alan) => {
+            const slug = secili;
+            silVeBildir({
+              metin: `"${alan.ad}" alanı silindi.`,
+              sil: () => alanSil(slug),
+              geriKoy: async () => {
+                const ok = await alanEkle(slug, alan);
+                if (ok) setSecili(slug);
+                return ok;
+              },
+            });
+          }}
           yan={
             <AlanListesi
               alanlar={alanlar}

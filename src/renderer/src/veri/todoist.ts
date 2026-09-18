@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TodoistGorev } from "@ortak/tipler";
+import { silVeBildir } from "@/ui/toast";
 import { kopru } from "./kanca";
 
 /**
@@ -121,14 +122,35 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
       const k = kopru();
       if (!k) return;
       const gecikmisMiydi = (g.tarih ?? "").slice(0, 10) < bugun;
+      const geriEkle = () => {
+        setGorevler((x) => [g, ...x.filter((y) => y.id !== g.id)]);
+        if (gecikmisMiydi) setGecikmisler((x) => [g, ...x.filter((y) => y.id !== g.id)]);
+      };
       cikar(g.id);
-      try {
-        await k.todoist.kapat(g.id);
-      } catch (e) {
-        setHata(mesaj(e));
-        setGorevler((x) => [g, ...x]);
-        if (gecikmisMiydi) setGecikmisler((x) => [g, ...x]);
-      }
+      silVeBildir({
+        metin: `"${g.icerik}" tamamlandı.`,
+        hataMetni: "Görev tamamlanamadı.",
+        sil: async () => {
+          try {
+            await k.todoist.kapat(g.id);
+            return true;
+          } catch (e) {
+            setHata(mesaj(e));
+            geriEkle();
+            return false;
+          }
+        },
+        geriKoy: async () => {
+          try {
+            await k.todoist.ac(g.id);
+            geriEkle();
+            return true;
+          } catch (e) {
+            setHata(mesaj(e));
+            return false;
+          }
+        },
+      });
     },
     [bugun, cikar],
   );

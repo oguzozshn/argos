@@ -32,6 +32,12 @@ export interface DosyaDurumu<T> {
   /** Dışarıdan değişiklik geldi ve tazelendi — arayüz kısa bir not gösterebilir. */
   disaridanDegisti: boolean;
   yaz: (yeni: T) => Promise<boolean>;
+  /**
+   * Son bilinen hâl üzerinden değişiklik. Geri alma gibi, bileşenin eski bir
+   * çiziminde kurulup saniyeler sonra çalışan işler için: o arada yapılan
+   * düzenlemeleri ezmesin.
+   */
+  degistir: (f: (mevcut: T | null) => T) => Promise<boolean>;
   tazele: () => Promise<void>;
 }
 
@@ -45,9 +51,23 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
   // iyimser güncellemeler üst üste bindiği için "bir önceki" değer yetmez.
   const diskteki = useRef<T | null>(null);
 
+  // En son bilinen hâl, iyimser yazmalar dahil. Çizimi beklemez: aynı tikte
+  // arka arkaya iki `degistir` ikincisini bayat hâl üstüne kurmasın.
+  const sonVeri = useRef<T | null>(null);
+  // Bileşen ekrandayken değişiklik kendi kuyruğundan geçer; ekrandan
+  // ayrıldıktan sonra (geri alma) diskten okunup yazılır.
+  const bagli = useRef(true);
+  useEffect(() => {
+    bagli.current = true;
+    return () => {
+      bagli.current = false;
+    };
+  }, []);
+
   const uygula = useCallback((o: Okuma<T>) => {
     mtime.current = o.mtime;
     diskteki.current = o.veri;
+    sonVeri.current = o.veri;
     setVeri(o.veri);
   }, []);
 
@@ -125,6 +145,7 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
       }
 
       // İyimser güncelleme: ekran beklemez, hata dönerse geri alınır.
+      sonVeri.current = yeni;
       setVeri(yeni);
 
       const sonuc = await kuyruk(yeni);
@@ -137,6 +158,7 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
         uygula(sonuc.guncel as Okuma<T>);
         setHata("Dosya dışarıdan değişti — güncel hâli yüklendi, değişikliğin yazılmadı.");
       } else {
+        sonVeri.current = diskteki.current;
         setVeri(diskteki.current);
         setHata(sonuc.mesaj);
       }
@@ -145,7 +167,32 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
     [kuyruk, uygula],
   );
 
-  return { veri, yukleniyor, hata, disaridanDegisti, yaz, tazele };
+  const degistir = useCallback(
+    (f: (mevcut: T | null) => T): Promise<boolean> =>
+      bagli.current ? yaz(f(sonVeri.current)) : dosyaDegistir<T>(yol, f),
+    [yaz, yol],
+  );
+
+  return { veri, yukleniyor, hata, disaridanDegisti, yaz, degistir, tazele };
+}
+
+/**
+ * Kancaya bağlı olmadan oku → değiştir → yaz. Arada dosya değişmişse
+ * (başka bir ekran ya da app.py yazdı) bir kez daha, güncel hâl üstüne denenir.
+ *
+ * Geri alma gibi, bileşen ekrandan ayrıldıktan sonra çalışan işler için:
+ * kancanın elindeki damga o zamana bayatlamış olabilir.
+ */
+export async function dosyaDegistir<T>(yol: string, f: (mevcut: T | null) => T): Promise<boolean> {
+  const k = kopru();
+  if (!k) return false;
+  for (let deneme = 0; deneme < 2; deneme++) {
+    const o = await k.veri.oku<T>(yol);
+    const sonuc = await k.veri.yaz(yol, f(o.veri), o.mtime);
+    if (sonuc.ok) return true;
+    if (sonuc.sebep !== "cakisma") return false;
+  }
+  return false;
 }
 
 /**

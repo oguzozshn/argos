@@ -3,6 +3,7 @@ import { Archive, ArchiveRestore, Check, ChevronDown, ChevronUp, Pencil, Plus, T
 import { paraCoz, paraGiris, paraMetni } from "@ortak/para";
 import { HESAP_TURU_ADLARI, hesapBakiyeleri, type Hesap, type HesapTuru } from "@ortak/harcama";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Satir, Yuklenirken } from "@/ui/bilesenler";
+import { silVeBildir } from "@/ui/toast";
 import { useHarcama } from "./kanca";
 import { hesapSirasi, kisaTarih, yeniId } from "./tipler";
 import s from "./harcama.module.css";
@@ -59,10 +60,15 @@ export function Hesaplar() {
     yaz(liste.map((h, i) => ({ ...h, sira: i + 1 })));
   };
 
-  const sil = (hesap: Hesap) => {
-    if (!confirm(`"${hesap.ad}" hesabı silinecek.`)) return;
-    yaz(tanimlar.hesaplar.filter((h) => h.id !== hesap.id));
-  };
+  const sil = (hesap: Hesap) =>
+    silVeBildir({
+      metin: `"${hesap.ad}" hesabı silindi.`,
+      sil: () => defter.tanimlariDegistir((t) => ({ ...t, hesaplar: t.hesaplar.filter((h) => h.id !== hesap.id) })),
+      geriKoy: () =>
+        defter.tanimlariDegistir((t) =>
+          t.hesaplar.some((h) => h.id === hesap.id) ? t : { ...t, hesaplar: [...t.hesaplar, hesap] },
+        ),
+    });
 
   const arsivle = (hesap: Hesap, arsiv: boolean) =>
     yaz(tanimlar.hesaplar.map((h) => (h.id === hesap.id ? { ...h, arsiv } : h)));

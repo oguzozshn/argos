@@ -68,11 +68,12 @@ export function useAlanlar() {
   );
 
   const alanSil = useCallback(
-    async (slug: string) => {
+    async (slug: string): Promise<boolean> => {
       const k = kopru();
-      if (!k) return;
-      await k.veri.sil(dosyaYolu(slug));
+      if (!k) return false;
+      const { ok } = await k.veri.sil(dosyaYolu(slug));
       await tazele();
+      return ok;
     },
     [tazele],
   );
