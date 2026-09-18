@@ -144,11 +144,19 @@ function cozXml(metin: string): string {
   });
 }
 
+/**
+ * `<t>` parçaları. Boş parça `<t/>` diye yazılabiliyor; `[^>]*` onun eğik
+ * çizgisini yutup bir sonraki `</t>`'ye kadar koşmasın diye önce o yakalanır.
+ */
+function metinParcalari(xml: string): string {
+  return [...xml.matchAll(/<t\b[^>]*?\/>|<t\b[^>]*>([\s\S]*?)<\/t>/g)].map((t) => (t[1] ? cozXml(t[1]) : "")).join("");
+}
+
 /** `<si>` başına bütün `<t>` parçaları birleştirilir — zengin metin parçalara bölünmüş olabilir. */
 function paylasilanDizgeler(xml: string): string[] {
   if (!xml) return [];
-  return [...xml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>|<si\b[^>]*\/>/g)].map((e) =>
-    e[1] ? [...e[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map((t) => cozXml(t[1]!)).join("") : "",
+  return [...xml.matchAll(/<si\b[^>]*?\/>|<si\b[^>]*>([\s\S]*?)<\/si>/g)].map((e) =>
+    e[1] ? metinParcalari(e[1]) : "",
   );
 }
 
@@ -203,7 +211,7 @@ function sayfaSatirlari(
   for (const satirEsi of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
     const hucreler: string[] = [];
 
-    for (const hucreEsi of satirEsi[1]!.matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    for (const hucreEsi of satirEsi[1]!.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
       const ozellik = hucreEsi[1]!;
       const govde = hucreEsi[2] ?? "";
 
@@ -222,7 +230,7 @@ function sayfaSatirlari(
 
 /**
  * Tarihler ISO olarak geri yazılıyor ki tarih ayrıştırıcısı tartışmasız bir
- * değer görsün; sayılar para ayrıştırıcısının anladığı noktalı biçimde kalıyor.
+ * değer görsün; sayılar para ayrıştırıcısının tartışmasız okuduğu virgüllü biçimde.
  */
 function hucreDegeri(
   ozellik: string,
@@ -234,7 +242,7 @@ function hucreDegeri(
   const tur = /t="([^"]+)"/.exec(ozellik)?.[1] ?? "n";
 
   if (tur === "inlineStr") {
-    return [...govde.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map((e) => cozXml(e[1]!)).join("").trim();
+    return metinParcalari(govde).trim();
   }
 
   const ham = /<v\b[^>]*>([\s\S]*?)<\/v>/.exec(govde)?.[1];
@@ -250,8 +258,11 @@ function hucreDegeri(
   const bicim = Number(/s="(\d+)"/.exec(ozellik)?.[1] ?? -1);
   if (bicim >= 0 && tarihMi(bicim) && sayi > 0) return seriyiIso(sayi, bin904);
 
-  // "0.############" — kaynaktaki biçimin aynısı: gereksiz sıfır kuyruğu yok.
-  return String(Number(sayi.toFixed(12)));
+  // "0.############" — gereksiz sıfır kuyruğu yok. Ondalık ayracı virgül:
+  // para ayrıştırıcısı noktadan sonra tam üç rakamı binlik sayıyor, "12.345"
+  // 12,345 ₺ değil 12.345 ₺ okunurdu. Hücrede binlik ayracı hiç yok, virgül
+  // tartışmasız ondalık.
+  return String(Number(sayi.toFixed(12))).replace(".", ",");
 }
 
 /**
@@ -259,8 +270,10 @@ function hucreDegeri(
  * duruyor; 61'den sonrası bir gün geri alınarak gerçek takvime oturuyor.
  */
 function seriyiIso(seri: number, bin904: boolean): string {
-  const gun = Math.floor(seri) + (bin904 ? 1462 : 0);
-  const duzeltilmis = !bin904 && gun >= 61 ? gun - 1 : gun;
+  const gun = Math.floor(seri);
+  // 1904 sisteminde sayaç 1 Ocak 1904'te 0'dan başlıyor ve sahte artık gün yok.
+  if (bin904) return new Date(Date.UTC(1904, 0, 1) + gun * 86400000).toISOString().slice(0, 10);
+  const duzeltilmis = gun >= 61 ? gun - 1 : gun;
   const tarih = new Date(Date.UTC(1899, 11, 31) + duzeltilmis * 86400000);
   return tarih.toISOString().slice(0, 10);
 }

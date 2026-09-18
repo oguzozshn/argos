@@ -102,13 +102,15 @@ export function ayraciSez(satirlar: string[]): string {
 
   for (const aday of ADAY_AYRACLAR) {
     const sayilar = ornek.map((s) => satirBol(s, aday).length);
-    const alan = Math.max(...sayilar);
-    if (alan < 2) continue;
 
-    // Tutarlılık ham sütun sayısından önemli: açıklamanın içindeki bir virgül
-    // yoksa gerçek noktalı virgülü yenerdi.
-    const tutarli = sayilar.filter((s) => s === alan).length;
-    const puan = alan * 100 + tutarli;
+    // Tutarlılık ham sütun sayısından önemli: açıklamanın içindeki ya da
+    // başlık bloğundaki birkaç virgül gerçek noktalı virgülü yenmesin. En çok
+    // satırda tekrarlanan sütun sayısı (eşitlikte büyüğü) esas alınır.
+    const siklik = new Map<number, number>();
+    for (const n of sayilar) if (n >= 2) siklik.set(n, (siklik.get(n) ?? 0) + 1);
+    if (siklik.size === 0) continue;
+    const [alan, tutarli] = [...siklik].reduce((a, b) => (b[1] > a[1] || (b[1] === a[1] && b[0] > a[0]) ? b : a));
+    const puan = tutarli * 1000 + Math.min(alan, 999);
 
     if (puan > enIyiPuan) {
       enIyiPuan = puan;
@@ -264,19 +266,21 @@ const PARA_ISARETLERI = ["TL", "TRY", "₺", "TRL"];
 export function ekstreTutari(metin?: string | null): number | null {
   if (!metin || metin.trim() === "") return null;
 
-  let deger = metin.trim();
+  // U+2212 matematik eksisi: uygulamanın kendi tutar metni onu yazıyor.
+  let deger = metin.trim().replace(/−/g, "-");
   let eksi = false;
 
-  if (deger.startsWith("(") && deger.endsWith(")")) {
-    eksi = true;
-    deger = deger.slice(1, -1);
-  }
-
-  // Para birimi işaretleri gürültü; işaretlere bakmadan önce temizlenir.
+  // Para birimi işaretleri gürültü; parantez ve işaretlere bakmadan önce
+  // temizlenir — "(1.234,56) TL" de negatiftir.
   for (const isaret of PARA_ISARETLERI) {
     deger = deger.replace(new RegExp(isaret.replace("₺", "\\u20ba"), "gi"), "");
   }
   deger = deger.trim();
+
+  if (deger.startsWith("(") && deger.endsWith(")")) {
+    eksi = true;
+    deger = deger.slice(1, -1).trim();
+  }
 
   if (deger.endsWith("-")) {
     eksi = true;

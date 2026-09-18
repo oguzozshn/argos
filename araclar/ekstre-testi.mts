@@ -87,6 +87,11 @@ for (const [girdi, beklenen] of [
   ["+1.234,56", 123456],
   ["1.234,56 TL", 123456],
   ["-18.500,00 ₺", -1850000],
+  // Para birimi parantezin dışında kalınca da negatif.
+  ["(1.234,56) TL", -123456],
+  ["TL (1.234,56)", -123456],
+  // U+2212: uygulamanın kendi tutar metninin eksisi.
+  ["−1.234,56", -123456],
 ] as [string, number][]) {
   kontrol(`"${girdi}" → ${beklenen}`, ekstreTutari(girdi) === beklenen, String(ekstreTutari(girdi)));
 }
@@ -122,6 +127,15 @@ kontrol(
 kontrol(
   "çift tırnak gerçek tırnaktır",
   JSON.stringify(satirBol('"A ""B"" C";1', ";")) === JSON.stringify(['A "B" C', "1"]),
+);
+kontrol(
+  "başlık bloğundaki virgüller noktalı virgülü yenmez",
+  ayraciSez([
+    "Musteri: Ali, Veli, Adres: X Mah., Y Sok., No 5, Kadikoy",
+    "Tarih;Aciklama;Tutar;Bakiye",
+    "03.08.2026;MIGROS;-1.234,56;10.000,00",
+    "04.08.2026;SHELL;-500,00;9.500,00",
+  ]) === ";",
 );
 kontrol(
   "dosya boyunca tutarlı olan ayraç seçilir",
@@ -514,13 +528,13 @@ const ORNEK_XLSX = xlsxKur(
     hucre(tablo.satirlar[0]!, 1) === "MİGROS KADIKÖY",
     hucre(tablo.satirlar[0]!, 1),
   );
-  kontrol("sayı noktalı biçimde kalır", hucre(tablo.satirlar[0]!, 2) === "-125.4", hucre(tablo.satirlar[0]!, 2));
+  kontrol("sayı virgül ondalıkla gelir", hucre(tablo.satirlar[0]!, 2) === "-125,4", hucre(tablo.satirlar[0]!, 2));
   kontrol("satır içi metin okunur", hucre(tablo.satirlar[1]!, 1) === "ŞOK MARKET", hucre(tablo.satirlar[1]!, 1));
   kontrol("formül sonucu değeri kullanılır", hucre(tablo.satirlar[1]!, 2) === "-85");
   // 1900'ün var olmayan 29 Şubat'ı seri 60'ta duruyor; iki yanı da doğru düşmeli.
   kontrol("gömülü tarih biçimi ve 1900 kayması", hucre(tablo.satirlar[1]!, 0) === "1900-02-28", hucre(tablo.satirlar[1]!, 0));
   kontrol("60'tan sonraki seri bir gün geri alınır", hucre(tablo.satirlar[2]!, 0) === "1900-03-01", hucre(tablo.satirlar[2]!, 0));
-  kontrol("yazılmamış hücre boş gelir", hucre(tablo.satirlar[2]!, 1) === "" && hucre(tablo.satirlar[2]!, 2) === "1250.5");
+  kontrol("yazılmamış hücre boş gelir", hucre(tablo.satirlar[2]!, 1) === "" && hucre(tablo.satirlar[2]!, 2) === "1250,5");
 }
 
 {
@@ -532,6 +546,42 @@ const ORNEK_XLSX = xlsxKur(
     satirlar.length === 3 && satirlar[0]!.tarih === "2026-08-03" && satirlar[0]!.isaretliKurus === -12540,
     JSON.stringify(satirlar.map((s) => [s.tarih, s.isaretliKurus, s.hata])),
   );
+}
+
+{
+  // Excel boş ama biçimli hücreyi `<c .../>` diye yazıyor, boş dizgeyi de
+  // `<si/>`. İkisi de sonraki hücreleri kaydırıyordu.
+  const tablo = await xlsxTablosu(
+    xlsxKur({
+      "xl/workbook.xml":
+        '<workbook xmlns:r="r"><workbookPr date1904="1"/><sheets><sheet name="E" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      "xl/_rels/workbook.xml.rels": '<Relationships><Relationship Id="rId1" Target="worksheets/s.xml"/></Relationships>',
+      "xl/sharedStrings.xml":
+        '<sst><si><t>Tarih</t></si><si/><si><t>Açıklama</t></si><si><t>Tutar</t></si><si><t>MIGROS</t></si></sst>',
+      "xl/styles.xml": '<styleSheet><cellXfs count="3"><xf numFmtId="0"/><xf numFmtId="14"/><xf numFmtId="0"/></cellXfs></styleSheet>',
+      "xl/worksheets/s.xml":
+        "<worksheet><sheetData>" +
+        '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" s="2"/><c r="C1" t="s"><v>2</v></c><c r="D1" t="s"><v>3</v></c></row>' +
+        '<row r="2"><c r="A2" s="1"><v>1</v></c><c r="B2" s="2"/><c r="C2" t="s"><v>4</v></c><c r="D2"><v>-12.345</v></c></row>' +
+        '<row r="3"><c r="A3" s="1"><v>44774</v></c><c r="B3" t="s"><v>1</v></c><c r="C3" t="inlineStr"><is><t/></is></c><c r="D3"><v>5</v></c></row>' +
+        "</sheetData></worksheet>",
+    }),
+  );
+  kontrol(
+    "boş biçimli hücre sonrakileri kaydırmaz",
+    JSON.stringify(tablo.sutunlar) === JSON.stringify(["Tarih", "Sütun 2", "Açıklama", "Tutar"]) &&
+      hucre(tablo.satirlar[0]!, 1) === "" &&
+      hucre(tablo.satirlar[0]!, 2) === "MIGROS",
+    JSON.stringify([tablo.sutunlar, tablo.satirlar]),
+  );
+  kontrol("boş <si/> sonraki dizgeleri kaydırmaz", hucre(tablo.satirlar[1]!, 1) === "", hucre(tablo.satirlar[1]!, 1));
+  kontrol(
+    "üç ondalıklı sayı binlik sanılmaz",
+    ekstreTutari(hucre(tablo.satirlar[0]!, 3)) === -1235,
+    `${hucre(tablo.satirlar[0]!, 3)} → ${ekstreTutari(hucre(tablo.satirlar[0]!, 3))}`,
+  );
+  kontrol("1904 sisteminde seri 1 = 1904-01-02", hucre(tablo.satirlar[0]!, 0) === "1904-01-02", hucre(tablo.satirlar[0]!, 0));
+  kontrol("1904 sisteminde 44774 = 2026-08-02", hucre(tablo.satirlar[1]!, 0) === "2026-08-02", hucre(tablo.satirlar[1]!, 0));
 }
 
 kontrol(

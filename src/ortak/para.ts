@@ -28,7 +28,7 @@ const TAM_BICIM = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0, use
 export function paraCoz(metin: string | null | undefined): number | null {
   if (metin == null || metin.trim() === "") return null;
 
-  const s = [...metin].filter((c) => (c >= "0" && c <= "9") || c === "." || c === "," || c === "-" || c === "+").join("");
+  const s = [...metin.replace(/−/g, "-")].filter((c) => (c >= "0" && c <= "9") || c === "." || c === "," || c === "-" || c === "+").join("");
   if (s.length === 0) return null;
 
   const sonNokta = s.lastIndexOf(".");
