@@ -16,6 +16,7 @@ import {
   oran,
   seansId,
   seansKaydi,
+  uykuyuYakala,
   yerelIso,
   type OdakAyarlari,
   type OdakDurumu,
@@ -113,6 +114,49 @@ kontrol(
   seansKaydi({ tip: "kronometre", dk: 5, odakMetin: "  networking  ", simdi: an }).odakMetin ===
     "networking",
 );
+
+console.log("\nUyku");
+const DK = 60_000;
+const u = (dd: OdakDurumu, son: number | null, simdi: number) => uykuyuYakala(dd, son, simdi);
+kontrol(
+  "eşik altındaki boşluk dokunulmaz",
+  u(calisan, T0 + 10 * DK, T0 + 14 * DK).kesinti === null &&
+    u(calisan, T0 + 10 * DK, T0 + 14 * DK).d === calisan,
+);
+{
+  const r = u(calisan, T0 + 10 * DK, T0 + 8 * 60 * DK);
+  kontrol("uzun boşlukta sayaç durur", r.d.calisiyor === false && r.d.basladi === null);
+  kontrol("son görülen ana kadar sayılır", r.d.gecen === 600, `gecen=${r.d.gecen}`);
+  kontrol("kesinti anı son görülme", r.kesinti?.durduAn === T0 + 10 * DK);
+  kontrol("aradaki süre ölçülür", r.kesinti?.sn === (8 * 60 - 10) * 60);
+}
+kontrol(
+  "duraklatılmış sayaca dokunulmaz",
+  u(d({ gecen: 42 }), T0, T0 + 9 * 60 * DK).kesinti === null,
+);
+{
+  // Duraklat → devam: eski nabız yeni başlangıçtan önce kalmış.
+  const devam = d({ calisiyor: true, basladi: T0 + 60 * DK, gecen: 300 });
+  const r = u(devam, T0, T0 + 62 * DK);
+  kontrol("eski nabız yeni başlangıcın önündeyse alarm yok", r.kesinti === null);
+  const r2 = u(devam, T0, T0 + 120 * DK);
+  kontrol(
+    "başlangıçtan sonra uyuduysa önceki birikim korunur",
+    r2.d.gecen === 300 && r2.kesinti?.durduAn === T0 + 60 * DK,
+  );
+}
+kontrol(
+  "nabız hiç atmadıysa başlangıç esas alınır",
+  u(calisan, null, T0 + 60 * DK).kesinti?.sn === 3600,
+);
+{
+  const r = u(d({ mod: "kronometre", calisiyor: true, basladi: T0 }), T0 + 30 * DK, T0 + 300 * DK);
+  kontrol("kronometrede de çalışır", r.d.gecen === 1800 && r.kesinti !== null);
+}
+{
+  const r = u(d({ faz: "mola", calisiyor: true, basladi: T0 }), T0 + 2 * DK, T0 + 200 * DK);
+  kontrol("molada da durur", r.d.calisiyor === false && r.d.faz === "mola" && r.d.gecen === 120);
+}
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
 if (kalan > 0) process.exitCode = 1;

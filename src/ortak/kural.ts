@@ -45,6 +45,28 @@ export interface KuralSeti {
   hatirla?: { gunlukAdet?: number };
 }
 
+/**
+ * `kurallar.json` yoksa ya da `kapasite` eksikse: sınır yok, uyarı yok.
+ * Dosyasız açılışta Hafta ve Takvim `undefined.evGunuMaxSlot` diye
+ * çöküyordu; kural koymamış kullanıcıya uyarı üretmek de yanlış olurdu.
+ *
+ * DİSKE YAZILMAZ: Infinity JSON'da null olur, `dolu >= null` her günü dolu
+ * sayar. Tamamlanmış set yalnızca okumada kullanılır; kurallar.json'a bir
+ * gün yazılacaksa ham hâl yazılmalı.
+ */
+export const SINIRSIZ_KAPASITE: Kapasite = {
+  ofisGunuMaxSlot: Infinity,
+  evGunuMaxSlot: Infinity,
+  haftaSonuMaxSlot: Infinity,
+  haftalikHedefDk: 0,
+  haftalikUstSinirDk: Infinity,
+};
+
+/** Diskten gelen (eksik olabilen) kuralları tam kural setine tamamlar. */
+export function kuralSetiTamamla(k: Partial<KuralSeti> | null | undefined): KuralSeti {
+  return { ...(k ?? {}), kapasite: { ...SINIRSIZ_KAPASITE, ...(k?.kapasite ?? {}) } };
+}
+
 /** "19:15" → 1155. */
 export function dakika(saat: string): number {
   const [s, d] = saat.split(":").map(Number);

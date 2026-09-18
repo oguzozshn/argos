@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { bugunIso } from "@ortak/plan";
 import type { HaftaKayit, Kurallar, Roadmap } from "@ortak/ozet";
-import { kopru } from "@/veri/kanca";
+import { kopru, useBugun } from "@/veri/kanca";
 
 /**
  * Plan verisinin ham hâli: hafta dosyaları, kurallar, yol haritaları,
@@ -21,18 +20,19 @@ export interface PlanVerisi {
   hata: string | null;
 }
 
-const BOS: Omit<PlanVerisi, "yukleniyor" | "hata"> = {
+const BOS: Omit<PlanVerisi, "yukleniyor" | "hata" | "bugun"> = {
   haftalar: [],
   kurallar: {},
   roadmapler: [],
   hedefler: { hedefler: [] },
-  bugun: bugunIso(),
 };
 
 export function usePlanVerisi(): PlanVerisi {
   const [veri, setVeri] = useState(BOS);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hata, setHata] = useState<string | null>(null);
+  // Okumaya bağlı değil: gece yarısı dosya değişmese de gün değişir.
+  const bugun = useBugun();
 
   const tazele = useCallback(async () => {
     const k = kopru();
@@ -75,7 +75,6 @@ export function usePlanVerisi(): PlanVerisi {
         kurallar: kurallar.veri ?? {},
         roadmapler,
         hedefler: hedefler.veri ?? { hedefler: [] },
-        bugun: bugunIso(),
       });
       setHata(null);
     } catch (e) {
@@ -104,7 +103,7 @@ export function usePlanVerisi(): PlanVerisi {
     });
   }, [tazele]);
 
-  return { ...veri, yukleniyor, hata };
+  return { ...veri, bugun, yukleniyor, hata };
 }
 
 /** 165 → "2 sa 45 dk". app.py'deki `saat` yardımcısının karşılığı. */

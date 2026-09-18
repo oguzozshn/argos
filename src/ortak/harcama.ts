@@ -97,6 +97,12 @@ export interface Duzenli {
   /** Dâhil. Null ise açık uçlu. */
   bitis: string | null;
   durdu: boolean;
+  /**
+   * Üretilip sonra silinen ya da tarihi kaydırılan tekrarlar. Bunlar olmadan
+   * `(kural, tarih)` çifti defterde bulunamaz ve kayıt bir sonraki açılışta
+   * yeniden yazılırdı.
+   */
+  atlananlar?: string[];
 }
 
 export interface Ayarlar {

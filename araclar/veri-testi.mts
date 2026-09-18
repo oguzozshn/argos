@@ -10,6 +10,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { ayarCoz, listele, oku, sil, tamYol, yaz } from "../src/main/veri-cekirdek.ts";
+import { disDegisimBekcisi, sirali } from "../src/ortak/sirali.ts";
 
 let gecen = 0;
 let kalan = 0;
@@ -197,6 +198,150 @@ async function calis(): Promise<void> {
     ayarCoz([exeKok], "dataDir", "../veri", kurgu({ [yerel]: `{"dataDir": "/y"}` }), "/ortam") ===
       resolve("/ortam"),
   );
+
+  console.log("\nHızlı yazım (tuş başına yazma)");
+  // Arayüz her tuşta yazıyor. İki yazma aynı eski mtime'la yola çıkarsa
+  // ikincisi kendi yazmamıza çarpar — kullanıcının son harfi kaybolur.
+  const hizli = "hobiler/hizli.json";
+  const hBas = await yaz(kokDizin, hizli, { not: "" }, null);
+  const hMtime = hBas.ok ? hBas.mtime : null;
+  // İkinci tuşun yazması, birincinin cevabı arayüze dönmeden gönderildi:
+  // elindeki mtime hâlâ ilk okumanınki.
+  await new Promise((r) => setTimeout(r, 20));
+  const h1 = await yaz(kokDizin, hizli, { not: "a" }, hMtime);
+  const h2 = await yaz(kokDizin, hizli, { not: "ab" }, hMtime);
+  kontrol(
+    "sırasız: eski mtime'la giden ikinci tuş kendi yazmamıza çarpar (düzeltilen hata)",
+    h1.ok && !h2.ok && h2.sebep === "cakisma",
+  );
+
+  // Kancadaki akışın aynısı: mtime her başarılı yazmadan sonra güncellenir.
+  let mt = (await oku(kokDizin, hizli)).mtime;
+  const kuyruk = sirali(
+    async (v: { not: string }) => {
+      const r = await yaz(kokDizin, hizli, v, mt);
+      if (r.ok) mt = r.mtime;
+      return r;
+    },
+    (r) => r.ok,
+  );
+  const metinler = ["m", "me", "mer", "merh", "merha", "merhab", "merhaba"];
+  const sonuclar = await Promise.all(metinler.map((m) => kuyruk({ not: m })));
+  kontrol(
+    "sıralı: hiçbir yazma çakışmaz",
+    sonuclar.every((r) => r.ok),
+  );
+  kontrol(
+    "sıralı: dosyada son hâl durur",
+    (await oku<{ not: string }>(kokDizin, hizli)).veri?.not === "merhaba",
+  );
+  kontrol("sıralı: kuyruk boşalınca meşgul değil", !kuyruk.mesgul());
+
+  let yazmaSayisi = 0;
+  const sayan = sirali(
+    async (v: { not: string }) => {
+      yazmaSayisi++;
+      const r = await yaz(kokDizin, hizli, v, mt);
+      if (r.ok) mt = r.mtime;
+      return r;
+    },
+    (r) => r.ok,
+  );
+  await Promise.all(metinler.map((m) => sayan({ not: m })));
+  kontrol("uçuş sürerken gelenler birikir (7 tuş, 2 yazma)", yazmaSayisi === 2, `${yazmaSayisi}`);
+
+  // Çakışmadan sonra bekleyen değer yazılmamalı: eski hâlin üstüne kurulu,
+  // yazılırsa dışarıdan geleni ezer.
+  await new Promise((r) => setTimeout(r, 20));
+  await writeFile(join(kokDizin, hizli), JSON.stringify({ not: "disaridan" }) + "\n", "utf8");
+  const [c1, c2] = await Promise.all([kuyruk({ not: "x" }), kuyruk({ not: "xy" })]);
+  kontrol("çakışmada bekleyen de düşer", !c1.ok && !c2.ok);
+  kontrol(
+    "çakışmadan sonra dışarıdan gelen korunur",
+    (await oku<{ not: string }>(kokDizin, hizli)).veri?.not === "disaridan",
+  );
+
+  console.log("\nDış değişim bekçisi (izleyici yarışları)");
+  {
+    // Sahte disk: okuma elle çözülür, böylece yazmanın okumanın ortasına
+    // düşmesi kurulabilir.
+    let disk = { veri: "v0", mtime: 1 };
+    let bilinen: number | null = 1;
+    let okumaBitir: (() => void) | null = null;
+    const oku = () =>
+      new Promise<{ veri: string; mtime: number }>((coz) => {
+        const anlik = { ...disk };
+        okumaBitir = () => coz(anlik);
+      });
+    const uygulananlar: string[] = [];
+    const kuyruk = sirali(
+      async (v: string) => {
+        disk = { veri: v, mtime: disk.mtime + 1 };
+        bilinen = disk.mtime;
+        return { ok: true };
+      },
+      () => true,
+      () => void bekci.kuyrukBosaldi(),
+    );
+    const bekci = disDegisimBekcisi({
+      kuyruk,
+      oku,
+      bilinen: () => bilinen,
+      uygula: (o) => {
+        uygulananlar.push(o.veri);
+        bilinen = o.mtime;
+      },
+    });
+
+    // Olay gelir, okuma başlar; okuma bitmeden kullanıcı yazar.
+    const olay = bekci.olay();
+    await kuyruk("v1");
+    okumaBitir!();
+    await olay;
+    kontrol("okuma sürerken yazıldıysa bayat okuma uygulanmaz", uygulananlar.length === 0);
+    kontrol("bilinen mtime geriye sarılmaz", bilinen === disk.mtime);
+
+    // Yazma uçuştayken dış değişiklik gelir: yutulmamalı.
+    let yazmaBitir: (() => void) | null = null;
+    const yavasKuyruk = sirali(
+      (v: string) =>
+        new Promise<{ ok: boolean }>((coz) => {
+          yazmaBitir = () => {
+            disk = { veri: v, mtime: disk.mtime + 1 };
+            bilinen = disk.mtime;
+            // Eşitleme, bizim yazmamız biter bitmez dosyaya dokundu.
+            disk = { veri: "disaridan", mtime: disk.mtime + 1 };
+            coz({ ok: true });
+          };
+        }),
+      () => true,
+      () => void bekci2.kuyrukBosaldi(),
+    );
+    const bekci2 = disDegisimBekcisi({
+      kuyruk: yavasKuyruk,
+      oku: async () => ({ ...disk }),
+      bilinen: () => bilinen,
+      uygula: (o) => {
+        uygulananlar.push(o.veri);
+        bilinen = o.mtime;
+      },
+    });
+    const yazma = yavasKuyruk("v2");
+    await bekci2.olay(); // yazma sürerken olay: işaretlenir
+    kontrol("yazma sürerken gelen olay hemen uygulanmaz", uygulananlar.length === 0);
+    yazmaBitir!();
+    await yazma;
+    await new Promise((r) => setTimeout(r, 0));
+    kontrol(
+      "kuyruk boşalınca kaçan olaya bakılır ve dış değişiklik uygulanır",
+      uygulananlar.includes("disaridan"),
+      uygulananlar.join(","),
+    );
+
+    const once = uygulananlar.length;
+    await bekci2.olay(); // kendi son hâlimiz: mtime aynı
+    kontrol("kendi yazmamızın olayı dış değişiklik sayılmaz", uygulananlar.length === once);
+  }
 
   await rm(kokDizin, { recursive: true, force: true });
 

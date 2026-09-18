@@ -10,6 +10,7 @@ import {
   gununSlotlari,
   haftalikYuk,
   ihlaller,
+  kuralSetiTamamla,
   yeniSlotId,
   type KuralSeti,
 } from "@ortak/kural";
@@ -206,6 +207,7 @@ function SlotPaneli({
 export function Hafta() {
   const { haftalar, kurallar, bugun, yukleniyor: listeYukleniyor } = usePlanVerisi();
   const [kod, setKod] = useState<string | null>(null);
+  const kuralSeti = useMemo(() => kuralSetiTamamla(kurallar), [kurallar]);
 
   // Açılışta bugünü içeren hafta seçilir; yoksa en sonuncusu.
   useEffect(() => {
@@ -232,7 +234,7 @@ export function Hafta() {
   return (
     <HaftaIcerik
       kod={kod}
-      kurallar={kurallar as KuralSeti}
+      kurallar={kuralSeti}
       bugun={bugun}
       onceki={indeks > 0 ? kodlar[indeks - 1]! : null}
       sonraki={indeks >= 0 && indeks < kodlar.length - 1 ? kodlar[indeks + 1]! : null}
@@ -412,7 +414,7 @@ function HaftaIcerik({
     <>
       <EkranBasi
         baslik={veri.baslik || `Hafta ${veri.hafta}`}
-        altyazi={`${saatMetni(yuk)} planlı · hedef ${saatMetni(hedef)}${
+        altyazi={`${saatMetni(yuk)} planlı${hedef > 0 ? ` · hedef ${saatMetni(hedef)}` : ""}${
           disaridanDegisti ? " · dosya dışarıdan güncellendi" : ""
         }`}
         sag={
@@ -441,6 +443,15 @@ function HaftaIcerik({
       {hata && (
         <div className={s.uyari} style={{ marginBottom: "var(--b5)" }}>
           <span className={s.uyariSatir}>{hata}</span>
+        </div>
+      )}
+
+      {/* Görevler gelmediyse boş gün "görev yok" sanılmasın. */}
+      {td.hata && (
+        <div className={s.uyari} style={{ marginBottom: "var(--b5)" }}>
+          <span className={s.uyariSatir}>
+            Todoist'e ulaşılamadı — görevler gösterilmiyor. ({td.hata})
+          </span>
         </div>
       )}
 

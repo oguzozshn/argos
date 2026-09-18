@@ -200,6 +200,26 @@
   color: var(--metin-soluk);
 }
 
+/* Uyku yüzünden duran sayaç: gözden kaçmasın ama alarm gibi de durmasın. */
+.kesinti {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--b2);
+  max-width: 340px;
+  padding: var(--b3) var(--b4);
+  border: 1px solid var(--uyari);
+  border-radius: var(--r1);
+  font-size: var(--y5);
+  color: var(--metin);
+  text-align: center;
+}
+
+.kesintiDugmeler {
+  display: flex;
+  gap: var(--b2);
+}
+
 /* --- seans listesi ------------------------------------------------------- */
 
 .seans {

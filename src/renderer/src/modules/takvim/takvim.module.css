@@ -750,3 +750,14 @@
 .gorevEkleNotSaat {
   color: var(--vurgu);
 }
+
+/* Todoist'e ulaşılamadığında: plan görünmeye devam eder, görev yokluğu açıklanır. */
+.todoistHata {
+  margin: 0 0 var(--b4);
+  padding: var(--b3) var(--b4);
+  border: 1px solid var(--uyari);
+  border-radius: var(--r2);
+  background: var(--uyari-yumusak);
+  color: var(--uyari);
+  font-size: var(--y4);
+}

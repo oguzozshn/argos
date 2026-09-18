@@ -143,6 +143,9 @@ export function normalizeTanimlar(ham: unknown): Tanimlar {
       baslangic: metin(d.baslangic),
       bitis: typeof d.bitis === "string" ? d.bitis : null,
       durdu: evet(d.durdu),
+      ...(Array.isArray(d.atlananlar)
+        ? { atlananlar: d.atlananlar.filter((x): x is string => typeof x === "string") }
+        : {}),
     };
   });
 

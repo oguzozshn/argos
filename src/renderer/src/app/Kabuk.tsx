@@ -7,6 +7,7 @@ import { ekranGecisi } from "@/ui/hareket";
 import { KOPRU_VAR, kopru, useOrtam } from "@/veri/kanca";
 import { BaslikCubugu } from "./BaslikCubugu";
 import { Bugun } from "./Bugun";
+import { HataSiniri } from "./HataSiniri";
 import { KenarCubugu } from "./KenarCubugu";
 import s from "./kabuk.module.css";
 
@@ -23,25 +24,27 @@ function Yonlendirme() {
         exit="cikis"
         className={s.icerikIc}
       >
-        <Routes location={konum}>
-          <Route path="/" element={<Bugun />} />
-          {moduller.map((m) =>
-            m.rotalar.map((r) => (
-              <Route key={`${m.id}/${r.yol}`} path={`/${m.id}/${r.yol}`} element={<r.Ekran />} />
-            )),
-          )}
-          {/* Modülün köküne gelinirse ilk rotasına gönder. Rotasız modül atlanır. */}
-          {moduller
-            .filter((m) => m.rotalar.length > 0)
-            .map((m) => (
-              <Route
-                key={`${m.id}-kok`}
-                path={`/${m.id}`}
-                element={<Navigate to={`/${m.id}/${m.rotalar[0]!.yol}`} replace />}
-              />
-            ))}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <HataSiniri key={konum.pathname}>
+          <Routes location={konum}>
+            <Route path="/" element={<Bugun />} />
+            {moduller.map((m) =>
+              m.rotalar.map((r) => (
+                <Route key={`${m.id}/${r.yol}`} path={`/${m.id}/${r.yol}`} element={<r.Ekran />} />
+              )),
+            )}
+            {/* Modülün köküne gelinirse ilk rotasına gönder. Rotasız modül atlanır. */}
+            {moduller
+              .filter((m) => m.rotalar.length > 0)
+              .map((m) => (
+                <Route
+                  key={`${m.id}-kok`}
+                  path={`/${m.id}`}
+                  element={<Navigate to={`/${m.id}/${m.rotalar[0]!.yol}`} replace />}
+                />
+              ))}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </HataSiniri>
       </motion.div>
     </AnimatePresence>
   );
@@ -85,8 +88,7 @@ function Icerik() {
                 Klasör seç
               </button>
               <span className={s.seritIkincil}>
-                Seçim{" "}
-                <span className={s.seritYol}>{ortam.ayarYolu}</span> dosyasına yazılır.
+                Seçim <span className={s.seritYol}>{ortam.ayarYolu}</span> dosyasına yazılır.
               </span>
               {/* Nereye bakıldığı da yazılıyor: "bulunamadı" tek başına
                   neyin yanlış gittiğini söylemiyor. */}

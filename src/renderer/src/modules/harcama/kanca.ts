@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { bugunIso } from "@ortak/plan";
-import { vadesiGelenler } from "@ortak/duzenli";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { tekrarAtla, vadesiGelenler } from "@ortak/duzenli";
 import type { Islem, Tanimlar } from "@ortak/harcama";
-import { kopru } from "@/veri/kanca";
+import { kopru, useBugun } from "@/veri/kanca";
 import {
   AY_DESENI,
   TANIM_YOLU,
@@ -76,7 +75,7 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     window.setTimeout(() => kendiYazmalarimiz.current.delete(yol), 5000);
   }, []);
 
-  const bugun = useMemo(() => bugunIso(), []);
+  const bugun = useBugun();
 
   const tazele = useCallback(async () => {
     const k = kopru();
@@ -170,6 +169,24 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     [kendiYazdik],
   );
 
+  /**
+   * Düzenli kuraldan üretilmiş bir kayıt silindi ya da tarihi kaydı: kural o
+   * tekrarı yapılmış saymalı, yoksa bir sonraki açılışta aynı kayıt geri gelir.
+   */
+  const tekrariAtla = useCallback(
+    async (islem: Islem): Promise<void> => {
+      const kural = tanimlar.duzenliler.find((d) => d.id === islem.duzenliId);
+      if (!kural) return;
+      const yeni = tekrarAtla(kural, islem.tarih);
+      if (yeni === kural) return;
+      await tanimlariYaz({
+        ...tanimlar,
+        duzenliler: tanimlar.duzenliler.map((d) => (d.id === kural.id ? yeni : d)),
+      });
+    },
+    [tanimlar, tanimlariYaz],
+  );
+
   const islemKaydet = useCallback(
     async (islem: Islem): Promise<boolean> => {
       const onceki = islemler.find((i) => i.id === islem.id);
@@ -183,10 +200,11 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
       }
 
       const ok = await ayiDegistir(yeniAy, (m) => [...m.filter((i) => i.id !== islem.id), islem]);
+      if (ok && onceki && onceki.tarih !== islem.tarih) await tekrariAtla(onceki);
       await tazele();
       return ok;
     },
-    [islemler, ayiDegistir, tazele],
+    [islemler, ayiDegistir, tekrariAtla, tazele],
   );
 
   const islemlerEkle = useCallback(
@@ -215,10 +233,11 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
       const islem = islemler.find((i) => i.id === id);
       if (!islem) return false;
       const ok = await ayiDegistir(ayinAdi(islem.tarih), (m) => m.filter((i) => i.id !== id));
+      if (ok) await tekrariAtla(islem);
       await tazele();
       return ok;
     },
-    [islemler, ayiDegistir, tazele],
+    [islemler, ayiDegistir, tekrariAtla, tazele],
   );
 
   /**

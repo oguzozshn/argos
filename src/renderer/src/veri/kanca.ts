@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { ArgosApi, Okuma, Ortam } from "@ortak/tipler";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { bugunIso } from "@ortak/plan";
+import { disDegisimBekcisi, sirali } from "@ortak/sirali";
+import type { ArgosApi, Okuma, Ortam, Yazma } from "@ortak/tipler";
 
 /**
  * Bir JSON dosyasını okur, dışarıdan değişirse kendini tazeler, yazarken
@@ -39,11 +41,13 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
   const [hata, setHata] = useState<string | null>(null);
   const [disaridanDegisti, setDisaridan] = useState(false);
   const mtime = useRef<number | null>(null);
-  // Kendi yazmamız izleyiciyi tetikliyor; onu "dışarıdan" saymayalım.
-  const bizYazdik = useRef(false);
+  // Diskte olduğu bilinen son hâl. Yazma hata verirse ekran buna döner —
+  // iyimser güncellemeler üst üste bindiği için "bir önceki" değer yetmez.
+  const diskteki = useRef<T | null>(null);
 
   const uygula = useCallback((o: Okuma<T>) => {
     mtime.current = o.mtime;
+    diskteki.current = o.veri;
     setVeri(o.veri);
   }, []);
 
@@ -69,52 +73,76 @@ export function useDosya<T>(yol: string): DosyaDurumu<T> {
     void tazele();
   }, [tazele]);
 
+  // Tuş başına yazma: bir seferde tek yazma uçuşta, arada gelenler birikir.
+  // Yoksa ikinci yazma eski mtime'la gidip kendi yazmamıza çarpıyordu.
+  // Bekçi izleyici olaylarını ayıklıyor; kuyruk boşalınca kaçan olaya bakıyor.
+  const { kuyruk, bekci } = useMemo(() => {
+    const kuyruk = sirali(
+      async (yeni: T): Promise<Yazma> => {
+        const k = kopru();
+        if (!k) return { ok: false, sebep: "hata", mesaj: KOPRU_YOK };
+        const sonuc = await k.veri.yaz(yol, yeni, mtime.current);
+        if (sonuc.ok) {
+          mtime.current = sonuc.mtime;
+          diskteki.current = yeni;
+        }
+        return sonuc;
+      },
+      (r) => r.ok,
+      () => void bekci.kuyrukBosaldi(),
+    );
+    const bekci = disDegisimBekcisi({
+      kuyruk,
+      oku: async () => {
+        const k = kopru();
+        if (!k) throw new Error(KOPRU_YOK);
+        return k.veri.oku<T>(yol);
+      },
+      bilinen: () => mtime.current,
+      uygula: (o) => {
+        uygula(o);
+        setDisaridan(true);
+        window.setTimeout(() => setDisaridan(false), 4000);
+      },
+    });
+    return { kuyruk, bekci };
+  }, [yol, uygula]);
+
   useEffect(() => {
     const k = kopru();
     if (!k) return;
     return k.degisimDinle((olay) => {
       if (olay.yol !== yol) return;
-      if (bizYazdik.current) {
-        bizYazdik.current = false;
-        return;
-      }
-      setDisaridan(true);
-      void tazele();
-      window.setTimeout(() => setDisaridan(false), 4000);
+      bekci.olay().catch((e: unknown) => setHata(e instanceof Error ? e.message : String(e)));
     });
-  }, [yol, tazele]);
+  }, [yol, bekci]);
 
   const yaz = useCallback(
     async (yeni: T): Promise<boolean> => {
-      const k = kopru();
-      if (!k) {
+      if (!kopru()) {
         setHata(KOPRU_YOK);
         return false;
       }
 
       // İyimser güncelleme: ekran beklemez, hata dönerse geri alınır.
-      const oncekiVeri = veri;
       setVeri(yeni);
-      bizYazdik.current = true;
 
-      const sonuc = await k.veri.yaz(yol, yeni, mtime.current);
+      const sonuc = await kuyruk(yeni);
       if (sonuc.ok) {
-        mtime.current = sonuc.mtime;
         setHata(null);
         return true;
       }
 
-      bizYazdik.current = false;
       if (sonuc.sebep === "cakisma") {
         uygula(sonuc.guncel as Okuma<T>);
         setHata("Dosya dışarıdan değişti — güncel hâli yüklendi, değişikliğin yazılmadı.");
       } else {
-        setVeri(oncekiVeri);
+        setVeri(diskteki.current);
         setHata(sonuc.mesaj);
       }
       return false;
     },
-    [yol, veri, uygula],
+    [kuyruk, uygula],
   );
 
   return { veri, yukleniyor, hata, disaridanDegisti, yaz, tazele };
@@ -157,4 +185,41 @@ export function useOrtam(): [Ortam | null, (o: Ortam) => void] {
     };
   }, []);
   return [o, setO];
+}
+
+/**
+ * Bugünün tarihi (yerel, YYYY-AA-GG) — gece yarısı kendiliğinden değişir.
+ *
+ * Uygulama günlerce açık kalabiliyor. Açılışta bir kez hesaplanan "bugün",
+ * gece yarısından sonra dünü gösteriyor, yeni işlemin varsayılan tarihini de
+ * düne atıyordu. Uyku sonrası zamanlayıcı kaçabileceği için pencere öne
+ * gelince de yeniden bakılır.
+ */
+export function useBugun(): string {
+  const [bugun, setBugun] = useState(bugunIso);
+  useEffect(() => {
+    let zamanlayici: number | undefined;
+    const bak = () => setBugun(bugunIso());
+    const kur = () => {
+      const s = new Date();
+      const yarin = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 1);
+      // Bir saniye pay: tam sınırda tetiklenip hâlâ dünü okumasın.
+      zamanlayici = window.setTimeout(
+        () => {
+          bak();
+          kur();
+        },
+        yarin.getTime() - s.getTime() + 1000,
+      );
+    };
+    kur();
+    window.addEventListener("focus", bak);
+    document.addEventListener("visibilitychange", bak);
+    return () => {
+      window.clearTimeout(zamanlayici);
+      window.removeEventListener("focus", bak);
+      document.removeEventListener("visibilitychange", bak);
+    };
+  }, []);
+  return bugun;
 }

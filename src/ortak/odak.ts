@@ -144,5 +144,42 @@ export function seansKaydi(o: {
   };
 }
 
+/**
+ * İki nabız arasında bu kadar boşluk varsa bilgisayar uyumuş sayılır.
+ * Chromium arka plandaki zamanlayıcıları dakikada bire kadar kısabiliyor;
+ * daha düşük bir eşik uyku olmadan da alarm verirdi.
+ */
+export const UYKU_ESIGI_MS = 5 * 60_000;
+
+/** Uyku yüzünden sayılmayan ara. */
+export interface Kesinti {
+  /** Sayacın durdurulduğu an: son görüldüğü an (ms damgası). */
+  durduAn: number;
+  /** Sayılmayan ara (saniye). */
+  sn: number;
+}
+
+/**
+ * Sayaç damga tabanlı olduğu için uykuda da "işler": kapak kapalıyken
+ * çalışan pomodoro sabah saatlerce fazla mesai gösterir, "Bitir" de onu
+ * seans diye yazardı. Nabızlar arasında eşikten uzun boşluk varsa sayaç
+ * son görüldüğü anda durdurulur; aradaki süre sayılmaz, kullanıcıya sorulur.
+ */
+export function uykuyuYakala(
+  d: OdakDurumu,
+  sonGorulme: number | null,
+  simdi: number,
+  esikMs = UYKU_ESIGI_MS,
+): { d: OdakDurumu; kesinti: Kesinti | null } {
+  if (!d.calisiyor || d.basladi === null) return { d, kesinti: null };
+  // Duraklatıp devam edildiyse eski nabız başlangıçtan geride kalır.
+  const son = Math.max(sonGorulme ?? d.basladi, d.basladi);
+  if (simdi - son <= esikMs) return { d, kesinti: null };
+  return {
+    d: { ...d, gecen: gecenSn(d, son), calisiyor: false, basladi: null },
+    kesinti: { durduAn: son, sn: Math.floor((simdi - son) / 1000) },
+  };
+}
+
 /** Seans kaydedilecek kadar uzun mu (`enAzKayitDk`). */
 export const kayitYeterli = (sn: number, k: OdakAyarlari): boolean => sn >= k.enAzKayitDk * 60;

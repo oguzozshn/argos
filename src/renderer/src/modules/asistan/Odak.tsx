@@ -11,12 +11,13 @@ import {
   kayitYeterli,
   oran,
   seansKaydi,
+  type Kesinti,
   type OdakAyarlari,
-  type OdakDurumu,
   type OdakModu,
 } from "@ortak/odak";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { useDosya } from "@/veri/kanca";
+import { useOdak } from "./odak-store";
 import { saatMetni, usePlanVerisi } from "@/veri/plan";
 import s from "./odak.module.css";
 
@@ -128,6 +129,43 @@ function Flip({ sn }: { sn: number }) {
 
 /* --- ekran --------------------------------------------------------------- */
 
+/**
+ * Uyku yüzünden duran sayaç: sessizce durmak yetmez, kullanıcı neden
+ * durduğunu ve aradaki sürenin ne olacağını görmeli.
+ */
+function KesintiUyarisi({
+  kesinti,
+  sayilabilir,
+  say,
+  kapat,
+}: {
+  kesinti: Kesinti;
+  sayilabilir: boolean;
+  say: () => void;
+  kapat: () => void;
+}) {
+  const an = new Date(kesinti.durduAn);
+  const ara = saatMetni(Math.round(kesinti.sn / 60));
+  return (
+    <div className={s.kesinti} role="status">
+      <span>
+        Bilgisayar uykudayken sayaç durduruldu (son görülme {ikiHane(an.getHours())}:
+        {ikiHane(an.getMinutes())}). Aradaki {ara} sayılmadı.
+      </span>
+      <div className={s.kesintiDugmeler}>
+        {sayilabilir && (
+          <Dugme tur="cizgili" onClick={say}>
+            Aradaki süreyi de say
+          </Dugme>
+        )}
+        <Dugme tur="sade" onClick={kapat}>
+          Tamam
+        </Dugme>
+      </div>
+    </div>
+  );
+}
+
 export function Odak() {
   const { haftalar, kurallar, bugun, yukleniyor } = usePlanVerisi();
 
@@ -184,7 +222,22 @@ function OdakIcerik({
   bugun: string;
 }) {
   const { veri, yaz, hata } = useDosya<HaftaTipi>(`${kod}.json`);
-  const [d, setD] = useState<OdakDurumu>(BOS_DURUM);
+  // Ekrandan çıkınca sayaç kaybolmasın diye durum ekranın dışında tutuluyor.
+  const {
+    d,
+    setD,
+    odakSlot: seciliSlot,
+    setOdakSlot,
+    odakMetin,
+    setOdakMetin,
+    kesinti,
+    nabiz,
+    kesintiyiSay,
+    kesintiyiKapat,
+  } = useOdak();
+  // Seçim ekranlar arasında korunuyor; bu arada slot silinmiş ya da hafta
+  // değişmiş olabilir. Olmayan slota seans yazılmasın.
+  const odakSlot = veri?.slotlar.some((x) => x.id === seciliSlot) ? seciliSlot : "";
   const [simdi, setSimdi] = useState(Date.now());
   const [bicim, setBicim] = useState<Bicim>(() => {
     try {
@@ -195,16 +248,20 @@ function OdakIcerik({
     }
     return (odakAyarlari.varsayilanBicim as Bicim) ?? "dijital";
   });
-  const [odakSlot, setOdakSlot] = useState("");
-  const [odakMetin, setOdakMetin] = useState("");
   const [not, setNot] = useState<string | null>(null);
 
   // Damga tabanlı: her tikte yalnızca "şimdi" tazelenir, sayaç artırılmaz.
+  // Nabız önce atar: uykudan dönülünce ekran saatlerce fazla mesaiyi bir
+  // an bile göstermesin, "hedef doldu" da yanlışlıkla tetiklenmesin.
   useEffect(() => {
+    nabiz();
     if (!d.calisiyor) return;
-    const t = window.setInterval(() => setSimdi(Date.now()), 250);
+    const t = window.setInterval(() => {
+      nabiz();
+      setSimdi(Date.now());
+    }, 250);
     return () => window.clearInterval(t);
-  }, [d.calisiyor]);
+  }, [d.calisiyor, nabiz]);
 
   const bicimSec = (b: Bicim) => {
     setBicim(b);
@@ -253,14 +310,17 @@ function OdakIcerik({
       x.calisiyor ? { ...x, gecen: gecenSn(x, Date.now()), calisiyor: false, basladi: null } : x,
     );
 
+  // Sayaç sıfırlanınca uykudaki arayı eklemenin anlamı kalmaz.
   const sifirla = () => {
     setD((x) => ({ ...x, calisiyor: false, basladi: null, gecen: 0, doldu: false }));
+    kesintiyiKapat();
     setNot(null);
   };
 
   /** Molaya geç: çalışma süresi kaydedilir, tur ilerler. */
   const molayaGec = async () => {
     const sn = gecenSn(d, Date.now());
+    kesintiyiKapat();
     setD((x) => ({
       ...x,
       calisiyor: false,
@@ -278,6 +338,7 @@ function OdakIcerik({
   const bitir = async (kaydet = true) => {
     const sn = gecenSn(d, Date.now());
     const calismaFazi = d.faz === "calisma";
+    kesintiyiKapat();
     setD((x) => ({ ...x, calisiyor: false, basladi: null, gecen: 0, doldu: false }));
     if (kaydet && calismaFazi && kayitYeterli(sn, odakAyarlari)) {
       await seansEkle(Math.round(sn / 60));
@@ -286,10 +347,15 @@ function OdakIcerik({
     }
   };
 
-  const molaGec = () =>
+  const molaGec = () => {
+    kesintiyiKapat();
     setD((x) => ({ ...x, calisiyor: false, basladi: null, gecen: 0, doldu: false, faz: "calisma" }));
+  };
 
-  const modDegis = (m: OdakModu) => setD({ ...BOS_DURUM, mod: m });
+  const modDegis = (m: OdakModu) => {
+    kesintiyiKapat();
+    setD({ ...BOS_DURUM, mod: m });
+  };
 
   const bugunSlotlari = (veri?.slotlar ?? []).filter(
     (x) => veri?.gunler.find((g) => g.no === x.gun)?.isoTarih === bugun,
@@ -385,6 +451,15 @@ function OdakIcerik({
               </Dugme>
             </div>
 
+            {kesinti && (
+              <KesintiUyarisi
+                kesinti={kesinti}
+                // Molada uyunduysa arayı "çalıştım" diye eklemek anlamsız.
+                sayilabilir={d.faz === "calisma"}
+                say={kesintiyiSay}
+                kapat={kesintiyiKapat}
+              />
+            )}
             {not && <span className={s.hedefEtiket}>{not}</span>}
             {hata && <span className={s.hedefEtiket}>{hata}</span>}
           </div>

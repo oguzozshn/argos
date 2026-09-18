@@ -43,7 +43,7 @@ import {
   type Islem,
   type Kategori,
 } from "../src/ortak/harcama.ts";
-import { sonrakiTekrar, tekSeferlik, vadesiGelenler, TEK_GECISTE_EN_FAZLA } from "../src/ortak/duzenli.ts";
+import { sonrakiTekrar, tekrarAtla, tekSeferlik, vadesiGelenler, TEK_GECISTE_EN_FAZLA } from "../src/ortak/duzenli.ts";
 import { agirlikliOrtalama, dogrusalTahmin, donemdekiTekrarSayisi } from "../src/ortak/tahmin.ts";
 import type { Duzenli } from "../src/ortak/harcama.ts";
 
@@ -245,6 +245,30 @@ kontrol(
   vadesiGelenler([kural(1, "2000-01-01")], [], "2026-04-15").length === TEK_GECISTE_EN_FAZLA,
 );
 kontrol("durdurulmuş kural üretmez", vadesiGelenler([kural(1, "2026-01-01", null, true)], [], "2026-04-15").length === 0);
+
+// Kullanıcı üretilen bir kaydı sildi (o ay kira ödenmedi) ya da tarihini
+// kaydırdı: `(kural, tarih)` çifti defterden kalktığı için bir sonraki
+// açılışta aynı kayıt yeniden yazılıyordu.
+const silindi = mevcut.filter((i) => i.tarih !== "2026-02-01");
+kontrol(
+  "atlanmış işaretlenmeyen silinmiş tekrar geri gelir (eski davranış)",
+  vadesiGelenler([kural(1, "2026-01-01")], silindi, "2026-04-15").length === 1,
+);
+const atlanmis = tekrarAtla(kural(1, "2026-01-01"), "2026-02-01");
+kontrol(
+  "silinen tekrar atlanmış sayılır, yeniden üretilmez",
+  vadesiGelenler([atlanmis], silindi, "2026-04-15").length === 0,
+);
+kontrol(
+  "atlamak yalnızca o tarihi etkiler",
+  vadesiGelenler([atlanmis], [], "2026-04-15").map((i) => i.tarih).join(",") ===
+    "2026-01-01,2026-03-01,2026-04-01",
+);
+kontrol(
+  "aynı tarihi iki kez atlamak listeyi şişirmez",
+  tekrarAtla(atlanmis, "2026-02-01").atlananlar?.length === 1,
+);
+kontrol("atlama kuralın kendisini değiştirmez", kural(1, "2026-01-01").atlananlar === undefined);
 
 /* --- tahmin ------------------------------------------------------------- */
 

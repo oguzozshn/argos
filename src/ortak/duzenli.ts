@@ -72,12 +72,13 @@ export function vadesiGelenler(
 
   for (const kural of kurallar) {
     if (kural.durdu) continue;
+    const atlanan = new Set(kural.atlananlar ?? []);
 
     let tarih = sonrakiTekrar(kural, kural.baslangic);
     let sayi = 0;
 
     while (tarih !== null && tarih <= bugun && sayi < TEK_GECISTE_EN_FAZLA) {
-      if (!yazilmis.has(`${kural.id}|${tarih}`)) {
+      if (!yazilmis.has(`${kural.id}|${tarih}`) && !atlanan.has(tarih)) {
         uretilen.push({
           kategoriId: kural.kategoriId,
           tur: kural.tur,
@@ -97,4 +98,14 @@ export function vadesiGelenler(
   }
 
   return uretilen;
+}
+
+/**
+ * Kullanıcı üretilen bir kaydı sildiğinde ya da tarihini kaydırdığında o
+ * tekrar "yapıldı" sayılır. Yeni kural döner; verilen değişmez.
+ */
+export function tekrarAtla(kural: Duzenli, tarih: string): Duzenli {
+  const mevcut = kural.atlananlar ?? [];
+  if (mevcut.includes(tarih)) return kural;
+  return { ...kural, atlananlar: [...mevcut, tarih].sort() };
 }

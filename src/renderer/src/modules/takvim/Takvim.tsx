@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
-import { dakika, gununSlotlari, yeniSlotId, type KuralSeti } from "@ortak/kural";
+import { dakika, gununSlotlari, kuralSetiTamamla, yeniSlotId, type KuralSeti } from "@ortak/kural";
 import { gunBosalt, gunTipi, type BosaltRaporu } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
@@ -243,7 +243,7 @@ export function Takvim() {
   const [seciliSlot, setSeciliSlot] = useState<string | null>(null);
   const [simdi, setSimdi] = useState(() => new Date());
 
-  const kuralSeti = kurallar as KuralSeti;
+  const kuralSeti = useMemo(() => kuralSetiTamamla(kurallar), [kurallar]);
 
   useEffect(() => {
     const t = window.setInterval(() => setSimdi(new Date()), 60000);
@@ -359,6 +359,13 @@ export function Takvim() {
           </div>
         }
       />
+
+      {/* Görevler gelmediyse boş gün "görev yok" sanılmasın. */}
+      {td.hata && (
+        <p className={s.todoistHata}>
+          Todoist'e ulaşılamadı — görevler gösterilmiyor. ({td.hata})
+        </p>
+      )}
 
       {td.gecikmisler.length > 0 && (
         <GecikmisSerit

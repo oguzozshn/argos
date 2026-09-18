@@ -1,8 +1,9 @@
-import { BrowserWindow, app, shell } from "electron";
-import { existsSync } from "node:fs";
+import { BrowserWindow, app, screen, shell } from "electron";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ipcKur } from "./ipc";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
+import { durumuDogrula, type PencereDurumu } from "./pencere-durumu";
 import { dataDir, ortam } from "./veri";
 
 // Tek örnek: ikinci kez açılırsa var olan pencere öne gelir. İki örnek aynı
@@ -18,17 +19,48 @@ if (!app.requestSingleInstanceLock()) {
     pencere.focus();
   });
 
+  const EN_AZ = { width: 880, height: 600 };
+  // Veri klasörüne değil: pencere bu makineye ait, eşitlenen klasöre değil.
+  const durumYolu = () => join(app.getPath("userData"), "pencere.json");
+
+  function durumOku(): PencereDurumu | null {
+    try {
+      const ham: unknown = JSON.parse(readFileSync(durumYolu(), "utf8"));
+      return durumuDogrula(
+        ham,
+        screen.getAllDisplays().map((e) => e.workArea),
+        EN_AZ,
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  function durumYaz(p: BrowserWindow): void {
+    try {
+      // Büyütülmüşken getBounds büyük hâli verir; geri alınınca dönülecek
+      // boyut normal sınırlar.
+      const s = p.getNormalBounds();
+      const d: PencereDurumu = { ...s, buyuk: p.isMaximized() };
+      writeFileSync(durumYolu(), JSON.stringify(d) + "\n", "utf8");
+    } catch (e) {
+      console.error("[pencere] durum yazılamadı:", e);
+    }
+  }
+
   function pencereKur(): void {
     // Paketliyken ikon exe'den gelir; geliştirmede dosyadan verilir, yoksa
     // pencere Electron'un varsayılan ikonuyla açılırdı.
     const ikon = join(process.cwd(), "build", "icon.ico");
+    const kayitli = durumOku();
 
     pencere = new BrowserWindow({
       ...(!app.isPackaged && existsSync(ikon) ? { icon: ikon } : {}),
-      width: 1180,
-      height: 800,
-      minWidth: 880,
-      minHeight: 600,
+      ...(kayitli
+        ? { x: kayitli.x, y: kayitli.y, width: kayitli.width, height: kayitli.height }
+        : { width: 1180, height: 800 }),
+      minWidth: EN_AZ.width,
+      minHeight: EN_AZ.height,
       show: false,
       backgroundColor: "#F5F4F0",
       // Kendi başlık çubuğumuzu çiziyoruz ama pencere düğmeleri yerel kalıyor:
@@ -44,7 +76,11 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     // Beyaz parlama olmasın: hazır olunca göster.
-    pencere.on("ready-to-show", () => pencere?.show());
+    pencere.on("ready-to-show", () => {
+      if (kayitli?.buyuk) pencere?.maximize();
+      pencere?.show();
+    });
+    pencere.on("close", () => pencere && durumYaz(pencere));
 
     // Dış bağlantılar uygulamanın içinde açılmaz, tarayıcıya gider.
     pencere.webContents.setWindowOpenHandler(({ url }) => {

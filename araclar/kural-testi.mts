@@ -8,7 +8,7 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { dakika, ihlaller, yeniSlotId, type KuralSeti } from "../src/ortak/kural.ts";
+import { dakika, ihlaller, kuralSetiTamamla, yeniSlotId, type KuralSeti } from "../src/ortak/kural.ts";
 import { saatAyikla } from "../src/ortak/gun.ts";
 import { veriYolu } from "./yol.mts";
 import type { Hafta, Slot } from "../src/ortak/plan.ts";
@@ -222,6 +222,24 @@ kontrol(
   "silinen slotun ID'si yeniden kullanılmaz",
   yeniSlotId(silinmis, 1, "19:00") === "W40-D1-19b",
 );
+
+console.log("\nEksik kural dosyası");
+// kurallar.json yoksa Hafta ve Takvim `undefined.evGunuMaxSlot` diye çöküyordu.
+{
+  const kalabalik = hafta(
+    Array.from({ length: 6 }, (_, i) => slot({ id: `k${i}`, gun: 1, saat: `1${i}:00` })),
+  );
+  const bos = kuralSetiTamamla({});
+  kontrol("boş kurallar çökmez", Array.isArray(ihlaller(kalabalik, bos)));
+  kontrol("kural yoksa kapasite uyarısı da yok", ihlaller(kalabalik, bos).length === 0);
+  kontrol("null da boş sayılır", kuralSetiTamamla(null).kapasite.evGunuMaxSlot === Infinity);
+  const kismi = kuralSetiTamamla({ kapasite: { evGunuMaxSlot: 2 } as KuralSeti["kapasite"] });
+  kontrol(
+    "verilen alanlar korunur, eksikler tamamlanır",
+    kismi.kapasite.evGunuMaxSlot === 2 && kismi.kapasite.ofisGunuMaxSlot === Infinity,
+  );
+  kontrol("tamamlanan setle uyarı yine çalışır", gecer(ihlaller(kalabalik, kismi), "sınır 2"));
+}
 
 console.log("\nGerçek hafta dosyaları");
 const dataDir = veriYolu();
