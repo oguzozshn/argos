@@ -1,4 +1,4 @@
-import { BrowserWindow, Menu, Tray, app, globalShortcut, nativeImage, screen } from "electron";
+import { BrowserWindow, Menu, Tray, app, globalShortcut, nativeImage, screen, type MenuItemConstructorOptions } from "electron";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { KANAL } from "../ortak/tipler";
@@ -21,6 +21,9 @@ let anaPencere: () => BrowserWindow | null = () => null;
 let anaGoster: () => void = () => undefined;
 /** Tepside görünür bir simge var mı. Yoksa pencereyi gizlemek onu kaybetmek olur. */
 let simgeVar = false;
+let kisayolAlindi = true;
+/** Telegram eşitlemesinin son hâli; ayar yoksa null ve menüde satır yok. */
+let botDurumu: { tamam: boolean; zaman: Date; hata?: string } | null = null;
 let cikiliyor = false;
 
 /** Paketliyken ikon kaynaklara kopyalanıyor (package.json `extraResources`). */
@@ -52,14 +55,15 @@ export function tepsiKur(ana: () => BrowserWindow | null, goster: () => void): v
   tepsi = new Tray(ikon);
   tepsi.setToolTip("Argos");
   tepsi.on("click", anaPencereyiGoster);
-  menuKur(true);
+  menuKur();
 
   const kaydedildi = globalShortcut.register(YAKALA_KISAYOLU, yakalamayiAcKapat);
   if (!kaydedildi) {
     // Başka bir uygulama kısayolu tutuyor. Konsolu kimse görmüyor: tepsiden
     // söylenir, pencere menüden yine açılabilir.
     console.error(`[tepsi] ${KISAYOL_METNI} kaydedilemedi — başka bir uygulama kullanıyor olabilir`);
-    menuKur(false);
+    kisayolAlindi = false;
+    menuKur();
     tepsi.displayBalloon({
       title: `${KISAYOL_METNI} kullanılamıyor`,
       content: "Başka bir uygulama bu kısayolu tutuyor. Hızlı görev eklemeyi tepsi simgesinin menüsünden açabilirsin.",
@@ -71,9 +75,26 @@ export function tepsiKur(ana: () => BrowserWindow | null, goster: () => void): v
   yakalaPenceresi();
 }
 
-function menuKur(kisayolVar: boolean): void {
+/** Telegram eşitlemesinin sonucu; menüdeki durum satırı güncellenir. */
+export function tepsiBotDurumu(d: typeof botDurumu): void {
+  botDurumu = d;
+  menuKur();
+}
+
+function botSatiri(): MenuItemConstructorOptions[] {
+  if (!botDurumu) return [];
+  const saat = botDurumu.zaman.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  const label = botDurumu.tamam
+    ? `Telegram: son eşitleme ${saat}`
+    : `Telegram: eşitlenemedi (${saat}) — ${botDurumu.hata ?? "bilinmeyen hata"}`;
+  return [{ label, enabled: false }, { type: "separator" }];
+}
+
+function menuKur(): void {
+  const kisayolVar = kisayolAlindi;
   tepsi?.setContextMenu(
     Menu.buildFromTemplate([
+      ...botSatiri(),
       { label: "Argos'u aç", click: anaPencereyiGoster },
       {
         label: kisayolVar ? `Hızlı görev ekle\t${KISAYOL_METNI}` : "Hızlı görev ekle (kısayol alınamadı)",

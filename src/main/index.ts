@@ -1,6 +1,7 @@
 import { BrowserWindow, app, screen } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { botBaslat, botDurdur } from "./bot";
 import { ipcKur } from "./ipc";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { durumuDogrula, type PencereDurumu } from "./pencere-durumu";
@@ -134,6 +135,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcKur();
     pencereKur();
     tepsiKur(() => pencere, anaPencereyiAc);
+    botBaslat(() => pencere);
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) pencereKur();
@@ -146,6 +148,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on("before-quit", () => {
     cikiliyor = true;
+    botDurdur();
     void izlemeyiDurdur();
   });
 

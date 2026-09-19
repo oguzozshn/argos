@@ -135,6 +135,10 @@ export interface ArgosApi {
   };
   /** Başka bir pencereden görev eklendi; listeler tazelensin. Abonelik iptali döner. */
   todoistDegisimDinle(geriCagri: () => void): () => void;
+  /** Telegram'dan gelen eklemeler yerel dosyalara işlendi; adlar `botAl` ile alınır. Abonelik iptali döner. */
+  botAktarildiDinle(geriCagri: () => void): () => void;
+  /** Henüz gösterilmemiş Telegram eklemelerini verir ve listeyi boşaltır. */
+  botAl(): Promise<string[]>;
   /** Yalnızca hızlı yakalama penceresinde anlamlı. */
   yakala: {
     gizle(): Promise<void>;
@@ -166,6 +170,8 @@ export const KANAL = {
   yakalaAcildi: "yakala:acildi",
   ayarKlasor: "ayar:klasor-sec",
   ayarGizli: "ayar:gizli-sec",
+  botAktarildi: "bot:aktarildi",
+  botAl: "bot:al",
 } as const;
 
 /**

@@ -48,6 +48,15 @@ const argos: ArgosApi = {
     };
   },
 
+  botAl: (): Promise<string[]> => ipcRenderer.invoke(KANAL.botAl),
+  botAktarildiDinle: (geriCagri: () => void): (() => void) => {
+    const sarmal = () => geriCagri();
+    ipcRenderer.on(KANAL.botAktarildi, sarmal);
+    return () => {
+      ipcRenderer.off(KANAL.botAktarildi, sarmal);
+    };
+  },
+
   yakala: {
     gizle: (): Promise<void> => ipcRenderer.invoke(KANAL.yakalaGizle),
     acildiDinle: (geriCagri: () => void): (() => void) => {

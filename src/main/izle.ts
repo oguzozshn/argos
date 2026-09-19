@@ -12,6 +12,14 @@ import { dataDir, klasorDegisince } from "./veri";
 
 let izleyici: FSWatcher | null = null;
 let izlenen: string | null = null;
+/** Ana süreçteki dinleyiciler (Telegram eşitlemesi); izleyici yeniden kurulsa da kalır. */
+const aboneler = new Set<(yol: string) => void>();
+
+/** Veri klasöründe bir dosya eklenince, değişince ya da silinince çağrılır. Göreli yol, `/` ayraçlı. */
+export function degisimeAbone(f: (yol: string) => void): () => void {
+  aboneler.add(f);
+  return () => aboneler.delete(f);
+}
 
 export function izlemeyeBasla(pencere: BrowserWindow): void {
   if (izleyici) return;
@@ -37,8 +45,9 @@ export function izlemeyeBasla(pencere: BrowserWindow): void {
   });
 
   const bildir = (tur: DegisimOlayi["tur"]) => (tamYol: string) => {
-    if (pencere.isDestroyed()) return;
     const yol = relative(kok, tamYol).split(sep).join("/");
+    for (const f of aboneler) f(yol);
+    if (pencere.isDestroyed()) return;
     pencere.webContents.send(KANAL.degisim, { yol, tur } satisfies DegisimOlayi);
   };
 

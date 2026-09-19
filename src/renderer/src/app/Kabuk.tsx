@@ -1,10 +1,10 @@
 import { AlertTriangle } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { moduller } from "@/modules";
 import { ekranGecisi } from "@/ui/hareket";
-import { ToastAlani } from "@/ui/toast";
+import { ToastAlani, bildir } from "@/ui/toast";
 import { KOPRU_VAR, kopru, useOrtam } from "@/veri/kanca";
 import { BaslikCubugu } from "./BaslikCubugu";
 import { Bugun } from "./Bugun";
@@ -53,7 +53,37 @@ function Yonlendirme() {
   );
 }
 
+/**
+ * Telegram'dan gelen eklemeler plana işlenince söylenir. Dosyalar ana
+ * süreçte yazılıyor; açık ekranlar izleyiciden haber alıp kendini tazeliyor.
+ *
+ * Adlar ana süreçte birikir ve yalnızca pencere görünürken alınır: tepsideki
+ * pencerede gösterilen bildirim kimse görmeden kaybolurdu.
+ */
+function useTelegramBildirimi(): void {
+  useEffect(() => {
+    const k = kopru();
+    if (!k) return;
+    const al = async () => {
+      if (document.visibilityState !== "visible") return;
+      const eklenenler = await k.botAl();
+      if (eklenenler.length === 0) return;
+      const ilk = eklenenler.slice(0, 2).join(", ");
+      const fazla = eklenenler.length > 2 ? ` ve ${eklenenler.length - 2} tane daha` : "";
+      bildir({ metin: `Telegram'dan eklendi: ${ilk}${fazla}`, sure: 8000 });
+    };
+    void al();
+    document.addEventListener("visibilitychange", al);
+    const birak = k.botAktarildiDinle(() => void al());
+    return () => {
+      document.removeEventListener("visibilitychange", al);
+      birak();
+    };
+  }, []);
+}
+
 function Icerik() {
+  useTelegramBildirimi();
   const [kaydirildi, setKaydirildi] = useState(false);
   const [ortam, setOrtam] = useOrtam();
   const [secimHatasi, setSecimHatasi] = useState<string | null>(null);
