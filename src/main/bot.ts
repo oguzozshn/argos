@@ -24,11 +24,19 @@ import { jsonCoz } from "./veri-cekirdek";
 const KUYRUK_ARALIGI = 5 * 60 * 1000;
 /** Dosya değişikliği arka arkaya gelir (arayüzde sürükleme, app.py); biriksin. */
 const BEKLEME = 5000;
+/** Plan değişmese de görünüm bu kadar eskiyince yeniden gider ("son güncelleme" satırı bayatlamasın). */
+const TAZELEME = 60 * 60 * 1000;
 
 let anaPencere: () => BrowserWindow | null = () => null;
 let zamanlayici: NodeJS.Timeout | null = null;
 let bekleyenGonderim: NodeJS.Timeout | null = null;
 let sonGun = "";
+/**
+ * Görünümün Worker'a son başarıyla gittiği an. Başarısız gönderim yeniden
+ * denenmeliydi: kurulumdan sonraki ilk açılışta ağ hazır değilken giden
+ * istek düşünce plan, bir dosya değişene dek hiç gitmiyordu.
+ */
+let sonGorunum = 0;
 /**
  * Arayüze henüz söylenmemiş eklemeler. Olay yalnızca "var" der; arayüz
  * görünürken buradan alır. Açılışta kuyruk arayüz yüklenmeden işlenir,
@@ -70,7 +78,10 @@ function sirayaKoy(ad: string, is: (a: BotAyari) => Promise<void>): void {
 }
 
 const gorunumGonder = () =>
-  sirayaKoy("görünüm", (a) => anlikGonder(dataDir(), a, bugunIso(), new Date().toISOString()));
+  sirayaKoy("görünüm", async (a) => {
+    await anlikGonder(dataDir(), a, bugunIso(), new Date().toISOString());
+    sonGorunum = Date.now();
+  });
 
 const kuyruguCek = () =>
   sirayaKoy("kuyruk", async (a) => {
@@ -106,8 +117,9 @@ export function botBaslat(pencere: () => BrowserWindow | null): void {
   kuyruguCek();
 
   zamanlayici = setInterval(() => {
-    // Görünüm "bugünden 14 gün"; gün dönünce pencere kayar.
-    if (bugunIso() !== sonGun) {
+    // Görünüm "bugünden 14 gün"; gün dönünce pencere kayar. Son gönderim
+    // düştüyse ya da eskidiyse de yeniden gider.
+    if (bugunIso() !== sonGun || Date.now() - sonGorunum > TAZELEME) {
       sonGun = bugunIso();
       gorunumGonder();
     }
