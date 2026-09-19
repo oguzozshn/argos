@@ -62,5 +62,7 @@ export const kapat = (id: string): Promise<void> => cekirdek.kapat(jeton(), id);
 
 export const ac = (id: string): Promise<void> => cekirdek.ac(jeton(), id);
 
+export const hizliEkle = (metin: string): Promise<TodoistGorev> => cekirdek.hizliEkle(jeton(), metin);
+
 export const tarihVer = (id: string, tarihMetni: string | null): Promise<TodoistGorev> =>
   cekirdek.tarihVer(jeton(), id, tarihMetni);

@@ -88,6 +88,9 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
     void tazele();
   }, [tazele]);
 
+  // Hızlı yakalama penceresinden görev eklendi: liste kendiliğinden tazelensin.
+  useEffect(() => kopru()?.todoistDegisimDinle(() => void tazele()), [tazele]);
+
   const gunlere = useMemo(() => {
     const m = new Map<string, TodoistGorev[]>();
     for (const g of gorevler) {

@@ -83,6 +83,9 @@ export function useGorevler(projeId: string | null) {
     void tazele();
   }, [tazele]);
 
+  // Hızlı yakalama penceresinden görev eklendi: liste kendiliğinden tazelensin.
+  useEffect(() => kopru()?.todoistDegisimDinle(() => void tazele()), [tazele]);
+
   /** Görevi tamamlar; alttaki bildirimden (ya da Ctrl+Z) geri alınabilir. */
   const kapat = useCallback((g: TodoistGorev) => {
     const k = kopru();

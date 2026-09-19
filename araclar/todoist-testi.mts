@@ -16,6 +16,7 @@ import {
   ekle,
   gorevCevir,
   gorevler,
+  hizliEkle,
   kapat,
   projeler,
   tarihVer,
@@ -113,6 +114,27 @@ async function sahteBolum(): Promise<void> {
 
   await ac("T", "42");
   kontrol("geri alma /reopen ucuna gider", sonIstek?.url.endsWith("/tasks/42/reopen"));
+
+  sahteFetchAc({ id: "9", content: "fatura öde", project_id: "P2", priority: 4, due: { date: "2026-09-19T18:00:00", string: "yarın 18:00" } });
+  const hizli = await hizliEkle("T", "yarın 18:00 fatura öde #Ev p1");
+  kontrol("hızlı ekleme POST /tasks/quick", sonIstek?.url.endsWith("/tasks/quick") && sonIstek.yontem === "POST");
+  kontrol(
+    "hızlı eklemede satır ayrıştırılmadan text olarak gider",
+    sonIstek?.govde?.text === "yarın 18:00 fatura öde #Ev p1" && sonIstek.govde.content === undefined,
+  );
+  kontrol(
+    "hızlı ekleme cevabı göreve çevrilir",
+    hizli.icerik === "fatura öde" && hizli.projeId === "P2" && hizli.tarih === "2026-09-19T18:00:00",
+  );
+  globalThis.fetch = (async () => {
+    throw new DOMException("zaman aşımı", "TimeoutError");
+  }) as typeof fetch;
+  const zaman = await hizliEkle("T", "x").then(
+    () => "",
+    (e: unknown) => (e instanceof Error ? e.message : String(e)),
+  );
+  kontrol("hızlı eklemede zaman aşımı 'eklenmiş olabilir' der", zaman.includes("eklenmiş olabilir"), zaman);
+  sahteFetchAc();
 
   await kapat("T", "a/b?c=1");
   kontrol("kimlik URL için kaçışlanır", sonIstek?.url.includes("a%2Fb%3Fc%3D1") === true);

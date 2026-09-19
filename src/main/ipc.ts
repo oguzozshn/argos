@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { BASLIK_RENKLERI, KANAL } from "../ortak/tipler";
 import * as td from "./todoist";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
+import { todoistDegistiBildir, yakalamaHatasi, yakalamayiGizle } from "./tepsi";
 import { klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
 
 /**
@@ -77,7 +78,12 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tema, (olay, tema: "acik" | "koyu") => {
     const p = BrowserWindow.fromWebContents(olay.sender);
     if (!p || p.isDestroyed()) return;
-    p.setTitleBarOverlay({ ...BASLIK_RENKLERI[tema] ?? BASLIK_RENKLERI.acik, height: 44 });
+    // Yalnızca ana pencerede başlık kaplaması var; hızlı yakalama çerçevesiz.
+    try {
+      p.setTitleBarOverlay({ ...BASLIK_RENKLERI[tema] ?? BASLIK_RENKLERI.acik, height: 44 });
+    } catch {
+      // Kaplaması olmayan pencere: yapılacak bir şey yok.
+    }
     // Yerel iletişim kutuları (dosya seçici, uyarı) da aynı tarafta kalsın.
     nativeTheme.themeSource = tema === "koyu" ? "dark" : "light";
   });
@@ -92,4 +98,17 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdKapat, (_o, id: string) => td.kapat(id));
   ipcMain.handle(KANAL.tdAc, (_o, id: string) => td.ac(id));
   ipcMain.handle(KANAL.tdTarih, (_o, id: string, metin: string | null) => td.tarihVer(id, metin));
+
+  // Hızlı yakalama penceresi.
+  ipcMain.handle(KANAL.tdHizli, async (_o, metin: string) => {
+    try {
+      const gorev = await td.hizliEkle(String(metin ?? "").trim());
+      todoistDegistiBildir();
+      return gorev;
+    } catch (e) {
+      yakalamaHatasi(e instanceof Error ? e.message : String(e));
+      throw e;
+    }
+  });
+  ipcMain.handle(KANAL.yakalaGizle, () => yakalamayiGizle());
 }

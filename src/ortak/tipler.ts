@@ -127,6 +127,19 @@ export interface ArgosApi {
     ac(id: string): Promise<void>;
     /** Tarihi doğal dille değiştirir; null tarihi kaldırır. */
     tarihVer(id: string, tarihMetni: string | null): Promise<TodoistGorev>;
+    /**
+     * Todoist'in doğal dil hızlı eklemesi: "yarın 18:00 fatura #Ev @iş p1".
+     * Proje, etiket, öncelik ve tarih metinden çözülür; proje yoksa gelen kutusu.
+     */
+    hizliEkle(metin: string): Promise<TodoistGorev>;
+  };
+  /** Başka bir pencereden görev eklendi; listeler tazelensin. Abonelik iptali döner. */
+  todoistDegisimDinle(geriCagri: () => void): () => void;
+  /** Yalnızca hızlı yakalama penceresinde anlamlı. */
+  yakala: {
+    gizle(): Promise<void>;
+    /** Pencere kısayolla her açıldığında çağrılır. Abonelik iptali döner. */
+    acildiDinle(geriCagri: () => void): () => void;
   };
 }
 
@@ -147,6 +160,10 @@ export const KANAL = {
   tdTarih: "todoist:tarih",
   tdBugun: "todoist:bugun",
   tdAralik: "todoist:aralik",
+  tdHizli: "todoist:hizli",
+  tdDegisti: "todoist:degisti",
+  yakalaGizle: "yakala:gizle",
+  yakalaAcildi: "yakala:acildi",
   ayarKlasor: "ayar:klasor-sec",
   ayarGizli: "ayar:gizli-sec",
 } as const;

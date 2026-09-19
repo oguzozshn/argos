@@ -1,10 +1,11 @@
-import { BrowserWindow, app, screen, shell } from "electron";
+import { BrowserWindow, app, screen } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { ipcKur } from "./ipc";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { durumuDogrula, type PencereDurumu } from "./pencere-durumu";
+import { gezinmeyiKilitle, sayfayiYukle, webAyarlari } from "./sayfa";
+import { anaPencereyiGoster, tepsiIpucu, tepsiKapat, tepsiKullanilabilir, tepsiKur } from "./tepsi";
 import { dataDir, ortam } from "./veri";
 
 // Tek örnek: ikinci kez açılırsa var olan pencere öne gelir. İki örnek aynı
@@ -13,11 +14,16 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   let pencere: BrowserWindow | null = null;
+  /**
+   * Gerçekten çıkılıyor mu. Değilse kapat düğmesi pencereyi tepsiye gizler.
+   * Tepsi menüsündeki "Çıkış" ve Windows oturum kapanışı bunu açar; yoksa
+   * gizleme kapanışı engeller, Windows da uygulamayı "kapanmıyor" diye bekletir.
+   */
+  let cikiliyor = false;
 
   app.on("second-instance", () => {
-    if (!pencere) return;
-    if (pencere.isMinimized()) pencere.restore();
-    pencere.focus();
+    // Pencere tepsideyse ikinci açılış onu geri getirir.
+    anaPencereyiGoster();
   });
 
   const EN_AZ = { width: 880, height: 600 };
@@ -49,6 +55,22 @@ if (!app.requestSingleInstanceLock()) {
     }
   }
 
+  /**
+   * Ana pencereyi öne getirir; yok olmuşsa yeniden kurar. İzleyici eski
+   * pencereye bağlı ve ikinci kez başlamayı reddediyor: önce durdurulur.
+   */
+  async function anaPencereyiAc(): Promise<void> {
+    if (!pencere || pencere.isDestroyed()) {
+      if (cikiliyor) return;
+      await izlemeyiDurdur();
+      pencereKur();
+      return;
+    }
+    if (pencere.isMinimized()) pencere.restore();
+    pencere.show();
+    pencere.focus();
+  }
+
   function pencereKur(): void {
     // Paketliyken ikon exe'den gelir; geliştirmede dosyadan verilir, yoksa
     // pencere Electron'un varsayılan ikonuyla açılırdı.
@@ -68,14 +90,7 @@ if (!app.requestSingleInstanceLock()) {
       // Windows 11'in yerleşim menüsü (hover) ve büyüt/küçült davranışı bozulmasın.
       titleBarStyle: "hidden",
       titleBarOverlay: { color: "#F5F4F0", symbolColor: "#5A574F", height: 44 },
-      webPreferences: {
-        preload: join(__dirname, "../preload/index.js"),
-        // Preload yalnızca contextBridge/ipcRenderer kullanıyor ve paketli;
-        // Node erişimi gerekmiyor.
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
+      webPreferences: webAyarlari(),
     });
 
     // Beyaz parlama olmasın: hazır olunca göster.
@@ -83,34 +98,26 @@ if (!app.requestSingleInstanceLock()) {
       if (kayitli?.buyuk) pencere?.maximize();
       pencere?.show();
     });
-    pencere.on("close", () => pencere && durumYaz(pencere));
-
-    // Dış bağlantılar uygulamanın içinde açılmaz, tarayıcıya gider.
-    pencere.webContents.setWindowOpenHandler(({ url }) => {
-      if (/^https?:\/\//.test(url)) shell.openExternal(url);
-      return { action: "deny" };
-    });
-
-    const devSunucu = process.env["ELECTRON_RENDERER_URL"];
-
-    // Pencere yerinde başka bir sayfaya gidemesin: o sayfa `window.argos` ile
-    // veri klasörünü okuyup yazabilirdi. Dış bağlantı tarayıcıda açılır.
-    // file: için yalnızca kendi sayfamız: pencereye sürüklenen bir HTML dosyası
-    // da preload'la açılır ve `window.argos`'a erişirdi.
-    const sayfaYolu = pathToFileURL(join(__dirname, "../renderer/index.html")).href;
-    const kendiAdresi = (url: string) =>
-      url.split("#")[0] === sayfaYolu || (!!devSunucu && url.startsWith(devSunucu));
-    pencere.webContents.on("will-navigate", (olay, url) => {
-      if (kendiAdresi(url)) return;
+    pencere.on("close", (olay) => {
+      if (!pencere) return;
+      durumYaz(pencere);
+      // Tepside simge yoksa gizlemek pencereyi kaybetmek olur: gerçekten kapanır.
+      if (cikiliyor || !tepsiKullanilabilir()) return;
+      // Kapat düğmesi çıkmaz, tepsiye gizler: odak sayacı ve kısayol sürer.
       olay.preventDefault();
-      if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+      pencere.hide();
+      tepsiIpucu();
     });
-    pencere.webContents.on("will-redirect", (olay, url) => {
-      if (!kendiAdresi(url)) olay.preventDefault();
+    // Windows oturumu kapanırken gizleme kapanışı engellemesin.
+    // Windows'ta sistem kapanışında before-quit gelmiyor, close da gelmeyebilir:
+    // pencere durumu burada yazılır.
+    pencere.on("session-end", () => {
+      cikiliyor = true;
+      if (pencere) durumYaz(pencere);
     });
 
-    if (devSunucu) pencere.loadURL(devSunucu);
-    else pencere.loadFile(join(__dirname, "../renderer/index.html"));
+    gezinmeyiKilitle(pencere);
+    sayfayiYukle(pencere);
 
     izlemeyeBasla(pencere);
     pencere.on("closed", () => {
@@ -126,6 +133,7 @@ if (!app.requestSingleInstanceLock()) {
     }
     ipcKur();
     pencereKur();
+    tepsiKur(() => pencere, anaPencereyiAc);
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) pencereKur();
@@ -137,6 +145,11 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on("before-quit", () => {
+    cikiliyor = true;
     void izlemeyiDurdur();
+  });
+
+  app.on("will-quit", () => {
+    tepsiKapat();
   });
 }

@@ -37,6 +37,26 @@ const argos: ArgosApi = {
     ac: (id: string) => ipcRenderer.invoke(KANAL.tdAc, id),
     tarihVer: (id: string, tarihMetni: string | null) =>
       ipcRenderer.invoke(KANAL.tdTarih, id, tarihMetni),
+    hizliEkle: (metin: string) => ipcRenderer.invoke(KANAL.tdHizli, metin),
+  },
+
+  todoistDegisimDinle: (geriCagri: () => void): (() => void) => {
+    const sarmal = () => geriCagri();
+    ipcRenderer.on(KANAL.tdDegisti, sarmal);
+    return () => {
+      ipcRenderer.off(KANAL.tdDegisti, sarmal);
+    };
+  },
+
+  yakala: {
+    gizle: (): Promise<void> => ipcRenderer.invoke(KANAL.yakalaGizle),
+    acildiDinle: (geriCagri: () => void): (() => void) => {
+      const sarmal = () => geriCagri();
+      ipcRenderer.on(KANAL.yakalaAcildi, sarmal);
+      return () => {
+        ipcRenderer.off(KANAL.yakalaAcildi, sarmal);
+      };
+    },
   },
 
   degisimDinle: (geriCagri: (olay: DegisimOlayi) => void): (() => void) => {

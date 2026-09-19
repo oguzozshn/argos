@@ -31,6 +31,12 @@ const sistemKoyu = (): boolean =>
 const coz = (t: TemaTercihi): CozulmusTema =>
   t === "sistem" ? (sistemKoyu() ? "koyu" : "acik") : t;
 
+/**
+ * Kaydedilmiş tercihin şu anki karşılığı. Yan pencereler (hızlı yakalama)
+ * tercihi değiştirmez, yalnızca uyar.
+ */
+export const cozulmusTema = (): CozulmusTema => coz(tercihOku());
+
 export function useTema() {
   const [tercih, setTercihDurumu] = useState<TemaTercihi>(tercihOku);
   const [cozulen, setCozulen] = useState<CozulmusTema>(() => coz(tercihOku()));

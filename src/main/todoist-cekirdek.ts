@@ -181,6 +181,23 @@ export async function ekle(token: string, g: YeniGorev): Promise<TodoistGorev> {
   return gorevCevir(await istek<HamGorev>(token, "/tasks", "POST", yuk));
 }
 
+/**
+ * Doğal dil hızlı ekleme (Todoist Quick Add): proje (#), etiket (@), öncelik
+ * (p1–p4) ve tarih metinden sunucuda çözülür. Dil hesabın dil ayarından gelir.
+ */
+export async function hizliEkle(token: string, metin: string): Promise<TodoistGorev> {
+  try {
+    return gorevCevir(await istek<HamGorev>(token, "/tasks/quick", "POST", { text: metin }));
+  } catch (e) {
+    // Zaman aşımında sunucu görevi yine de eklemiş olabilir; "yeniden dene"
+    // körü körüne ikinci bir kopya yaratır.
+    if ((e as { name?: string } | null)?.name === "TimeoutError") {
+      throw new TodoistHata("Todoist yanıt vermedi — görev eklenmiş olabilir, Todoist'te kontrol et");
+    }
+    throw e;
+  }
+}
+
 export const kapat = (token: string, id: string): Promise<void> =>
   istek(token, `/tasks/${encodeURIComponent(id)}/close`, "POST");
 

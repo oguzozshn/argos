@@ -1,0 +1,105 @@
+/*
+ * Pencere saydam; kart gölgesiyle birlikte içinde durur. Kenardaki boşluk
+ * gölgeye yer: kesilirse pencere kutusu belli olur.
+ */
+.zemin {
+  height: 100vh;
+  padding: var(--b4) var(--b5) var(--b6);
+  background: transparent;
+  -webkit-app-region: drag;
+}
+
+.kart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b2);
+  padding: var(--b4) var(--b5) var(--b3);
+  background: var(--kart);
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r3);
+  box-shadow: var(--golge3);
+}
+
+.satir {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  -webkit-app-region: no-drag;
+}
+
+.ikon {
+  flex: none;
+  color: var(--vurgu);
+}
+
+.giris {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--metin);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1.4;
+  padding: var(--b1) 0;
+}
+
+/* Kutunun kendisi zaten odak; genel odak halkası kartın içinde fazlalık. */
+.giris:focus-visible {
+  outline: none;
+}
+
+.giris::placeholder {
+  color: var(--metin-soluk);
+}
+
+.giris:read-only {
+  opacity: 0.6;
+}
+
+.tus {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--b2);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r1);
+  color: var(--metin-soluk);
+  font-family: inherit;
+}
+
+.alt {
+  min-height: 20px;
+  padding-left: calc(18px + var(--b3));
+  font-size: var(--y4);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  -webkit-app-region: no-drag;
+}
+
+.alt span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--b1);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.soluk {
+  color: var(--metin-soluk);
+}
+
+.soluk b {
+  color: var(--metin-orta);
+  font-weight: var(--sik-kalin);
+}
+
+.iyi {
+  color: var(--iyi);
+}
+
+.hata {
+  color: var(--hata);
+}

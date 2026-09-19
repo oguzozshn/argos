@@ -17,11 +17,15 @@ export function YapilacakOzet() {
   useEffect(() => {
     const k = kopru();
     if (!k) return;
-    void k.todoist
-      .durum()
-      .then((d) => (d.anahtarVar ? k.todoist.bugunVeGecikmis() : []))
-      .then(setGorevler)
-      .catch(() => setGorevler([]));
+    const yukle = () =>
+      void k.todoist
+        .durum()
+        .then((d) => (d.anahtarVar ? k.todoist.bugunVeGecikmis() : []))
+        .then(setGorevler)
+        .catch(() => setGorevler([]));
+    yukle();
+    // Hızlı yakalamadan eklenen bugünkü görev kartta da görünsün.
+    return k.todoistDegisimDinle(yukle);
   }, []);
 
   const kapat = (g: TodoistGorev) => {

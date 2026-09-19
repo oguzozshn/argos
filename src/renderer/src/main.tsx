@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { HizliYakala } from "./app/HizliYakala";
 import { Kabuk } from "./app/Kabuk";
 import "./ui/token.css";
 import "./ui/temel.css";
@@ -12,8 +13,14 @@ for (const olay of ["dragover", "drop"] as const) {
   });
 }
 
+// Aynı paket iki pencere açıyor; hızlı yakalama penceresi kabuğu yüklemez.
+const yakalama = new URLSearchParams(location.search).get("pencere") === "yakala";
+if (yakalama) {
+  // Pencere saydam: kart kendi gölgesiyle çiziliyor, zemin görünmesin.
+  document.documentElement.style.background = "transparent";
+  document.body.style.background = "transparent";
+}
+
 createRoot(document.getElementById("kok")!).render(
-  <StrictMode>
-    <Kabuk />
-  </StrictMode>,
+  <StrictMode>{yakalama ? <HizliYakala /> : <Kabuk />}</StrictMode>,
 );
