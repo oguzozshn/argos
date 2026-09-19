@@ -56,6 +56,36 @@
   -webkit-app-region: no-drag;
 }
 
+.paletDugmesi {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  height: 28px;
+  padding: 0 var(--b1) 0 var(--b3);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r1);
+  background: var(--kart);
+  color: var(--metin-soluk);
+  font: inherit;
+  font-size: var(--y4);
+  cursor: pointer;
+  transition: border-color var(--sure-hizli) var(--egri), color var(--sure-hizli) var(--egri);
+}
+
+.paletDugmesi:hover {
+  border-color: var(--cizgi-koyu);
+  color: var(--metin-orta);
+}
+
+.paletDugmesi kbd {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--zemin);
+  font-family: var(--aile);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
 /* --- kenar çubuğu ------------------------------------------------------ */
 
 .kenar {

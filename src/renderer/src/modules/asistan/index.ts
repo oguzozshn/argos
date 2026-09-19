@@ -3,6 +3,7 @@ import type { Modul } from "@/modules";
 import { Arsiv } from "./Arsiv";
 import { Hafta } from "./Hafta";
 import { Hatirla } from "./Hatirla";
+import { asistanKomutlari } from "./komutlar";
 import { Odak } from "./Odak";
 import { AsistanOzet } from "./Ozet";
 import { YolHaritalari } from "./YolHaritalari";
@@ -28,4 +29,5 @@ export const asistanModulu: Modul = {
     { yol: "roadmap", ad: "Yol haritaları", Ekran: YolHaritalari },
   ],
   Ozet: AsistanOzet,
+  komutlar: asistanKomutlari,
 };

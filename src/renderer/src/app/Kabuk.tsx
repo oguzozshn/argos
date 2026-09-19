@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { moduller } from "@/modules";
 import { ekranGecisi } from "@/ui/hareket";
@@ -10,6 +10,7 @@ import { BaslikCubugu } from "./BaslikCubugu";
 import { Bugun } from "./Bugun";
 import { HataSiniri } from "./HataSiniri";
 import { KenarCubugu } from "./KenarCubugu";
+import { KomutPaleti } from "./KomutPaleti";
 import s from "./kabuk.module.css";
 
 /** Ekran değişiminde solma + kayma — kural 1. */
@@ -82,8 +83,38 @@ function useTelegramBildirimi(): void {
   }, []);
 }
 
+/**
+ * Ctrl+K paleti açar/kapatır. Metin alanındayken de çalışır: palet zaten
+ * yazmak için açılıyor. Yakalama aşamasında dinlenir ki ekranların kendi
+ * tuş işleyicileri önce yutmasın.
+ */
+function usePalet() {
+  const [acik, setAcik] = useState(false);
+  const [acilis, setAcilis] = useState(0);
+  // Tuş dinleyicisi bir kez kuruluyor; güncel durumu buradan okur.
+  const acikRef = useRef(false);
+  acikRef.current = acik;
+  const ac = useCallback(() => {
+    setAcilis((n) => n + 1);
+    setAcik(true);
+  }, []);
+  const kapat = useCallback(() => setAcik(false), []);
+  useEffect(() => {
+    const tus = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "k") return;
+      e.preventDefault();
+      if (acikRef.current) kapat();
+      else ac();
+    };
+    window.addEventListener("keydown", tus, true);
+    return () => window.removeEventListener("keydown", tus, true);
+  }, [ac, kapat]);
+  return { acik, acilis, ac, kapat };
+}
+
 function Icerik() {
   useTelegramBildirimi();
+  const palet = usePalet();
   const [kaydirildi, setKaydirildi] = useState(false);
   const [ortam, setOrtam] = useOrtam();
   const [secimHatasi, setSecimHatasi] = useState<string | null>(null);
@@ -112,7 +143,7 @@ function Icerik() {
 
   return (
     <div className={s.kabuk}>
-      <BaslikCubugu kaydirildi={kaydirildi} />
+      <BaslikCubugu kaydirildi={kaydirildi} paletAc={palet.ac} />
       <KenarCubugu />
       <main className={s.icerik} onScroll={(e) => setKaydirildi(e.currentTarget.scrollTop > 4)}>
         {/* Preload yüklenmediyse hiçbir veri gelmez; beyaz ekran yerine sebep. */}
@@ -165,6 +196,7 @@ function Icerik() {
         )}
         <Yonlendirme />
       </main>
+      <KomutPaleti acik={palet.acik} acilis={palet.acilis} kapat={palet.kapat} />
       <ToastAlani />
     </div>
   );

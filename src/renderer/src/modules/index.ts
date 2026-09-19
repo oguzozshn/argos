@@ -17,6 +17,38 @@ export interface Rota {
   Ekran: ComponentType;
 }
 
+/** Komut çalışırken kabuğun verdiği olanaklar. */
+export interface KomutOrtami {
+  /** Uygulama içi yola git: "/asistan/odak". */
+  git: (yol: string) => void;
+}
+
+/**
+ * Komut paletinde (Ctrl+K) görünen bir eylem. Kabuk komutları modülleri
+ * tanımadan toplar; `Ozet` kartlarıyla aynı desen.
+ */
+export interface Komut {
+  id: string;
+  ad: string;
+  ikon?: LucideIcon;
+  /** Aramada ada ek olarak eşleşen sözcükler. */
+  anahtarlar?: string[];
+  /**
+   * Metin alan komutun tetik sözcükleri. Yazılan ilk sözcük bunlardan biriyse
+   * kalan metin argümandır: "görev süt al yarın".
+   */
+  onekler?: string[];
+  /** Argüman örneği; önek yazılınca gri ipucu olarak görünür. */
+  ornek?: string;
+  /** Şu an listelensin mi (ör. sayaç çalışmıyorsa "duraklat" yok). */
+  uygun?: () => boolean;
+  /**
+   * Eylem. Dönen metin başarı bildirimi olur; hata fırlatırsa mesajı hata
+   * bildirimi olur. Argümanlı komutta boş argümanla çağrılmaz.
+   */
+  calistir: (arguman: string, o: KomutOrtami) => Promise<string | void> | string | void;
+}
+
 export interface Modul {
   id: string;
   ad: string;
@@ -30,6 +62,8 @@ export interface Modul {
   rotalar: Rota[];
   /** Bugün ekranında görünecek kart. Modül isterse vermez. */
   Ozet?: ComponentType;
+  /** Komut paletine verdiği eylemler. Ekranlara gitme komutları kabukta kendiliğinden üretilir. */
+  komutlar?: Komut[];
 }
 
 // Kayıt. Yeni modül eklemek = klasör + buraya bir satır.

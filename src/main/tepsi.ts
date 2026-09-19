@@ -1,4 +1,4 @@
-import { BrowserWindow, Menu, Tray, app, globalShortcut, nativeImage, screen, type MenuItemConstructorOptions } from "electron";
+import { BrowserWindow, Menu, Tray, app, globalShortcut, nativeImage, screen, type MenuItemConstructorOptions, type WebContents } from "electron";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { KANAL } from "../ortak/tipler";
@@ -193,9 +193,13 @@ function yakalamayiAcKapat(): void {
  * söylenir.
  */
 export function yakalamaHatasi(mesaj: string): void {
-  if (yakala && !yakala.isDestroyed() && yakala.isVisible()) return;
+  if (!yakala || yakala.isDestroyed() || yakala.isVisible()) return;
   tepsi?.displayBalloon({ title: "Görev eklenemedi", content: mesaj, iconType: "error" });
 }
+
+/** İstek hızlı yakalama penceresinden mi geldi (ana penceredeki komut paleti de aynı kanalı kullanıyor). */
+export const yakalamadanMi = (gonderen: WebContents): boolean =>
+  !!yakala && !yakala.isDestroyed() && yakala.webContents === gonderen;
 
 export function yakalamayiGizle(): void {
   if (yakala && !yakala.isDestroyed()) yakala.hide();

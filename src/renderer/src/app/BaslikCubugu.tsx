@@ -1,4 +1,4 @@
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Search, Sun } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { moduller } from "@/modules";
 import { Dugme } from "@/ui/bilesenler";
@@ -16,7 +16,7 @@ function kirinti(pathname: string): string[] {
 
 const TEMA_ADI = { sistem: "Sistem teması", acik: "Açık tema", koyu: "Koyu tema" } as const;
 
-export function BaslikCubugu({ kaydirildi }: { kaydirildi: boolean }) {
+export function BaslikCubugu({ kaydirildi, paletAc }: { kaydirildi: boolean; paletAc: () => void }) {
   const { pathname } = useLocation();
   const { tercih, sonraki } = useTema();
   const parcalar = kirinti(pathname);
@@ -36,6 +36,12 @@ export function BaslikCubugu({ kaydirildi }: { kaydirildi: boolean }) {
       </span>
 
       <div className={s.baslikSag}>
+        {/* Paletin görünür kapısı: kısayolu bilmeyen de bulsun. */}
+        <button type="button" className={s.paletDugmesi} onClick={paletAc} title="Komut paleti (Ctrl+K)">
+          <Search size={14} strokeWidth={1.9} />
+          <span>Komut</span>
+          <kbd>Ctrl K</kbd>
+        </button>
         <Dugme
           tur="sade"
           onClick={sonraki}

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { BASLIK_RENKLERI, KANAL } from "../ortak/tipler";
 import * as td from "./todoist";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
-import { todoistDegistiBildir, yakalamaHatasi, yakalamayiGizle } from "./tepsi";
+import { todoistDegistiBildir, yakalamaHatasi, yakalamadanMi, yakalamayiGizle } from "./tepsi";
 import { klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
 
 /**
@@ -99,14 +99,15 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdAc, (_o, id: string) => td.ac(id));
   ipcMain.handle(KANAL.tdTarih, (_o, id: string, metin: string | null) => td.tarihVer(id, metin));
 
-  // Hızlı yakalama penceresi.
-  ipcMain.handle(KANAL.tdHizli, async (_o, metin: string) => {
+  // Hızlı yakalama penceresi ve komut paleti. Tepsi balonu yalnızca yakalama
+  // penceresi için: palet hatayı kendi içinde gösteriyor.
+  ipcMain.handle(KANAL.tdHizli, async (olay, metin: string) => {
     try {
       const gorev = await td.hizliEkle(String(metin ?? "").trim());
       todoistDegistiBildir();
       return gorev;
     } catch (e) {
-      yakalamaHatasi(e instanceof Error ? e.message : String(e));
+      if (yakalamadanMi(olay.sender)) yakalamaHatasi(e instanceof Error ? e.message : String(e));
       throw e;
     }
   });

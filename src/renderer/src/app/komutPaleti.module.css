@@ -1,0 +1,188 @@
+/* Komut paleti: üstte, ortada; arka plan hafifçe kararır. */
+.perde {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 14vh;
+  background: rgba(27, 26, 23, 0.18);
+  -webkit-app-region: no-drag;
+}
+
+:root[data-tema="koyu"] .perde {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.palet {
+  width: min(600px, calc(100vw - 2 * var(--b6)));
+  max-height: min(520px, 72vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  box-shadow: var(--golge3);
+  overflow: hidden;
+}
+
+.girdiSatiri {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b3) var(--b4);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.aramaIkonu {
+  color: var(--metin-soluk);
+  flex: none;
+}
+
+.girdi {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--metin);
+  font: inherit;
+  font-size: var(--y3);
+  padding: var(--b1) 0;
+}
+
+/* Paletin tek girdisi zaten odakta; genel odak halkası çerçeveyi ikiler. */
+.girdi:focus-visible {
+  outline: none;
+}
+
+.girdi::placeholder {
+  color: var(--metin-soluk);
+}
+
+.ipucu {
+  padding: var(--b2) var(--b4);
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.hata {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b2) var(--b4);
+  font-size: var(--y4);
+  color: var(--hata);
+  background: var(--hata-yumusak);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.donen {
+  animation: don 0.9s linear infinite;
+}
+
+@keyframes don {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ornek {
+  color: var(--metin-orta);
+  font-family: var(--aile-sayi);
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: var(--b1);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.satir {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b2) var(--b3);
+  border-radius: var(--r1);
+  font-size: var(--y3);
+  color: var(--metin);
+  cursor: pointer;
+  user-select: none;
+}
+
+.secili {
+  background: var(--vurgu-yumusak);
+}
+
+.satirIkonu {
+  width: 18px;
+  display: flex;
+  justify-content: center;
+  color: var(--metin-orta);
+  flex: none;
+}
+
+.secili .satirIkonu {
+  color: var(--vurgu);
+}
+
+.ad {
+  flex: none;
+}
+
+.arguman {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vurgu);
+  font-weight: var(--sik-orta);
+}
+
+.onek {
+  flex: 1;
+  color: var(--metin-soluk);
+  font-size: var(--y4);
+  font-family: var(--aile-sayi);
+}
+
+.enter {
+  margin-left: auto;
+  color: var(--metin-soluk);
+  flex: none;
+}
+
+.bos {
+  padding: var(--b5) var(--b4);
+  text-align: center;
+  color: var(--metin-soluk);
+  font-size: var(--y4);
+}
+
+.alt {
+  display: flex;
+  gap: var(--b4);
+  padding: var(--b2) var(--b4);
+  border-top: 1px solid var(--cizgi);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.alt kbd {
+  display: inline-block;
+  min-width: 18px;
+  margin-right: 3px;
+  padding: 0 4px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: 4px;
+  font-family: var(--aile);
+  font-size: var(--y5);
+  text-align: center;
+  color: var(--metin-orta);
+  background: var(--zemin);
+}
