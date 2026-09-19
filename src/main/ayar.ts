@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { AYAR_ADLARI, ayarCoz, yenidenAdlandir } from "./veri-cekirdek";
+import { AYAR_ADLARI, ayarCoz, jsonCoz, yenidenAdlandir } from "./veri-cekirdek";
 
 /**
  * Ayarın nerede aranacağı. Tek yerde durur, çünkü aynı dosyalar iki şeyi
@@ -122,7 +122,7 @@ export async function ayarKaydet(alan: string, deger: string): Promise<string> {
   let mevcut: Record<string, unknown> = {};
   if (metin) {
     try {
-      mevcut = JSON.parse(metin) as Record<string, unknown>;
+      mevcut = jsonCoz<Record<string, unknown>>(metin);
     } catch {
       // Bozuk dosyanın üstüne yazılır; kurtarılacak bir şey yok.
     }

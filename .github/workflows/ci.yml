@@ -1,0 +1,40 @@
+name: CI
+
+# Kırığı elle fark etmek zorunda kalmayalım: her push ve her PR'da
+# tip denetimi + testler koşar.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  dogrula:
+    name: Tipler ve testler (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows da var: hedef platform o ve bazı iddialar (yol ayracı gibi)
+        # yalnızca orada anlamlı — Linux'ta atlanıyorlar.
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          # Testler düz Node ile koşuyor; .mts'i uzantı soyarak çalıştırabilen sürüm.
+          node-version: 22
+          cache: npm
+
+      - name: Bağımlılıklar
+        run: npm ci
+        env:
+          # Testler Electron ikilisine dokunmuyor, 100 MB'ı boşuna indirmeyelim.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+
+      - name: Tip denetimi
+        run: npm run tipler
+
+      - name: Testler
+        run: npm test

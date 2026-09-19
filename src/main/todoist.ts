@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import type { TodoistDurum, TodoistGorev, TodoistProje } from "../ortak/tipler";
 import { ayar, ayarKaydet } from "./ayar";
+import { jsonCoz } from "./veri-cekirdek";
 import * as cekirdek from "./todoist-cekirdek";
 import { TodoistHata, type YeniGorev } from "./todoist-cekirdek";
 
@@ -29,7 +30,7 @@ function anahtar(): string | null {
   try {
     const f = gizliYolu();
     if (!existsSync(f)) return null;
-    const g = JSON.parse(readFileSync(f, "utf8")) as { todoistToken?: string };
+    const g = jsonCoz<{ todoistToken?: string }>(readFileSync(f, "utf8"));
     return g.todoistToken?.trim() || null;
   } catch {
     return null;

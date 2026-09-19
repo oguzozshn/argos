@@ -10,7 +10,7 @@ import { existsSync } from "node:fs";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { ayarCoz, listele, oku, sil, tamYol, yaz } from "../src/main/veri-cekirdek.ts";
+import { ayarCoz, jsonCoz, listele, oku, sil, tamYol, yaz } from "../src/main/veri-cekirdek.ts";
 import { disDegisimBekcisi, sirali } from "../src/ortak/sirali.ts";
 
 let gecen = 0;
@@ -381,6 +381,40 @@ async function calis(): Promise<void> {
   kontrol("kök yoksa yazma reddedilir", !yokYazma.ok && yokYazma.sebep === "hata");
   kontrol("kök klasör açılmaz", !existsSync(yokKok));
   kontrol("tanımsız içerik yazılmaz", !(await yaz(kokDizin, "hobiler/bos.json", undefined, null)).ok);
+
+  console.log("\nBOM");
+  // Not Defteri ve PowerShell'in `-Encoding utf8`'i dosyanın başına BOM koyuyor.
+  // `JSON.parse` onu kabul etmiyor, hata da "okunamadı" diye yorumlanıyordu:
+  // dosya tam yerinde dururken yok sayılıyordu.
+  const BOM = "﻿";
+
+  kontrol("BOM'lu metin çözülür", jsonCoz<{ a: number }>(BOM + '{"a": 1}').a === 1);
+  kontrol("BOM'suz metin çözülür", jsonCoz<{ a: number }>('{"a": 1}').a === 1);
+  kontrol(
+    "gövdedeki U+FEFF'e dokunulmaz",
+    jsonCoz<{ a: string }>(`{"a": "x${BOM}y"}`).a === `x${BOM}y`,
+  );
+  kontrol(
+    "bozuk JSON hâlâ hata verir",
+    (() => {
+      try {
+        jsonCoz(BOM + "{ bozuk");
+        return false;
+      } catch {
+        return true;
+      }
+    })(),
+  );
+
+  await writeFile(join(kokDizin, "bomlu.json"), BOM + '{"deger": 42}', "utf8");
+  const bomlu = await oku<{ deger: number }>(kokDizin, "bomlu.json");
+  kontrol("BOM'lu dosya okunur", bomlu.veri?.deger === 42);
+
+  kontrol(
+    "BOM'lu ayar dosyası okunur",
+    ayarCoz([exeKok], "dataDir", "../veri", kurgu({ [yerel]: BOM + `{"dataDir": "/y"}` })) ===
+      resolve("/y"),
+  );
 
   await rm(kokDizin, { recursive: true, force: true });
 

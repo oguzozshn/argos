@@ -13,6 +13,17 @@ import type { Okuma, Yazma } from "../ortak/tipler";
  */
 
 /**
+ * Metni BOM'a takılmadan çözer.
+ *
+ * Windows'ta Not Defteri ve PowerShell'in `-Encoding utf8`'i dosyanın başına
+ * BOM koyuyor; `JSON.parse` onu kabul etmiyor. Yakalayan taraf hatayı
+ * "dosya okunamadı" diye yorumladığı için dosya tam yerinde dururken yokmuş
+ * gibi görünüyordu.
+ */
+export const jsonCoz = <T = unknown>(metin: string): T =>
+  JSON.parse(metin.charCodeAt(0) === 0xfeff ? metin.slice(1) : metin) as T;
+
+/**
  * Göreli yolu kök dizin içine kilitler. `..` ile dışarı çıkma, mutlak yol ve
  * boş parça reddedilir — arayüzden gelen her yol güvenilmez kabul edilir.
  */
@@ -43,7 +54,7 @@ export async function oku<T = unknown>(kokDizin: string, gorece: string): Promis
       const metin = await readFile(f, "utf8");
       const sonra = (await stat(f)).mtimeMs;
       if (once === sonra || deneme >= 2) {
-        return { veri: JSON.parse(metin) as T, mtime: sonra, yol: gorece };
+        return { veri: jsonCoz<T>(metin), mtime: sonra, yol: gorece };
       }
     }
   } catch (e) {
@@ -234,7 +245,7 @@ export function ayarCoz(
       if (!metin) continue;
       let deger: unknown;
       try {
-        deger = (JSON.parse(metin) as Record<string, unknown>)[alan];
+        deger = jsonCoz<Record<string, unknown>>(metin)[alan];
       } catch {
         console.error(`[ayar] ${join(kok, ad)} okunamadı, yok sayıldı`);
         continue;
