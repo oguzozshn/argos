@@ -1,6 +1,7 @@
 import { BrowserWindow, Menu, Tray, app, globalShortcut, nativeImage, screen, type MenuItemConstructorOptions, type WebContents } from "electron";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { bugunIso } from "../ortak/plan";
 import { KANAL } from "../ortak/tipler";
 import { gezinmeyiKilitle, sayfayiYukle, webAyarlari } from "./sayfa";
 
@@ -24,6 +25,10 @@ let simgeVar = false;
 let kisayolAlindi = true;
 /** Telegram eşitlemesinin son hâli; ayar yoksa null ve menüde satır yok. */
 let botDurumu: { tamam: boolean; zaman: Date; hata?: string } | null = null;
+/** Günlük yedeğin son hâli; henüz denenmediyse null. */
+let yedekDurumu: { tamam: true; gun: string } | { tamam: false; hata: string } | null = null;
+/** Yedek klasörünü açan eylem; döngüsel içe aktarmayı önlemek için dışarıdan verilir. */
+let yedekAc: (() => void) | null = null;
 let cikiliyor = false;
 
 /** Paketliyken ikon kaynaklara kopyalanıyor (package.json `extraResources`). */
@@ -81,6 +86,27 @@ export function tepsiBotDurumu(d: typeof botDurumu): void {
   menuKur();
 }
 
+/** Günlük yedeğin sonucu; menüdeki "Yedekleri aç" satırı güncellenir. */
+export function tepsiYedekDurumu(d: typeof yedekDurumu): void {
+  yedekDurumu = d;
+  menuKur();
+}
+
+export function tepsiYedekAcici(f: () => void): void {
+  yedekAc = f;
+  menuKur();
+}
+
+function yedekSatiri(): MenuItemConstructorOptions[] {
+  if (!yedekAc) return [];
+  const ek = !yedekDurumu
+    ? ""
+    : yedekDurumu.tamam
+      ? ` (son: ${yedekDurumu.gun === bugunIso() ? "bugün" : yedekDurumu.gun})`
+      : " (son yedek alınamadı)";
+  return [{ label: `Yedekleri aç${ek}`, click: yedekAc }];
+}
+
 function botSatiri(): MenuItemConstructorOptions[] {
   if (!botDurumu) return [];
   const saat = botDurumu.zaman.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
@@ -100,6 +126,7 @@ function menuKur(): void {
         label: kisayolVar ? `Hızlı görev ekle\t${KISAYOL_METNI}` : "Hızlı görev ekle (kısayol alınamadı)",
         click: yakalamayiGoster,
       },
+      ...yedekSatiri(),
       { type: "separator" },
       { label: "Çıkış", click: () => app.quit() },
     ]),

@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, CornerDownLeft, Home, Loader2, Search } from "lucide-react";
+import { AlertTriangle, ArchiveRestore, CornerDownLeft, Home, Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { komutAra, type Eslesme } from "@ortak/komut-ara";
 import { moduller, type Komut } from "@/modules";
 import { gecisEgrisi } from "@/ui/hareket";
 import { bildir } from "@/ui/toast";
+import { kopru } from "@/veri/kanca";
 import s from "./komutPaleti.module.css";
 
 /**
@@ -41,6 +42,21 @@ function gitmeKomutlari(): Komut[] {
   ];
 }
 
+/** Kabuğun kendi eylemleri: bir modüle ait olmayanlar. */
+const KABUK_KOMUTLARI: Komut[] = [
+  {
+    id: "kabuk.yedekler",
+    ad: "Yedek klasörünü aç",
+    ikon: ArchiveRestore,
+    anahtarlar: ["yedek", "geri yükle"],
+    calistir: async () => {
+      const k = kopru();
+      if (!k) throw new Error("Uygulama köprüsü yok");
+      await k.yedekAc();
+    },
+  },
+];
+
 const GITMELER = gitmeKomutlari();
 
 /**
@@ -68,7 +84,11 @@ function PaletIcerik({ kapat }: { kapat: () => void }) {
 
   // `uygun` o anki duruma bakıyor (sayaç çalışıyor mu); palet her açılışta yeniden kurulur.
   const komutlar = useMemo(
-    () => [...moduller.flatMap((m) => m.komutlar ?? []).filter((k) => k.uygun?.() ?? true), ...GITMELER],
+    () => [
+      ...moduller.flatMap((m) => m.komutlar ?? []).filter((k) => k.uygun?.() ?? true),
+      ...GITMELER,
+      ...KABUK_KOMUTLARI,
+    ],
     [],
   );
   const sonuclar = useMemo(() => komutAra(sorgu, komutlar), [sorgu, komutlar]);

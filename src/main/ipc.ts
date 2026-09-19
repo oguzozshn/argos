@@ -5,6 +5,7 @@ import * as td from "./todoist";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { todoistDegistiBildir, yakalamaHatasi, yakalamadanMi, yakalamayiGizle } from "./tepsi";
 import { klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
+import { yedekKlasorunuAc } from "./yedek";
 
 /**
  * Arayüzün dosya sistemine tek kapısı. Renderer'da `fs` yok, `nodeIntegration`
@@ -112,4 +113,5 @@ export function ipcKur(): void {
     }
   });
   ipcMain.handle(KANAL.yakalaGizle, () => yakalamayiGizle());
+  ipcMain.handle(KANAL.yedekAc, () => yedekKlasorunuAc());
 }

@@ -139,6 +139,8 @@ export interface ArgosApi {
   botAktarildiDinle(geriCagri: () => void): () => void;
   /** Henüz gösterilmemiş Telegram eklemelerini verir ve listeyi boşaltır. */
   botAl(): Promise<string[]>;
+  /** Günlük yedeklerin klasörünü Gezgin'de açar. */
+  yedekAc(): Promise<void>;
   /** Yalnızca hızlı yakalama penceresinde anlamlı. */
   yakala: {
     gizle(): Promise<void>;
@@ -172,6 +174,7 @@ export const KANAL = {
   ayarGizli: "ayar:gizli-sec",
   botAktarildi: "bot:aktarildi",
   botAl: "bot:al",
+  yedekAc: "yedek:ac",
 } as const;
 
 /**

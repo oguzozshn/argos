@@ -3,10 +3,11 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { botBaslat, botDurdur } from "./bot";
 import { ipcKur } from "./ipc";
+import { yedekBaslat, yedekDurdur, yedekKlasorunuAc } from "./yedek";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { durumuDogrula, type PencereDurumu } from "./pencere-durumu";
 import { gezinmeyiKilitle, sayfayiYukle, webAyarlari } from "./sayfa";
-import { anaPencereyiGoster, tepsiIpucu, tepsiKapat, tepsiKullanilabilir, tepsiKur } from "./tepsi";
+import { anaPencereyiGoster, tepsiIpucu, tepsiKapat, tepsiKullanilabilir, tepsiKur, tepsiYedekAcici } from "./tepsi";
 import { dataDir, ortam } from "./veri";
 
 // Tek örnek: ikinci kez açılırsa var olan pencere öne gelir. İki örnek aynı
@@ -136,6 +137,8 @@ if (!app.requestSingleInstanceLock()) {
     pencereKur();
     tepsiKur(() => pencere, anaPencereyiAc);
     botBaslat(() => pencere);
+    tepsiYedekAcici(() => void yedekKlasorunuAc().catch((e) => console.error("[yedek] açılamadı:", e)));
+    yedekBaslat();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) pencereKur();
@@ -149,6 +152,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on("before-quit", () => {
     cikiliyor = true;
     botDurdur();
+    yedekDurdur();
     void izlemeyiDurdur();
   });
 

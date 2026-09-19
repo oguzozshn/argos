@@ -49,6 +49,7 @@ const argos: ArgosApi = {
   },
 
   botAl: (): Promise<string[]> => ipcRenderer.invoke(KANAL.botAl),
+  yedekAc: (): Promise<void> => ipcRenderer.invoke(KANAL.yedekAc),
   botAktarildiDinle: (geriCagri: () => void): (() => void) => {
     const sarmal = () => geriCagri();
     ipcRenderer.on(KANAL.botAktarildi, sarmal);
