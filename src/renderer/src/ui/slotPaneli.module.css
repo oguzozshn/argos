@@ -1,0 +1,84 @@
+/* Slot düzenleme paneli (Hafta ve Takvim). */
+.panel {
+  position: sticky;
+  top: 0;
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r3);
+  box-shadow: var(--golge1);
+  padding: var(--b5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+}
+
+/* Takvimin gün panelinin içinde: çerçeve dıştaki panelin. */
+.gomulu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+  padding-bottom: var(--b4);
+  margin-bottom: var(--b2);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.panelBas {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--b2);
+}
+
+.panelKimlik {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--aile-sayi);
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  user-select: text;
+}
+
+.alanEtiket {
+  display: block;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  margin-bottom: var(--b1);
+}
+
+.secim {
+  width: 100%;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  padding: 8px var(--b2);
+  font-size: var(--y4);
+  color: var(--metin);
+  cursor: pointer;
+}
+
+.ikiliAlan {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--b2);
+}
+
+.onay {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  cursor: pointer;
+}
+
+.panelDip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--b3);
+  border-top: 1px solid var(--cizgi);
+}
+
+.gunTarih {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}

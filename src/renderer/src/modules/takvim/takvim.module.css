@@ -761,3 +761,117 @@
   color: var(--uyari);
   font-size: var(--y4);
 }
+
+/* --- eksende düzenleme ---------------------------------------------------- */
+
+/* Eksen kendi kutusunda kayar; gün başlıkları ve gün boyu şeridi yerinde kalır. */
+.eksenKaydir {
+  max-height: min(680px, calc(100vh - 320px));
+  min-height: 320px;
+  overflow-y: auto;
+}
+
+.blokTasinabilir {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.blokTasinabilir:active {
+  cursor: grabbing;
+}
+
+/* Taşınırken asıl yerinde soluk kalır. */
+.blokKaynak {
+  opacity: 0.35;
+}
+
+/* Bırakılacağı yer. */
+.blokHayalet {
+  z-index: 3;
+  pointer-events: none;
+  border-style: dashed;
+  box-shadow: var(--golge2);
+}
+
+.blokGecersiz {
+  border-color: var(--hata);
+  background: var(--hata-yumusak);
+  color: var(--hata);
+}
+
+/* Alt kenar: sürüklenince süre değişir. */
+.boyutTutamak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7px;
+  cursor: ns-resize;
+}
+
+.boyutTutamak::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 18px;
+  height: 2px;
+  margin-left: -9px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.blok:hover .boyutTutamak::after {
+  opacity: 0.35;
+}
+
+.blokSure {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vurgu);
+}
+
+/* Gün panelinde slot satırı tıklanınca eksendeki gibi seçilir. */
+button.panelSlot {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--cizgi);
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panelSlotSecili {
+  background: var(--vurgu-yumusak);
+}
+
+/* Gecikmiş şeridinin kapalı hâli: tek satırlık çip. */
+.gecikmisKapali {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--b3);
+  padding: 4px 12px;
+  border: 1px solid var(--uyari);
+  border-radius: var(--r-tam);
+  background: var(--uyari-yumusak);
+  color: var(--uyari);
+  font: inherit;
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  cursor: pointer;
+}
+
+button.gecikmisBas {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--y5);
+  cursor: pointer;
+}

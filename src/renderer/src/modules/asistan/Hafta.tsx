@@ -1,21 +1,14 @@
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DURUM_ISARETI, type Hafta as HaftaTipi, type Slot } from "@ortak/plan";
 import { siklikMetni, siklikOku } from "@ortak/ozet";
 import { gunEkle } from "@ortak/gun";
-import { DURUM_SIRASI, aliskanlikCevir, slotDurumunuDondur, slotTasi } from "@ortak/plan-islem";
+import { aliskanlikCevir, slotDurumunuDondur, slotEkle as slotEkleIslem, slotTasi } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
-import {
-  dakika,
-  gununSlotlari,
-  haftalikYuk,
-  ihlaller,
-  kuralSetiTamamla,
-  yeniSlotId,
-  type KuralSeti,
-} from "@ortak/kural";
-import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { gununSlotlari, haftalikYuk, ihlaller, kuralSetiTamamla, type KuralSeti } from "@ortak/kural";
+import { BosDurum, Dugme, EkranBasi, Etiket, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { Kisayollar } from "@/ui/Kisayollar";
+import { SlotPaneli } from "@/ui/SlotPaneli";
 import { useDosya } from "@/veri/kanca";
 import { saatMetni, usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
@@ -53,154 +46,6 @@ const yalnizGorev = (y: Yuk) => y.tur === "gorev";
 
 const GOREV_SURUKLENMEZ = "Tekrarlı görev sürüklenmez — tekrar düzeni silinir";
 const SLOT_SURUKLENMEZ = "Taşınmış slot yeniden taşınmaz";
-
-/* --- yan panel ---------------------------------------------------------- */
-
-function SlotPaneli({
-  slot,
-  kurallar,
-  gunler,
-  onDegis,
-  onSil,
-  onKapat,
-}: {
-  slot: Slot;
-  kurallar: KuralSeti;
-  gunler: { no: number; ad: string }[];
-  onDegis: (y: Slot) => void;
-  onSil: () => void;
-  onKapat: () => void;
-}) {
-  const alanlar = kurallar.alanlar ?? [];
-  const sureler = kurallar.sureSecenekleriDk ?? [30, 45, 60, 90, 120];
-
-  return (
-    <aside className={s.panel}>
-      <div className={s.panelBas}>
-        <span className={s.panelKimlik}>{slot.id}</span>
-        <Dugme tur="sade" ikon={<X size={16} />} onClick={onKapat} aria-label="Paneli kapat" />
-      </div>
-
-      <div>
-        <label className={s.alanEtiket} htmlFor="slot-alan">
-          Alan
-        </label>
-        <select
-          id="slot-alan"
-          className={s.secim}
-          value={slot.alan}
-          onChange={(e) => onDegis({ ...slot, alan: e.target.value })}
-        >
-          {[...new Set([...alanlar, slot.alan])].map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className={s.alanEtiket} htmlFor="slot-konu">
-          Konu
-        </label>
-        <Giris
-          id="slot-konu"
-          value={slot.konu}
-          placeholder="En fazla 3-4 kelime"
-          onChange={(e) => onDegis({ ...slot, konu: e.target.value })}
-        />
-      </div>
-
-      <div className={s.ikiliAlan}>
-        <div>
-          <label className={s.alanEtiket} htmlFor="slot-gun">
-            Gün
-          </label>
-          <select
-            id="slot-gun"
-            className={s.secim}
-            value={slot.gun}
-            onChange={(e) => onDegis({ ...slot, gun: Number(e.target.value) })}
-          >
-            {gunler.map((g) => (
-              <option key={g.no} value={g.no}>
-                {g.ad}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={s.alanEtiket} htmlFor="slot-saat">
-            Saat
-          </label>
-          <input
-            id="slot-saat"
-            className={s.secim}
-            type="time"
-            value={slot.saat}
-            onChange={(e) => onDegis({ ...slot, saat: e.target.value })}
-          />
-        </div>
-      </div>
-
-      <div className={s.ikiliAlan}>
-        <div>
-          <label className={s.alanEtiket} htmlFor="slot-sure">
-            Süre
-          </label>
-          <select
-            id="slot-sure"
-            className={s.secim}
-            value={slot.sureDk}
-            onChange={(e) => onDegis({ ...slot, sureDk: Number(e.target.value) })}
-          >
-            {[...new Set([...sureler, slot.sureDk])]
-              .sort((a, b) => a - b)
-              .map((d) => (
-                <option key={d} value={d}>
-                  {d} dk
-                </option>
-              ))}
-          </select>
-        </div>
-        <div>
-          <label className={s.alanEtiket} htmlFor="slot-durum">
-            Durum
-          </label>
-          <select
-            id="slot-durum"
-            className={s.secim}
-            value={slot.durum}
-            onChange={(e) => onDegis({ ...slot, durum: e.target.value })}
-          >
-            {DURUM_SIRASI.map((d) => (
-              <option key={d} value={d}>
-                {DURUM_ISARETI[d]} {d}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Esnek slot korumalı alanda uyarı üretmez — telafi oraya konabilir. */}
-      <label className={s.onay}>
-        <input
-          type="checkbox"
-          checked={Boolean(slot.esnek)}
-          onChange={(e) => onDegis({ ...slot, esnek: e.target.checked })}
-        />
-        Esnek (telafi) — korumalı alan uyarısı vermez
-      </label>
-
-      <div className={s.panelDip}>
-        <span className={s.gunTarih}>{slot.sureDk} dk</span>
-        <Dugme tur="tehlike" ikon={<Trash2 size={15} />} onClick={onSil}>
-          Slotu sil
-        </Dugme>
-      </div>
-    </aside>
-  );
-}
 
 /* --- ekran -------------------------------------------------------------- */
 
@@ -363,26 +208,8 @@ function HaftaIcerik({
   const durumDondur = (x: Slot) => kaydet(slotDurumunuDondur(veri, x.id));
 
   const slotEkle = (gunNo: number) => {
-    const gunSlot = gununSlotlari(veri, gunNo);
-    const sonuncu = gunSlot[gunSlot.length - 1];
-    const saat = sonuncu
-      ? `${String(Math.min(22, Math.floor((dakika(sonuncu.saat) + sonuncu.sureDk + 15) / 60))).padStart(2, "0")}:00`
-      : "19:00";
-    const id = yeniSlotId(veri, gunNo, saat);
-    const yeni: Slot = {
-      id,
-      gun: gunNo,
-      saat,
-      sureDk: 60,
-      alan: kurallar.alanlar?.[0] ?? "Serbest",
-      konu: "",
-      durum: "planli",
-    };
-    kaydet({
-      ...veri,
-      slotlar: [...veri.slotlar, yeni],
-      kullanilmisIdler: [...(veri.kullanilmisIdler ?? []), id],
-    });
+    const { hafta, id } = slotEkleIslem(veri, gunNo, kurallar);
+    kaydet(hafta);
     setSeciliId(id);
   };
 

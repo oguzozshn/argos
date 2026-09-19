@@ -1,13 +1,15 @@
 import { CalendarOff, ChevronLeft, ChevronRight, History, Plus, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import type { Uygulama } from "@ortak/bot";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
-import { dakika, gununSlotlari, kuralSetiTamamla, yeniSlotId, type KuralSeti } from "@ortak/kural";
-import { gunBosalt, gunTipi, type BosaltRaporu } from "@ortak/plan-islem";
+import { dakika, gununSlotlari, kuralSetiTamamla, type KuralSeti } from "@ortak/kural";
+import { gunBosalt, gunTipi, slotEkle, slotuYerlestir, type BosaltRaporu } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { SlotPaneli } from "@/ui/SlotPaneli";
 import {
   hedefOzellikleri,
   hedefSinifi,
@@ -15,6 +17,8 @@ import {
   useSurukle,
   type SurukleDurumu,
 } from "@/ui/surukle";
+import { bildir } from "@/ui/toast";
+import { dosyayiGuncelle } from "@/veri/guncelle";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
@@ -56,6 +60,36 @@ interface GunKaydi {
 }
 
 const haftaninPazartesisi = (iso: string): string => gunEkle(iso, -haftaninGunu(iso));
+
+/* --- slot düzenleme (eksende) --------------------------------------------- */
+
+/** Sürükleme ve boyutlandırma 15 dakikalık adımlarla. */
+const ADIM_DK = 15;
+
+const saatMetni = (dk: number): string =>
+  `${String(Math.floor(dk / 60)).padStart(2, "0")}:${String(dk % 60).padStart(2, "0")}`;
+
+const sinirla = (x: number, alt: number, ust: number): number => Math.min(ust, Math.max(alt, x));
+
+/** Sürüklenen slotun o anki hayali yeri. */
+interface Tasima {
+  id: string;
+  kod: string;
+  tur: "tasi" | "boyut";
+  iso: string;
+  basDk: number;
+  sureDk: number;
+  /** Hedef gün aynı hafta dosyasında mı; değilse bırakılamaz. */
+  gecerli: boolean;
+}
+
+/** Eksen sütunlarının düzenleme için ekrandan aldığı olanaklar. */
+interface EksenDuzeni {
+  tasima: Tasima | null;
+  baslat: (e: ReactPointerEvent, x: Slot, kayit: GunKaydi, iso: string, tur: Tasima["tur"]) => void;
+  /** Boş yere çift tıklanınca o saate slot. */
+  ekle: (kayit: GunKaydi, iso: string, dk?: number) => void;
+}
 
 /* --- sürükleme ----------------------------------------------------------- */
 
@@ -116,6 +150,7 @@ function EksenSutunu({
   onSlotSec,
   seciliSlot,
   surukle,
+  duzen,
 }: {
   iso: string;
   kayit: GunKaydi | null;
@@ -127,6 +162,7 @@ function EksenSutunu({
   onSlotSec: (id: string | null) => void;
   seciliSlot: string | null;
   surukle: Surukle;
+  duzen: EksenDuzeni;
 }) {
   const slotlar = kayit ? gununSlotlari(kayit.veri, kayit.gunNo) : [];
   const ofisK = kurallar.ofisGunuKurallari ?? {};
@@ -158,6 +194,15 @@ function EksenSutunu({
         .filter(Boolean)
         .join(" ")}
       style={{ height: EKSEN_YUKSEKLIK }}
+      data-eksen-iso={iso}
+      title={kayit ? "Çift tıkla: bu saate slot ekle" : undefined}
+      onDoubleClick={(e) => {
+        // Yalnızca boş yere: bloğa çift tıklamak onu açar, slot eklemez.
+        if (!kayit || e.target !== e.currentTarget) return;
+        const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+        const dk = Math.floor(((y / SAAT_YUKSEKLIK) * 60 + ILK_SAAT * 60) / 30) * 30;
+        duzen.ekle(kayit, iso, sinirla(dk, ILK_SAAT * 60, SON_SAAT * 60 - 60));
+      }}
       {...hedefOzellikleri(iso, surukle)}
     >
       {Array.from({ length: (SON_SAAT - ILK_SAAT) * 2 + 1 }, (_, i) => (
@@ -178,31 +223,67 @@ function EksenSutunu({
         </div>
       ))}
 
-      {slotlar.map((x) => (
-        <button
-          key={x.id}
-          type="button"
-          className={[
-            s.blok,
-            dar && s.blokKucuk,
-            x.id === seciliSlot && s.blokSecili,
-            x.durum === "yapildi" && s.blokYapildi,
-            x.durum === "kacti" && s.blokKacti,
-            x.durum === "tasindi" && s.blokTasindi,
-          ]
-            .filter(Boolean)
-            .join(" ")}
+      {slotlar.map((x) => {
+        const t = duzen.tasima?.id === x.id ? duzen.tasima : null;
+        // Boyutlandırırken blok yerinde uzar; taşırken yerinde soluk kalır, hayali hedefte çizilir.
+        const sure = t?.tur === "boyut" ? t.sureDk : x.sureDk;
+        const tasinabilir = Boolean(kayit) && x.durum !== "tasindi";
+        return (
+          <button
+            key={x.id}
+            type="button"
+            className={[
+              s.blok,
+              dar && s.blokKucuk,
+              x.id === seciliSlot && s.blokSecili,
+              x.durum === "yapildi" && s.blokYapildi,
+              x.durum === "kacti" && s.blokKacti,
+              x.durum === "tasindi" && s.blokTasindi,
+              tasinabilir && s.blokTasinabilir,
+              t?.tur === "tasi" && s.blokKaynak,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            style={{
+              top: yerDk(dakika(x.saat)),
+              height: Math.max(20, (sure / 60) * SAAT_YUKSEKLIK - 3),
+            }}
+            onPointerDown={(e) => kayit && duzen.baslat(e, x, kayit, iso, "tasi")}
+            // Fareyle seçim bırakma anında yapılıyor; burası yalnızca klavye (Enter/Boşluk).
+            onClick={(e) => {
+              if (e.detail === 0) onSlotSec(x.id === seciliSlot ? null : x.id);
+            }}
+            title={`${x.saat} · ${x.alan} — ${x.konu} · ${sure} dk${tasinabilir ? " — sürükle: taşı, alt kenar: süre" : ""}`}
+          >
+            <span className={s.blokBas}>{dar ? x.alan : `${x.saat} · ${x.alan}`}</span>
+            {x.konu && !dar && <span className={s.blokAlt}>{x.konu}</span>}
+            {t?.tur === "boyut" && <span className={s.blokSure}>{sure} dk</span>}
+            {tasinabilir && (
+              <span
+                className={s.boyutTutamak}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  if (kayit) duzen.baslat(e, x, kayit, iso, "boyut");
+                }}
+              />
+            )}
+          </button>
+        );
+      })}
+
+      {duzen.tasima?.tur === "tasi" && duzen.tasima.iso === iso && (
+        <div
+          className={duzen.tasima.gecerli ? `${s.blok} ${s.blokHayalet}` : `${s.blok} ${s.blokHayalet} ${s.blokGecersiz}`}
           style={{
-            top: yerDk(dakika(x.saat)),
-            height: Math.max(20, (x.sureDk / 60) * SAAT_YUKSEKLIK - 3),
+            top: yerDk(duzen.tasima.basDk),
+            height: Math.max(20, (duzen.tasima.sureDk / 60) * SAAT_YUKSEKLIK - 3),
           }}
-          onClick={() => onSlotSec(x.id === seciliSlot ? null : x.id)}
-          title={`${x.saat} · ${x.alan} — ${x.konu} · ${x.sureDk} dk`}
         >
-          <span className={s.blokBas}>{dar ? x.alan : `${x.saat} · ${x.alan}`}</span>
-          {x.konu && !dar && <span className={s.blokAlt}>{x.konu}</span>}
-        </button>
-      ))}
+          <span className={s.blokBas}>
+            {duzen.tasima.gecerli ? saatMetni(duzen.tasima.basDk) : "başka hafta"}
+          </span>
+        </div>
+      )}
 
       {saatliGorevler.map((g) => (
         <div
@@ -223,6 +304,31 @@ function EksenSutunu({
   );
 }
 
+/**
+ * Eksen kendi kutusunda kayar; açılışta ve dönem değişince "şimdi"ye (bir
+ * saat öncesiyle) ya da o günlerin ilk slotuna kaydırılır. Önceden 06:00'dan
+ * başlıyordu, akşam slotları ekranın altında kalıyordu.
+ */
+function useEksenKaydirma(anahtar: string, hedefDk: number) {
+  const kutu = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const k = kutu.current;
+    if (k) k.scrollTop = Math.max(0, yerDk(hedefDk) - 24);
+    // Yalnızca dönem değişince; dakikada bir kayan "şimdi" kullanıcının kaydırmasını ezmesin.
+  }, [anahtar]);
+  return kutu;
+}
+
+/** Kaydırma hedefi: bugün görünüyorsa şimdiden bir saat önce, değilse ilk slot, o da yoksa 08:00. */
+function kaydirmaHedefi(gunler: string[], bugun: string, simdiDk: number, gunHaritasi: Map<string, GunKaydi>): number {
+  if (gunler.includes(bugun)) return Math.max(ILK_SAAT * 60, simdiDk - 60);
+  const ilkler = gunler.flatMap((iso) => {
+    const k = gunHaritasi.get(iso);
+    return k ? gununSlotlari(k.veri, k.gunNo).map((x) => dakika(x.saat)) : [];
+  });
+  return ilkler.length ? Math.max(ILK_SAAT * 60, Math.min(...ilkler) - 30) : 8 * 60;
+}
+
 function SaatSutunu() {
   return (
     <div className={s.saatSutunu}>
@@ -238,11 +344,16 @@ function SaatSutunu() {
 /* --- ekran --------------------------------------------------------------- */
 
 export function Takvim() {
-  const { haftalar, kurallar, bugun, yukleniyor } = usePlanVerisi();
+  const { haftalar, kurallar, bugun, yukleniyor, tazele } = usePlanVerisi();
   const [gorunum, setGorunum] = useState<Gorunum>("ay");
   const [secili, setSecili] = useState(bugun);
   const [seciliSlot, setSeciliSlot] = useState<string | null>(null);
   const [simdi, setSimdi] = useState(() => new Date());
+  const [tasima, setTasima] = useState<Tasima | null>(null);
+  // Pencere dinleyicileri çizimden bağımsız; son hayali yeri buradan okur.
+  const tasimaRef = useRef<Tasima | null>(null);
+  /** Eksen her yazdığında artar; gün paneli dosyasını izleyiciyi beklemeden yeniden okur. */
+  const [yazim, setYazim] = useState(0);
 
   const kuralSeti = useMemo(() => kuralSetiTamamla(kurallar), [kurallar]);
 
@@ -298,6 +409,131 @@ export function Takvim() {
   const simdiDk = simdi.getHours() * 60 + simdi.getMinutes();
   const seciliKayit = gunHaritasi.get(secili) ?? null;
 
+  /**
+   * Eksenden gelen değişiklik: dosya damgalı güncellenir, sonra plan hemen
+   * yeniden okunur (izleyicinin haberini beklemeden). Reddedilen taşıma ve
+   * kural uyarısı bildirimle söylenir.
+   */
+  const dosyaya = async (kod: string, f: (v: HaftaTipi) => Uygulama<HaftaTipi>): Promise<boolean> => {
+    try {
+      const u = await dosyayiGuncelle<HaftaTipi>(`${kod}.json`, (v) =>
+        v ? f(v) : { tur: "reddet", sebep: `${kod}.json okunamadı` },
+      );
+      if (u.tur === "reddet") bildir({ metin: u.sebep, tur: "hata" });
+      else if (u.tur === "eklendi" && u.not) bildir({ metin: u.not });
+      return u.tur === "eklendi";
+    } catch (e) {
+      bildir({ metin: e instanceof Error ? e.message : String(e), tur: "hata" });
+      return false;
+    } finally {
+      await tazele();
+      setYazim((n) => n + 1);
+    }
+  };
+
+  const slotuEkle = (kayit: GunKaydi, iso: string, dk?: number) => {
+    let yeniId: string | null = null;
+    void dosyaya(kayit.kod, (v) => {
+      const r = slotEkle(v, kayit.gunNo, kuralSeti, dk === undefined ? undefined : saatMetni(dk));
+      yeniId = r.id;
+      return { tur: "eklendi", veri: r.hafta };
+    }).then((ok) => {
+      if (!ok || !yeniId) return;
+      setSecili(iso);
+      setSeciliSlot(yeniId);
+    });
+  };
+
+  /**
+   * Blokta fare basıldı. Kıpırdamadan bırakılırsa tıklamadır (seç); sürüklenirse
+   * taşıma ya da boyutlandırma. Esc vazgeçer. Taşıma yalnızca aynı hafta
+   * dosyasının günlerine: başka haftaya geçmek iki dosyayı birden yazmak olurdu.
+   */
+  const baslat = (e: ReactPointerEvent, x: Slot, kayit: GunKaydi, iso: string, tur: Tasima["tur"]) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    const bas0 = dakika(x.saat);
+    const sure0 = x.sureDk;
+    const oynar = x.durum !== "tasindi";
+    let oynadi = false;
+    const ilk: Tasima = { id: x.id, kod: kayit.kod, tur, iso, basDk: bas0, sureDk: sure0, gecerli: true };
+
+    const hareket = (ev: PointerEvent) => {
+      if (!oynar) return;
+      const dx = ev.clientX - x0;
+      const dy = ev.clientY - y0;
+      if (!oynadi && Math.hypot(dx, dy) < 4) return;
+      oynadi = true;
+      const adim = Math.round(((dy / SAAT_YUKSEKLIK) * 60) / ADIM_DK) * ADIM_DK;
+      let t: Tasima;
+      if (tur === "boyut") {
+        t = { ...ilk, sureDk: sinirla(sure0 + adim, ADIM_DK, SON_SAAT * 60 - bas0) };
+      } else {
+        const el = document
+          .elementsFromPoint(ev.clientX, ev.clientY)
+          .find((n): n is HTMLElement => n instanceof HTMLElement && Boolean(n.dataset.eksenIso));
+        const hedefIso = el?.dataset.eksenIso ?? tasimaRef.current?.iso ?? iso;
+        t = {
+          ...ilk,
+          iso: hedefIso,
+          basDk: sinirla(bas0 + adim, ILK_SAAT * 60, SON_SAAT * 60 - sure0),
+          gecerli: gunHaritasi.get(hedefIso)?.kod === kayit.kod,
+        };
+      }
+      tasimaRef.current = t;
+      setTasima(t);
+    };
+
+    const bitir = (iptal: boolean) => {
+      window.removeEventListener("pointermove", hareket);
+      window.removeEventListener("pointerup", birak);
+      window.removeEventListener("keydown", tus, true);
+      const t = tasimaRef.current;
+      tasimaRef.current = null;
+      setTasima(null);
+      if (iptal) return;
+      if (!oynadi || !t) {
+        setSecili(iso);
+        setSeciliSlot((sec) => (sec === x.id ? null : x.id));
+        return;
+      }
+      if (t.tur === "boyut") {
+        if (t.sureDk === sure0) return;
+        void dosyaya(kayit.kod, (v) => ({
+          tur: "eklendi",
+          veri: { ...v, slotlar: v.slotlar.map((y) => (y.id === x.id ? { ...y, sureDk: t.sureDk } : y)) },
+        }));
+        return;
+      }
+      if (!t.gecerli) {
+        bildir({ metin: "Slot başka haftaya taşınamaz — o haftanın planı ayrı dosyada.", tur: "hata" });
+        return;
+      }
+      const hedef = gunHaritasi.get(t.iso)!;
+      void dosyaya(kayit.kod, (v) => {
+        const r = slotuYerlestir(v, kuralSeti, x.id, hedef.gunNo, saatMetni(t.basDk));
+        if (r.tasindi) return { tur: "eklendi", veri: r.hafta, ...(r.not ? { not: r.not } : {}) };
+        return r.not ? { tur: "reddet", sebep: r.not } : { tur: "zatenVar" };
+      });
+      setSecili(t.iso);
+      setSeciliSlot(x.id);
+    };
+    const birak = () => bitir(false);
+    const tus = (ev: KeyboardEvent) => {
+      if (ev.key !== "Escape") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      bitir(true);
+    };
+    window.addEventListener("pointermove", hareket);
+    window.addEventListener("pointerup", birak);
+    window.addEventListener("keydown", tus, true);
+  };
+
+  const duzen: EksenDuzeni = { tasima, baslat, ekle: slotuEkle };
+
   const kaydir = (yon: number) => {
     if (gorunum === "gun") setSecili(gunEkle(secili, yon));
     else if (gorunum === "hafta") setSecili(gunEkle(secili, yon * 7));
@@ -315,7 +551,11 @@ export function Takvim() {
     <>
       <EkranBasi
         baslik="Takvim"
-        altyazi="Plan ve görevler bir arada. Geçmişin dökümü Arşiv'de."
+        altyazi={
+          gorunum === "ay"
+            ? "Plan ve görevler bir arada. Geçmişin dökümü Arşiv'de."
+            : "Slotu sürükle: taşı · alt kenarını çek: süre · boş yere çift tıkla: yeni slot"
+        }
         sag={
           <div className={s.gez}>
             <div className={s.gorunumler}>
@@ -338,6 +578,8 @@ export function Takvim() {
                 { tus: "ArrowLeft", aciklama: `Önceki ${gorunum === "gun" ? "gün" : gorunum}`, eylem: () => kaydir(-1) },
                 { tus: "ArrowRight", aciklama: `Sonraki ${gorunum === "gun" ? "gün" : gorunum}`, eylem: () => kaydir(1) },
                 { tus: "t", aciklama: "Bugüne dön", eylem: secili !== bugun ? () => setSecili(bugun) : null },
+                { tus: "n", aciklama: "Seçili güne slot ekle", eylem: seciliKayit ? () => slotuEkle(seciliKayit, secili) : null },
+                { tus: "Escape", aciklama: "Slot seçimini kaldır", eylem: seciliSlot ? () => setSeciliSlot(null) : null },
               ]}
             />
             <Dugme
@@ -420,6 +662,7 @@ export function Takvim() {
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
               onKapat={td.kapat}
+              duzen={duzen}
             />
           )}
 
@@ -435,6 +678,7 @@ export function Takvim() {
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
               onKapat={td.kapat}
+              duzen={duzen}
             />
           )}
         </Kart>
@@ -449,6 +693,9 @@ export function Takvim() {
             onGorevKapat={td.kapat}
             onGorevEkle={td.ekle}
             surukle={surukle}
+            seciliSlot={seciliSlot}
+            onSlotSec={setSeciliSlot}
+            yazim={yazim}
           />
         ) : (
           <GunPaneliPlansiz
@@ -468,8 +715,8 @@ export function Takvim() {
  * Gecikmiş görevler. Aralık sorgusundan bağımsız gelir: eylülü görüntülerken
  * ağustostan kalan görev de burada durur, yoksa hiç görünmezdi.
  *
- * Yığın suçluluk üretmesin diye tek satır: ya tamamlanır, ya bugüne alınır, ya
- * da bir güne sürüklenir.
+ * Kapalı başlar: açıkken takvimin üstünü kaplıyordu. Açılınca her görev
+ * tamamlanır, bugüne alınır ya da bir güne sürüklenir.
  */
 function GecikmisSerit({
   gorevler,
@@ -482,12 +729,21 @@ function GecikmisSerit({
   onBugune: (g: TodoistGorev) => void;
   surukle: Surukle;
 }) {
+  const [acik, setAcik] = useState(false);
+  if (!acik) {
+    return (
+      <button type="button" className={s.gecikmisKapali} onClick={() => setAcik(true)} aria-expanded={false}>
+        <History size={14} strokeWidth={2} />
+        {gorevler.length} gecikmiş görev ▾
+      </button>
+    );
+  }
   return (
     <div className={s.gecikmis}>
-      <span className={s.gecikmisBas}>
+      <button type="button" className={s.gecikmisBas} onClick={() => setAcik(false)} aria-expanded>
         <History size={15} strokeWidth={2} />
-        {gorevler.length} gecikmiş
-      </span>
+        {gorevler.length} gecikmiş ▴
+      </button>
       <div className={s.gecikmisListe}>
         {gorevler.map((g) => (
           <span key={g.id} className={s.gecikmisOge}>
@@ -666,6 +922,7 @@ function HaftaEkseni({
   seciliSlot,
   onSlotSec,
   onKapat,
+  duzen,
 }: {
   bas: string;
   bugun: string;
@@ -679,9 +936,11 @@ function HaftaEkseni({
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
   onKapat: (g: TodoistGorev) => Promise<void>;
+  duzen: EksenDuzeni;
 }) {
   const gunler = Array.from({ length: 7 }, (_, i) => gunEkle(bas, i));
   const sutunlar = `52px repeat(7, minmax(0, 1fr))`;
+  const kutu = useEksenKaydirma(bas, kaydirmaHedefi(gunler, bugun, simdiDk, gunHaritasi));
 
   return (
     <>
@@ -730,26 +989,29 @@ function HaftaEkseni({
         </div>
       </div>
 
-      <div
-        className={s.haftaEksen}
-        style={{ gridTemplateColumns: sutunlar, height: EKSEN_YUKSEKLIK + 24 }}
-      >
-        <SaatSutunu />
-        {gunler.map((iso) => (
-          <EksenSutunu
-            key={iso}
-            iso={iso}
-            kayit={gunHaritasi.get(iso) ?? null}
-            kurallar={kurallar}
-            gorevler={gorevler.get(iso) ?? []}
-            bugunMu={iso === bugun}
-            simdiDk={simdiDk}
-            dar
-            seciliSlot={seciliSlot}
-            onSlotSec={onSlotSec}
-            surukle={surukle}
-          />
-        ))}
+      <div ref={kutu} className={s.eksenKaydir}>
+        <div
+          className={s.haftaEksen}
+          style={{ gridTemplateColumns: sutunlar, height: EKSEN_YUKSEKLIK + 24 }}
+        >
+          <SaatSutunu />
+          {gunler.map((iso) => (
+            <EksenSutunu
+              key={iso}
+              iso={iso}
+              kayit={gunHaritasi.get(iso) ?? null}
+              kurallar={kurallar}
+              gorevler={gorevler.get(iso) ?? []}
+              bugunMu={iso === bugun}
+              simdiDk={simdiDk}
+              dar
+              seciliSlot={seciliSlot}
+              onSlotSec={onSlotSec}
+              surukle={surukle}
+              duzen={duzen}
+            />
+          ))}
+        </div>
       </div>
     </>
   );
@@ -768,6 +1030,7 @@ function GunEkseni({
   seciliSlot,
   onSlotSec,
   onKapat,
+  duzen,
 }: {
   iso: string;
   bugun: string;
@@ -779,7 +1042,12 @@ function GunEkseni({
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
   onKapat: (g: TodoistGorev) => Promise<void>;
+  duzen: EksenDuzeni;
 }) {
+  const kutu = useEksenKaydirma(
+    iso,
+    kaydirmaHedefi([iso], bugun, simdiDk, kayit ? new Map([[iso, kayit]]) : new Map()),
+  );
   const seanslar = (kayit?.veri.seanslar ?? []).filter(
     (x) => (x.baslangic ?? "").slice(0, 10) === iso,
   );
@@ -803,6 +1071,7 @@ function GunEkseni({
         </div>
       )}
 
+      <div ref={kutu} className={s.eksenKaydir}>
       <div className={s.eksen} style={{ height: EKSEN_YUKSEKLIK + 24 }}>
         <SaatSutunu />
         <EksenSutunu
@@ -816,6 +1085,7 @@ function GunEkseni({
           seciliSlot={seciliSlot}
           onSlotSec={onSlotSec}
           surukle={surukle}
+          duzen={duzen}
         />
 
         {/* Ölçülen seanslar ayrı sütunda: plan ile gerçek yan yana durur. */}
@@ -839,6 +1109,7 @@ function GunEkseni({
             );
           })}
         </div>
+      </div>
       </div>
     </>
   );
@@ -976,6 +1247,9 @@ function GunPaneliDosyali({
   onGorevKapat,
   onGorevEkle,
   surukle,
+  seciliSlot,
+  onSlotSec,
+  yazim,
 }: {
   kod: string;
   gunNo: number;
@@ -985,8 +1259,15 @@ function GunPaneliDosyali({
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
   onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
   surukle: Surukle;
+  seciliSlot: string | null;
+  onSlotSec: (id: string | null) => void;
+  yazim: number;
 }) {
-  const { veri, yukleniyor, yaz } = useDosya<HaftaTipi>(`${kod}.json`);
+  const { veri, yukleniyor, yaz, tazele } = useDosya<HaftaTipi>(`${kod}.json`);
+  // Eksen aynı dosyayı başka yoldan yazdı: eski hâl üzerine yazılmasın, hemen oku.
+  useEffect(() => {
+    if (yazim > 0) void tazele();
+  }, [yazim, tazele]);
   const [rapor, setRapor] = useState<BosaltRaporu | null>(null);
 
   if (yukleniyor || !veri) {
@@ -1001,31 +1282,19 @@ function GunPaneliDosyali({
   const slotlar = gununSlotlari(veri, gunNo);
   const tip = gunTipi(gunNo, veri.ofisGunleri ?? []);
 
-  const slotEkle = () => {
-    const sonuncu = slotlar[slotlar.length - 1];
-    const saat = sonuncu
-      ? `${String(
-          Math.min(22, Math.floor((dakika(sonuncu.saat) + sonuncu.sureDk + 15) / 60)),
-        ).padStart(2, "0")}:00`
-      : tip === "haftaSonu"
-        ? "09:30"
-        : "19:00";
-    const id = yeniSlotId(veri, gunNo, saat);
-    const yeni: Slot = {
-      id,
-      gun: gunNo,
-      saat,
-      sureDk: 60,
-      alan: kurallar.alanlar?.[0] ?? "Serbest",
-      konu: "",
-      durum: "planli",
-    };
-    void yaz({
-      ...veri,
-      slotlar: [...veri.slotlar, yeni],
-      kullanilmisIdler: [...(veri.kullanilmisIdler ?? []), id],
-    });
+  const slotuEkle = () => {
+    const { hafta, id } = slotEkle(veri, gunNo, kurallar);
+    void yaz(hafta);
     setRapor(null);
+    onSlotSec(id);
+  };
+
+  // Eksende seçilen slot bu dosyadaysa düzenleme paneli görevlerin üstünde açılır.
+  const secilen = veri.slotlar.find((x) => x.id === seciliSlot) ?? null;
+  const slotDegis = (y: Slot) => void yaz({ ...veri, slotlar: veri.slotlar.map((x) => (x.id === y.id ? y : x)) });
+  const slotSil = (id: string) => {
+    void yaz({ ...veri, slotlar: veri.slotlar.filter((x) => x.id !== id) });
+    onSlotSec(null);
   };
 
   const bosalt = () => {
@@ -1050,6 +1319,18 @@ function GunPaneliDosyali({
         </div>
       </div>
 
+      {secilen && (
+        <SlotPaneli
+          gomulu
+          slot={secilen}
+          kurallar={kurallar}
+          gunler={veri.gunler}
+          onDegis={slotDegis}
+          onSil={() => slotSil(secilen.id)}
+          onKapat={() => onSlotSec(null)}
+        />
+      )}
+
       <GorevBolumu
         iso={iso}
         gorevler={gorevler}
@@ -1063,7 +1344,12 @@ function GunPaneliDosyali({
         <p className={s.aciklama}>Bu güne slot konmamış.</p>
       ) : (
         slotlar.map((x) => (
-          <div key={x.id} className={s.panelSlot}>
+          <button
+            key={x.id}
+            type="button"
+            className={x.id === seciliSlot ? `${s.panelSlot} ${s.panelSlotSecili}` : s.panelSlot}
+            onClick={() => onSlotSec(x.id === seciliSlot ? null : x.id)}
+          >
             <span className={s.panelSlotSaat}>{x.saat}</span>
             <span className={s.panelSlotAd}>
               {x.alan}
@@ -1072,7 +1358,7 @@ function GunPaneliDosyali({
             <Etiket tur={x.durum === "yapildi" ? "iyi" : x.durum === "kacti" ? "hata" : "sade"}>
               {x.durum}
             </Etiket>
-          </div>
+          </button>
         ))
       )}
 
@@ -1086,7 +1372,7 @@ function GunPaneliDosyali({
       )}
 
       <div className={s.panelDip}>
-        <Dugme ikon={<Plus size={15} />} onClick={slotEkle}>
+        <Dugme ikon={<Plus size={15} />} onClick={slotuEkle}>
           Slot ekle
         </Dugme>
         <Dugme

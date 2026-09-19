@@ -278,3 +278,77 @@ export function simdiVeSiradaki(slotlar: Slot[], simdiDk: number): SimdiSiradaki
   const siradaki = planli.find((s) => dakika(s.saat) > simdiDk) ?? null;
   return { simdi, siradaki };
 }
+
+/* --- ekleme ve yerleştirme ------------------------------------------------- */
+
+/**
+ * Güne yeni slot ekler: Hafta ekranı, Takvim paneli ve takvimde çift tıklama
+ * aynı kuralı kullanır. Saat verilmezse günün son slotundan sonraki tam saat
+ * (en geç 22:00); gün boşsa hafta sonu 09:30, hafta içi 19:00. Kimlik
+ * `yeniSlotId` ile verilir ve kullanılmışlara yazılır.
+ */
+export function slotEkle(
+  v: Hafta,
+  gunNo: number,
+  kurallar: Pick<KuralSeti, "alanlar">,
+  saat?: string,
+  sureDk = 60,
+): { hafta: Hafta; id: string } {
+  const gunun = v.slotlar.filter((x) => x.gun === gunNo).sort((a, b) => dakika(a.saat) - dakika(b.saat));
+  const sonuncu = gunun[gunun.length - 1];
+  const s =
+    saat ??
+    (sonuncu
+      ? `${String(Math.min(22, Math.floor((dakika(sonuncu.saat) + sonuncu.sureDk + 15) / 60))).padStart(2, "0")}:00`
+      : gunTipi(gunNo, v.ofisGunleri ?? []) === "haftaSonu"
+        ? "09:30"
+        : "19:00");
+  const id = yeniSlotId(v, gunNo, s);
+  const yeni: Slot = {
+    id,
+    gun: gunNo,
+    saat: s,
+    sureDk,
+    alan: kurallar.alanlar?.[0] ?? "Serbest",
+    konu: "",
+    durum: "planli",
+  };
+  return {
+    hafta: { ...v, slotlar: [...v.slotlar, yeni], kullanilmisIdler: [...(v.kullanilmisIdler ?? []), id] },
+    id,
+  };
+}
+
+/**
+ * Slotu bir güne ve saate yerleştirir (takvimde sürükle-bırak). Gün
+ * değişiyorsa `slotTasi`nın kuralları geçerli: kapasite ve korumalı saat
+ * uyarıdır, aynı saatte dolu gün reddedilir. Saat, taşımadan sonra yazılır;
+ * dolu kontrolü yeni saate göre yapılır.
+ */
+export function slotuYerlestir(
+  v: Hafta,
+  kurallar: KuralSeti,
+  slotId: string,
+  hedefGun: number,
+  saat: string,
+  bugun = new Date(),
+): TasimaSonucu {
+  const kaynak = v.slotlar.find((x) => x.id === slotId);
+  if (!kaynak) throw new Error("slot bulunamadı");
+  if (kaynak.durum === "tasindi") return { hafta: v, tasindi: false, not: "Taşınmış slot yeniden taşınmaz." };
+  if (kaynak.gun === hedefGun && kaynak.saat === saat) return { hafta: v, tasindi: false, not: null };
+
+  const dolu = v.slotlar.some(
+    (x) => x.id !== slotId && x.gun === hedefGun && x.saat === saat && x.durum !== "tasindi",
+  );
+  if (dolu) {
+    const ad = v.gunler.find((g) => g.no === hedefGun)?.ad ?? String(hedefGun);
+    return { hafta: v, tasindi: false, not: `${ad} ${saat} zaten dolu.` };
+  }
+
+  // Saat önce değişir ki taşımanın dolu ve korumalı saat kontrolü yeni saate baksın.
+  const saatli: Hafta = { ...v, slotlar: v.slotlar.map((x) => (x.id === slotId ? { ...x, saat } : x)) };
+  if (kaynak.gun === hedefGun) return { hafta: saatli, tasindi: true, not: null };
+  const r = slotTasi(saatli, kurallar, slotId, hedefGun, bugun);
+  return r.tasindi ? r : { ...r, hafta: v };
+}

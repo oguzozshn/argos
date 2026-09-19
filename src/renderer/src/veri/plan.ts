@@ -18,9 +18,11 @@ export interface PlanVerisi {
   bugun: string;
   yukleniyor: boolean;
   hata: string | null;
+  /** Yazdıktan hemen sonra, izleyicinin haberini beklemeden yeniden oku. */
+  tazele: () => Promise<void>;
 }
 
-const BOS: Omit<PlanVerisi, "yukleniyor" | "hata" | "bugun"> = {
+const BOS: Omit<PlanVerisi, "yukleniyor" | "hata" | "bugun" | "tazele"> = {
   haftalar: [],
   kurallar: {},
   roadmapler: [],
@@ -103,7 +105,7 @@ export function usePlanVerisi(): PlanVerisi {
     });
   }, [tazele]);
 
-  return { ...veri, bugun, yukleniyor, hata };
+  return { ...veri, bugun, yukleniyor, hata, tazele };
 }
 
 /** 165 → "2 sa 45 dk". app.py'deki `saat` yardımcısının karşılığı. */
