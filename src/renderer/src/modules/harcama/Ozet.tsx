@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { donemEtiketi, donemIceren } from "@ortak/donem";
 import { gunEkle } from "@ortak/gun";
 import { paraIsaretli, paraMetni } from "@ortak/para";
@@ -48,7 +47,7 @@ export function HarcamaOzet() {
   if (defter.yukleniyor || !defter.kurulu || ozet.adet === 0) return null;
 
   return (
-    <Kart dolgulu={false} baslik={donemEtiketi(donem)} not={<Link to="/harcama/">Harcama →</Link>}>
+    <Kart dolgulu={false} baslik={donemEtiketi(donem)} git={{ yol: "/harcama/", metin: "Harcama" }}>
       <Satir
         baslik="Gider"
         alt={`${ozet.adet} işlem · günlük ortalama ${paraMetni(gunlukHiz(ozet, bugun), simge)}`}

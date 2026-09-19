@@ -1,6 +1,5 @@
 import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Etiket, Kart, Satir } from "@/ui/bilesenler";
 import { silVeBildir } from "@/ui/toast";
@@ -92,7 +91,7 @@ export function YapilacakOzet() {
     <Kart
       dolgulu={false}
       baslik="Bugün yapılacaklar"
-      not={<Link to="/yapilacak/">Yapılacaklar →</Link>}
+      git={{ yol: "/yapilacak/", metin: "Yapılacaklar" }}
       bas={
         gecikmisler.length > 0 && (
           <button

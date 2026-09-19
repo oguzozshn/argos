@@ -160,7 +160,7 @@ export function Panel() {
         </div>
 
         {bakiyeler.length > 0 && (
-          <Kart dolgulu={false} baslik="Hesaplar" not={<Link to="/harcama/hesaplar">Tümü →</Link>}>
+          <Kart dolgulu={false} baslik="Hesaplar" git={{ yol: "/harcama/hesaplar", metin: "Tümü" }}>
             <div className={s.hesaplar}>
               {bakiyeler.map((b) => (
                 <div key={b.hesap.id} className={s.hesapKutu}>
@@ -230,7 +230,7 @@ export function Panel() {
         </div>
 
         <div className={s.ikiSutun}>
-          <Kart dolgulu={false} baslik="Bütçeler" not={<Link to="/harcama/butceler">Tümü →</Link>}>
+          <Kart dolgulu={false} baslik="Bütçeler" git={{ yol: "/harcama/butceler", metin: "Tümü" }}>
             {butceler.length === 0 ? (
               <p className={`${s.soluk} ${s.butceSatir}`}>
                 Henüz bütçe yok. Bir kategoriye aylık sınır koyunca burada takip edebilirsin.
@@ -258,7 +258,7 @@ export function Panel() {
             )}
           </Kart>
 
-          <Kart dolgulu={false} baslik="Yaklaşan düzenli işlemler" not={<Link to="/harcama/duzenli">Tümü →</Link>}>
+          <Kart dolgulu={false} baslik="Yaklaşan düzenli işlemler" git={{ yol: "/harcama/duzenli", metin: "Tümü" }}>
             {yaklasan.length === 0 ? (
               <p className={`${s.soluk} ${s.butceSatir}`}>Önümüzdeki {UFUK_GUN} günde düzenli işlem yok.</p>
             ) : (
@@ -310,7 +310,7 @@ export function Panel() {
           )}
         </Kart>
 
-        <Kart dolgulu={false} baslik="Son işlemler" not={<Link to="/harcama/islemler">Tümü →</Link>}>
+        <Kart dolgulu={false} baslik="Son işlemler" git={{ yol: "/harcama/islemler", metin: "Tümü" }}>
           {sonIslemler.length === 0 ? (
             <BosDurum baslik="Henüz işlem yok" metin="Yukarıdaki “İşlem ekle” ile başla." />
           ) : (

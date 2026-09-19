@@ -206,7 +206,7 @@
 
 /* Bugün kartındaki gecikmiş sayısı: tıklanınca liste açılır. */
 .gecikmisCip {
-  margin-left: auto;
+  flex: none;
   padding: 2px 10px;
   border: 1px solid transparent;
   border-radius: var(--r-tam);

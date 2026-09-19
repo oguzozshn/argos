@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
+import { Link } from "react-router-dom";
 import s from "./bilesenler.module.css";
 
 const birlestir = (...x: (string | false | undefined)[]): string => x.filter(Boolean).join(" ");
@@ -37,10 +38,13 @@ export function Kart({
   dolgulu = true,
   children,
   className,
+  git,
 }: {
   baslik?: string;
   not?: ReactNode;
   bas?: ReactNode;
+  /** Başlığın sağında, kartın ayrıntısına götüren bağlantı: { yol, metin }. */
+  git?: { yol: string; metin: string };
   /** Liste taşıyan kartlarda iç boşluk satırlara aittir, karta değil. */
   dolgulu?: boolean;
   children?: ReactNode;
@@ -48,11 +52,16 @@ export function Kart({
 }) {
   return (
     <section className={birlestir(s.kart, className)}>
-      {(baslik || bas) && (
+      {(baslik || bas || git) && (
         <div className={s.kartBas}>
           {baslik && <h2 className={s.kartBaslik}>{baslik}</h2>}
-          {not && <span className={s.kartNot}>{not}</span>}
+          <span className={s.kartNot}>{not}</span>
           {bas}
+          {git && (
+            <Link to={git.yol} className={s.kartGit}>
+              {git.metin} →
+            </Link>
+          )}
         </div>
       )}
       {children && <div className={dolgulu ? s.kartIc : undefined}>{children}</div>}

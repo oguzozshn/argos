@@ -87,7 +87,9 @@ function SimdiKarti({ slotlar, kurallar }: { slotlar: Slot[]; kurallar: Kurallar
           ) : (
             <>
               <span className={s.simdiEtiket}>Şimdi</span>
-              <span className={s.simdiSlot}>Bugün için planlı slot kalmadı.</span>
+              <span className={s.simdiSlot}>
+                {slotlar.length === 0 ? "Bugüne slot konmamış." : "Bugün için planlı slot kalmadı."}
+              </span>
             </>
           )}
         </div>
@@ -139,17 +141,16 @@ function PlanKarti({ veri, yaz, gunNo, gunAdi, simdiId }: {
     <Kart
       dolgulu={false}
       baslik="Bugünün planı"
-      not={
-        <>
-          {veri.baslik || `Hafta ${veri.hafta}`} · {gunAdi}
-          {slotlar.length > 0 && ` · ${yapilan}/${slotlar.length}`} · <Link to="/asistan">Hafta →</Link>
-        </>
-      }
+      not={slotlar.length > 0 ? `${gunAdi} · ${yapilan}/${slotlar.length} yapıldı` : gunAdi}
+      git={{ yol: "/asistan", metin: "Hafta" }}
     >
+      {/* Slot yoksa Şimdi kartı zaten söylüyor; alışkanlık varsa burada tekrarlanmaz. */}
       {slotlar.length === 0 ? (
-        <p className={s.dipNot} style={{ borderTop: "none" }}>
-          Bugüne slot konmamış.
-        </p>
+        aliskanliklar.length === 0 && (
+          <p className={s.dipNot} style={{ borderTop: "none" }}>
+            Bugüne slot konmamış.
+          </p>
+        )
       ) : (
         slotlar.map((x) => (
           <div key={x.id} className={x.id === simdiId ? `${s.slot} ${s.slotSimdi}` : s.slot}>
@@ -227,11 +228,10 @@ function AklindaTut() {
   if (yukleniyor || bugun.length === 0) return null;
 
   return (
-    <Kart dolgulu={false} baslik="Bugün aklında tut" not="seçim her gün kayar">
+    <Kart dolgulu={false} baslik="Aklında tut" not="her gün değişir" git={{ yol: "/asistan/hatirla", metin: "Hatırla" }}>
       {bugun.map((m) => (
         <div key={m.id} className={s.hatirla}>
           {m.metin}
-          <span className={s.hatirlaTarih}>{m.eklendi}</span>
         </div>
       ))}
     </Kart>

@@ -62,6 +62,18 @@ textarea {
   user-select: text;
 }
 
+/* Bağlantılar metinle aynı ailede: tarayıcının mavi-altı çizili hâli uygulamaya yabancı. */
+a {
+  color: var(--metin-orta);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  transition: color var(--sure-hizli) var(--egri);
+}
+a:hover {
+  color: var(--metin);
+  text-decoration: underline;
+}
+
 /* Klavye ile gezinen görür, fare ile tıklayan görmez. */
 :focus {
   outline: none;

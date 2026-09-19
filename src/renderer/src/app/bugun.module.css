@@ -1,7 +1,14 @@
-/* Bugün panosu: kartlar ızgarada; dar pencerede tek sütun. */
+/*
+ * Bugün panosu: kartlar iki sütunda alt alta akar (ızgara satır hizasında
+ * kısa kartın yanında boşluk bırakıyordu). Dar pencerede tek sütun.
+ * Tüm genişliği isteyen kart `column-span: all` verir (Şimdi kartı).
+ */
 .izgara {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
-  gap: var(--b5);
-  align-items: start;
+  columns: 2 380px;
+  column-gap: var(--b5);
+}
+
+.izgara > * {
+  break-inside: avoid;
+  margin-bottom: var(--b5);
 }

@@ -45,22 +45,40 @@
   padding: var(--b6);
 }
 
+/* Başlık · not ……… (ek) · git →  — başlık kırılmaz, yer daralırsa not kısalır. */
 .kartBas {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--b4);
+  gap: var(--b3);
   padding: var(--b5) var(--b6);
   border-bottom: 1px solid var(--cizgi);
 }
 
 .kartBaslik {
+  flex: none;
   font-size: var(--y2);
+  white-space: nowrap;
 }
 
 .kartNot {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--metin-soluk);
   font-size: var(--y4);
+}
+
+.kartGit {
+  flex: none;
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+}
+
+.kartGit:hover {
+  color: var(--metin);
 }
 
 /* --- satır ------------------------------------------------------------- */

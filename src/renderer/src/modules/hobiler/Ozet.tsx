@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { Etiket, Kart, Satir } from "@/ui/bilesenler";
 import { useAlanlar } from "./kanca";
 
@@ -25,7 +24,7 @@ export function HobilerOzet() {
     <Kart
       dolgulu={false}
       baslik="Şu an"
-      not={<Link to="/hobiler/">Hobiler →</Link>}
+      git={{ yol: "/hobiler/", metin: "Hobiler" }}
     >
       {devam.slice(0, 6).map((m) => (
         <Satir
