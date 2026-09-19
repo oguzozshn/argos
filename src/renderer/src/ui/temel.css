@@ -71,6 +71,9 @@ a {
 }
 a:hover {
   color: var(--metin);
+}
+/* Altı çizgi yalnızca metin içindeki sınıfsız bağlantılarda; menü ve kart bağlantıları kendi stilinde. */
+a:not([class]):hover {
   text-decoration: underline;
 }
 
