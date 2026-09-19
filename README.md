@@ -154,6 +154,10 @@ iddiaları ExpenseTracker'ın kendi testlerinden geliyor. Aynı defterden aynı 
 Todoist testinin canlı bölümü yalnızca okuma yapar; yazma yolları sahte
 `fetch` ile, istek gönderilmeden doğrulanır.
 
+Her push ve PR'da GitHub Actions aynı iki komutu koşuyor: `npm run tipler` ve
+`npm test`, hem Linux hem Windows üzerinde. Bazı iddialar (yol ayracı gibi)
+yalnızca Windows'ta anlamlı, orada koşuyor.
+
 ## İkon
 
 `build/icon.ico` — `python araclar/ikon-uret.py` ile üretiliyor. Dış

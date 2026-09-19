@@ -23,8 +23,9 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          # Testler düz Node ile koşuyor; .mts'i uzantı soyarak çalıştırabilen sürüm.
-          node-version: 22
+          # Testler düz Node ile koşuyor; .mts'i tip soyarak çalıştırabilen ve
+          # yerelde kullanılanla aynı ana sürüm.
+          node-version: 24
           cache: npm
 
       - name: Bağımlılıklar
