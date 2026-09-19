@@ -6,6 +6,7 @@ import { takvim } from "@ortak/ozet";
 import { dakika, gununSlotlari, kuralSetiTamamla, yeniSlotId, type KuralSeti } from "@ortak/kural";
 import { gunBosalt, gunTipi, type BosaltRaporu } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
+import { Kisayollar } from "@/ui/Kisayollar";
 import { Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import {
   hedefOzellikleri,
@@ -331,6 +332,14 @@ export function Takvim() {
                 </button>
               ))}
             </div>
+            <Kisayollar
+              grup="Takvim"
+              liste={[
+                { tus: "ArrowLeft", aciklama: `Önceki ${gorunum === "gun" ? "gün" : gorunum}`, eylem: () => kaydir(-1) },
+                { tus: "ArrowRight", aciklama: `Sonraki ${gorunum === "gun" ? "gün" : gorunum}`, eylem: () => kaydir(1) },
+                { tus: "t", aciklama: "Bugüne dön", eylem: secili !== bugun ? () => setSecili(bugun) : null },
+              ]}
+            />
             <Dugme
               tur="sade"
               ikon={<ChevronLeft size={16} />}

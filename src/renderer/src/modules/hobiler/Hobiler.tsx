@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { bugunIso } from "@ortak/plan";
 import { grubaTasi, tasi } from "@ortak/siralama";
+import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { silVeBildir } from "@/ui/toast";
 import { maddeGecisi } from "@/ui/hareket";
@@ -453,8 +454,31 @@ function AlanEkrani({
 
   const panelVar = durumlarAcik || secili !== null;
 
+  // N: ilk açık grubun ekleme satırı. Kapalı gruba eklenen kayıt görünmezdi.
+  const ilkAcikGrup = durumlar.find((d) => !kapali.has(d.ad))?.ad ?? null;
+
   return (
     <div className={panelVar ? `${s.duzen} ${s.duzenPanelli}` : s.duzen}>
+      <Kisayollar
+        grup="Hobiler"
+        liste={[
+          {
+            tus: "n",
+            aciklama: "Yeni kayıt",
+            eylem: ilkAcikGrup
+              ? () => {
+                  setEkleGrup(ilkAcikGrup);
+                  setYeni("");
+                }
+              : null,
+          },
+          {
+            tus: "Escape",
+            aciklama: "Paneli kapat",
+            eylem: durumlarAcik ? () => setDurumlarAcik(false) : secili ? () => setSeciliId(null) : null,
+          },
+        ]}
+      />
       {yan}
 
       <Kart

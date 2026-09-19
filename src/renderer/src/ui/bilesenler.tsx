@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
 import s from "./bilesenler.module.css";
 
 const birlestir = (...x: (string | false | undefined)[]): string => x.filter(Boolean).join(" ");
@@ -135,7 +135,7 @@ export function Giris({
   ikon,
   sag,
   ...kalan
-}: { ikon?: ReactNode; sag?: ReactNode } & InputHTMLAttributes<HTMLInputElement>) {
+}: { ikon?: ReactNode; sag?: ReactNode } & ComponentProps<"input">) {
   return (
     <div className={s.girisSarmal}>
       {ikon && <span className={s.girisIkon}>{ikon}</span>}

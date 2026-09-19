@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { arsiv, zamanOzet, type Kapsam } from "@ortak/ozet";
+import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Etiket, Kart, Satir, Yuklenirken } from "@/ui/bilesenler";
 import { saatMetni, usePlanVerisi } from "@/veri/plan";
 import s from "./asistan.module.css";
@@ -109,6 +110,14 @@ export function Arsiv() {
         }
       >
         <div className={s.gezinme}>
+          <Kisayollar
+            grup="Arşiv"
+            liste={[
+              { tus: "ArrowLeft", aciklama: "Önceki dönem", eylem: () => setTarih(zaman.onceki) },
+              { tus: "ArrowRight", aciklama: "Sonraki dönem", eylem: () => setTarih(zaman.sonraki) },
+              { tus: "t", aciklama: "Bugüne dön", eylem: tarih !== bugun ? () => setTarih(bugun) : null },
+            ]}
+          />
           <Dugme tur="sade" onClick={() => setTarih(zaman.onceki)}>
             ‹ önceki
           </Dugme>

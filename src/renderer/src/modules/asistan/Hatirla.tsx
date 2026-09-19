@@ -1,7 +1,8 @@
 import { Archive, Plus, RotateCcw, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { bugunIso, hatirlaBugun, yeniHatirlaId, type HatirlaMaddesi } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { Kisayollar } from "@/ui/Kisayollar";
 import { silVeBildir } from "@/ui/toast";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
@@ -23,6 +24,7 @@ export function Hatirla() {
   const { kurallar } = usePlanVerisi();
   const { veri, yukleniyor, hata, yaz, degistir } = useDosya<HatirlaDosyasi>("hatirla.json");
   const [yeni, setYeni] = useState("");
+  const girdi = useRef<HTMLInputElement>(null);
 
   const gunlukAdet = kurallar.hatirla?.gunlukAdet ?? 3;
   const maddeler = veri?.maddeler ?? [];
@@ -79,7 +81,9 @@ export function Hatirla() {
         className={s.rmKart}
       >
         <div className={s.eklemeSatiri}>
+          <Kisayollar grup="Hatırla" liste={[{ tus: "n", aciklama: "Yeni madde yaz", eylem: () => girdi.current?.focus() }]} />
           <Giris
+            ref={girdi}
             value={yeni}
             placeholder="aklında tutmak istediğin şey"
             onChange={(e) => setYeni(e.target.value)}

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { donemEtiketi, type Donem } from "@ortak/donem";
 import { Dugme } from "@/ui/bilesenler";
+import { Kisayollar } from "@/ui/Kisayollar";
 import s from "../harcama.module.css";
 
 /**
@@ -19,6 +20,14 @@ export function DonemGezinti({
 }) {
   return (
     <div className={s.donem}>
+      <Kisayollar
+        grup="Harcama"
+        liste={[
+          { tus: "ArrowLeft", aciklama: "Önceki dönem", eylem: () => onDegis(kaydirma - 1) },
+          { tus: "ArrowRight", aciklama: "Sonraki dönem", eylem: () => onDegis(kaydirma + 1) },
+          { tus: "t", aciklama: "Bu döneme dön", eylem: kaydirma !== 0 ? () => onDegis(0) : null },
+        ]}
+      />
       <Dugme tur="sade" ikon={<ChevronLeft size={16} />} onClick={() => onDegis(kaydirma - 1)} aria-label="Önceki dönem" />
       <span className={s.donemAd}>{donemEtiketi(donem)}</span>
       <Dugme tur="sade" ikon={<ChevronRight size={16} />} onClick={() => onDegis(kaydirma + 1)} aria-label="Sonraki dönem" />

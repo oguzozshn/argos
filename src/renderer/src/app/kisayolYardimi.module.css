@@ -1,0 +1,76 @@
+.perde {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: rgba(27, 26, 23, 0.18);
+  -webkit-app-region: no-drag;
+}
+
+:root[data-tema="koyu"] .perde {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.kutu {
+  width: min(440px, calc(100vw - 2 * var(--b6)));
+  max-height: 76vh;
+  overflow-y: auto;
+  padding: var(--b4) var(--b5) var(--b3);
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  box-shadow: var(--golge3);
+}
+
+.baslik {
+  font-size: var(--y3);
+  font-weight: var(--sik-kalin);
+  color: var(--metin);
+  margin-bottom: var(--b3);
+}
+
+.grup + .grup {
+  margin-top: var(--b4);
+}
+
+.grupAd {
+  margin: 0 0 var(--b1);
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+}
+
+.satir {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--b3);
+  padding: 5px 0;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+}
+
+.tus {
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: 5px;
+  background: var(--zemin);
+  font-family: var(--aile);
+  font-size: var(--y5);
+  text-align: center;
+  color: var(--metin);
+}
+
+.not {
+  margin-top: var(--b4);
+  padding-top: var(--b3);
+  border-top: 1px solid var(--cizgi);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}

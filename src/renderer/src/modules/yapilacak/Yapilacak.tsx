@@ -8,8 +8,9 @@ import {
   RefreshCw,
   Repeat,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { TodoistGorev } from "@ortak/tipler";
+import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { maddeGecisi } from "@/ui/hareket";
 import { kopru } from "@/veri/kanca";
@@ -158,6 +159,7 @@ function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }
     useGorevler(projeId);
   const obekler = useObekler(gorevler);
   const [yeni, setYeni] = useState("");
+  const girdi = useRef<HTMLInputElement>(null);
   const [yeniTarih, setYeniTarih] = useState("");
 
   const gonder = () => {
@@ -185,7 +187,9 @@ function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }
       }
     >
       <div className={s.ekleme}>
+        <Kisayollar grup="Yapılacaklar" liste={[{ tus: "n", aciklama: "Yeni görev yaz", eylem: () => girdi.current?.focus() }]} />
         <Giris
+          ref={girdi}
           value={yeni}
           placeholder={`${projeAd} listesine ekle…`}
           onChange={(e) => setYeni(e.target.value)}

@@ -15,6 +15,7 @@ import {
   type KuralSeti,
 } from "@ortak/kural";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { Kisayollar } from "@/ui/Kisayollar";
 import { useDosya } from "@/veri/kanca";
 import { saatMetni, usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
@@ -209,15 +210,20 @@ export function Hafta() {
   const [kod, setKod] = useState<string | null>(null);
   const kuralSeti = useMemo(() => kuralSetiTamamla(kurallar), [kurallar]);
 
+  const bugununHaftasi = useMemo(
+    () =>
+      haftalar.find((h) => {
+        const t = h.veri.gunler.map((g) => g.isoTarih).filter(Boolean);
+        return t.length > 0 && t[0]! <= bugun && bugun <= t[t.length - 1]!;
+      })?.kod ?? null,
+    [haftalar, bugun],
+  );
+
   // Açılışta bugünü içeren hafta seçilir; yoksa en sonuncusu.
   useEffect(() => {
     if (kod || haftalar.length === 0) return;
-    const iceren = haftalar.find((h) => {
-      const t = h.veri.gunler.map((g) => g.isoTarih).filter(Boolean);
-      return t.length > 0 && t[0]! <= bugun && bugun <= t[t.length - 1]!;
-    });
-    setKod(iceren?.kod ?? haftalar[haftalar.length - 1]!.kod);
-  }, [haftalar, bugun, kod]);
+    setKod(bugununHaftasi ?? haftalar[haftalar.length - 1]!.kod);
+  }, [haftalar, bugununHaftasi, kod]);
 
   const kodlar = haftalar.map((h) => h.kod);
   const indeks = kod ? kodlar.indexOf(kod) : -1;
@@ -238,6 +244,7 @@ export function Hafta() {
       bugun={bugun}
       onceki={indeks > 0 ? kodlar[indeks - 1]! : null}
       sonraki={indeks >= 0 && indeks < kodlar.length - 1 ? kodlar[indeks + 1]! : null}
+      bugununHaftasi={bugununHaftasi}
       onGec={setKod}
     />
   );
@@ -249,6 +256,7 @@ function HaftaIcerik({
   bugun,
   onceki,
   sonraki,
+  bugununHaftasi,
   onGec,
 }: {
   kod: string;
@@ -256,6 +264,7 @@ function HaftaIcerik({
   bugun: string;
   onceki: string | null;
   sonraki: string | null;
+  bugununHaftasi: string | null;
   onGec: (k: string) => void;
 }) {
   const { veri, yukleniyor, hata, disaridanDegisti, yaz } = useDosya<HaftaTipi>(`${kod}.json`);
@@ -337,6 +346,8 @@ function HaftaIcerik({
   }
 
   const secili = veri.slotlar.find((x) => x.id === seciliId) ?? null;
+  /** Bu hafta bugünü içeriyorsa bugünün gün numarası. */
+  const bugunNo = veri.gunler.find((g) => g.isoTarih === bugun)?.no ?? null;
   const yuk = haftalikYuk(veri);
   const hedef = kurallar.kapasite.haftalikHedefDk;
 
@@ -421,6 +432,20 @@ function HaftaIcerik({
         }`}
         sag={
           <div className={s.gez}>
+            <Kisayollar
+              grup="Hafta"
+              liste={[
+                { tus: "ArrowLeft", aciklama: "Önceki hafta", eylem: onceki ? () => onGec(onceki) : null },
+                { tus: "ArrowRight", aciklama: "Sonraki hafta", eylem: sonraki ? () => onGec(sonraki) : null },
+                {
+                  tus: "t",
+                  aciklama: "Bu haftaya dön",
+                  eylem: bugununHaftasi && bugununHaftasi !== kod ? () => onGec(bugununHaftasi) : null,
+                },
+                { tus: "n", aciklama: "Bugüne slot ekle", eylem: bugunNo ? () => slotEkle(bugunNo) : null },
+                { tus: "Escape", aciklama: "Slot panelini kapat", eylem: secili ? () => setSeciliId(null) : null },
+              ]}
+            />
             <Dugme
               tur="sade"
               ikon={<ChevronLeft size={16} />}

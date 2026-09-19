@@ -1,15 +1,17 @@
 import { AlertTriangle } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { moduller } from "@/modules";
 import { ekranGecisi } from "@/ui/hareket";
+import { useKisayol, useKisayolDinleyicisi } from "@/ui/kisayol";
 import { ToastAlani, bildir } from "@/ui/toast";
 import { KOPRU_VAR, kopru, useOrtam } from "@/veri/kanca";
 import { BaslikCubugu } from "./BaslikCubugu";
 import { Bugun } from "./Bugun";
 import { HataSiniri } from "./HataSiniri";
 import { KenarCubugu } from "./KenarCubugu";
+import { KisayolYardimi } from "./KisayolYardimi";
 import { KomutPaleti } from "./KomutPaleti";
 import s from "./kabuk.module.css";
 
@@ -112,9 +114,34 @@ function usePalet() {
   return { acik, acilis, ac, kapat };
 }
 
+/** Kenar çubuğundaki sırayla 1–9: yalnızca ekranı olan modüller. */
+const EKRANLI = moduller.filter((m) => m.rotalar.length > 0).slice(0, 9);
+
+function ModulKisayolu({ no, id, ad }: { no: number; id: string; ad: string }) {
+  const git = useNavigate();
+  useKisayol(String(no), ad, "Genel", () => git(`/${id}`));
+  return null;
+}
+
+/** Genel kısayollar: 0 Bugün, 1–9 modüller, ? bu liste. */
+function GenelKisayollar({ yardimAc }: { yardimAc: () => void }) {
+  const git = useNavigate();
+  useKisayol("0", "Bugün", "Genel", () => git("/"));
+  useKisayol("?", "Kısayolları göster", "Genel", yardimAc);
+  return (
+    <>
+      {EKRANLI.map((m, i) => (
+        <ModulKisayolu key={m.id} no={i + 1} id={m.id} ad={m.ad} />
+      ))}
+    </>
+  );
+}
+
 function Icerik() {
   useTelegramBildirimi();
   const palet = usePalet();
+  const [yardimAcik, setYardimAcik] = useState(false);
+  useKisayolDinleyicisi(palet.acik || yardimAcik);
   const [kaydirildi, setKaydirildi] = useState(false);
   const [ortam, setOrtam] = useOrtam();
   const [secimHatasi, setSecimHatasi] = useState<string | null>(null);
@@ -196,7 +223,9 @@ function Icerik() {
         )}
         <Yonlendirme />
       </main>
+      <GenelKisayollar yardimAc={() => setYardimAcik(true)} />
       <KomutPaleti acik={palet.acik} acilis={palet.acilis} kapat={palet.kapat} />
+      <KisayolYardimi acik={yardimAcik} kapat={() => setYardimAcik(false)} />
       <ToastAlani />
     </div>
   );
