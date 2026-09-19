@@ -1,6 +1,7 @@
 import { LayoutGrid } from "lucide-react";
 import { moduller } from "@/modules";
 import { BosDurum, EkranBasi } from "@/ui/bilesenler";
+import { HataSiniri } from "./HataSiniri";
 
 const gunAdi = new Intl.DateTimeFormat("tr-TR", {
   weekday: "long",
@@ -33,7 +34,12 @@ export function Bugun() {
         <div style={{ display: "grid", gap: "var(--b5)" }}>
           {ozetler.map((m) => {
             const Ozet = m.Ozet!;
-            return <Ozet key={m.id} />;
+            // Kartlar yan yana duruyor; biri düşerse diğerleri kalsın.
+            return (
+              <HataSiniri key={m.id} ad={m.ad}>
+                <Ozet />
+              </HataSiniri>
+            );
           })}
         </div>
       )}

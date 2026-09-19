@@ -8,9 +8,16 @@ import { BosDurum, Dugme, Kart } from "@/ui/bilesenler";
  * geçip kurtulmak bile mümkün değildi.
  *
  * Kabuk bunu rota başına anahtarla kuruyor: başka ekrana geçmek sınırı
- * sıfırlar.
+ * sıfırlar. Bugün ekranı da her özet kartını ayrıca sarıyor; kartlar yan yana
+ * duruyor, biri düşerse diğerleri kalsın.
  */
-export class HataSiniri extends Component<{ children: ReactNode }, { hata: Error | null }> {
+interface Ozellikler {
+  /** Düşen yerin adı. "Bu ekran açılamadı" tek başına hangisi olduğunu söylemiyor. */
+  ad?: string;
+  children: ReactNode;
+}
+
+export class HataSiniri extends Component<Ozellikler, { hata: Error | null }> {
   state = { hata: null as Error | null };
 
   static getDerivedStateFromError(hata: Error) {
@@ -18,7 +25,7 @@ export class HataSiniri extends Component<{ children: ReactNode }, { hata: Error
   }
 
   componentDidCatch(hata: Error, bilgi: ErrorInfo) {
-    console.error("[ekran çöktü]", hata, bilgi.componentStack);
+    console.error(`[${this.props.ad ?? "ekran"} çöktü]`, hata, bilgi.componentStack);
   }
 
   render() {
@@ -28,7 +35,7 @@ export class HataSiniri extends Component<{ children: ReactNode }, { hata: Error
       <Kart>
         <BosDurum
           ikon={<AlertTriangle size={30} strokeWidth={1.5} />}
-          baslik="Bu ekran açılamadı"
+          baslik={this.props.ad ? `${this.props.ad} açılamadı` : "Bu ekran açılamadı"}
           metin={`${hata.message} — veri dosyaları değişmedi. Başka bir ekrana geçebilir ya da yeniden deneyebilirsin.`}
           eylem={
             <Dugme tur="cizgili" onClick={() => this.setState({ hata: null })}>
