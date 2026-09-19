@@ -41,6 +41,8 @@ import s from "./takvim.module.css";
 const kisaltAlan = (a: string): string => (a.length <= 4 ? a : a.slice(0, 3));
 
 const TIP_ADI: Record<string, string> = { ofis: "ofis", ev: "ev", haftaSonu: "h.sonu" };
+/** Dar hücrede etiket kısalınca ipucu olarak tam adı. */
+const TIP_TAM: Record<string, string> = { ofis: "ofis günü", ev: "evden çalışma", haftaSonu: "hafta sonu" };
 
 type Gorunum = "ay" | "hafta" | "gun";
 
@@ -845,7 +847,10 @@ function AyIzgarasi({
               <span className={s.hucreBas}>
                 <span className={s.gunNo}>{Number(iso.slice(8, 10))}</span>
                 {tip && (
-                  <span className={tip === "ofis" ? `${s.gunTipi} ${s.tipOfis}` : s.gunTipi}>
+                  <span
+                    className={tip === "ofis" ? `${s.gunTipi} ${s.tipOfis}` : s.gunTipi}
+                    title={TIP_TAM[tip]}
+                  >
                     {TIP_ADI[tip]}
                   </span>
                 )}

@@ -45,7 +45,10 @@
   padding: var(--b4) var(--b5) var(--b5);
 }
 
+/* Dar pencerede içerik hücreden taşmasın: sütun genişliği içeriğe göre değil ızgaraya göre. */
 .hucre {
+  min-width: 0;
+  overflow: hidden;
   min-height: 88px;
   border: 1px solid var(--cizgi);
   border-radius: var(--r2);
@@ -95,15 +98,22 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
 }
 
 .gunNo {
+  flex: none;
   font-weight: var(--sik-orta);
   font-variant-numeric: tabular-nums;
   font-size: var(--y4);
 }
 
+/* Yer kalmazsa kısalır ("H.SO…"); gün numarası ve ⌾ yerinde kalır. */
 .gunTipi {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 9.5px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -119,6 +129,7 @@
 }
 
 .korumaliIsaret {
+  flex: none;
   margin-left: auto;
   font-size: 10px;
   color: var(--metin-soluk);
@@ -131,6 +142,9 @@
 }
 
 .alanRozet {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 10px;
   padding: 1px 5px;
   border-radius: var(--r1);
