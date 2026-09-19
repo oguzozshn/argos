@@ -1,11 +1,27 @@
-import { Trash2, X } from "lucide-react";
-import { Dugme, Giris } from "@/ui/bilesenler";
+import { Pencil, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { Dugme } from "@/ui/bilesenler";
 import s from "./hobiler.module.css";
-import { durumRengi, type Alan, type Madde } from "./tipler";
+import type { Alan, Madde } from "./tipler";
+
+const tarihYil = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+const tarihKisa = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" });
+
+/** "2026-09-05" → "5 Eylül"; başka yıldansa yıl da yazılır. */
+function tarihYaz(iso: string): string {
+  const [y, a, g] = iso.split("-").map(Number);
+  if (!y || !a || !g) return iso;
+  const t = new Date(y, a - 1, g);
+  return (y === new Date().getFullYear() ? tarihKisa : tarihYil).format(t);
+}
 
 /**
- * Seçili kaydın paneli. Satır-içi açılır düzenleyicinin yerine geçti:
- * not alanı çok satırlı, liste yerinden oynamıyor.
+ * Seçili kaydın paneli. Form gibi değil, kart gibi: ad başlıkta düzenlenir
+ * (ayrı bir "Ad" kutusu aynı şeyi ikinci kez yazıyordu), durum tek tıklık
+ * çiplerle seçilir, not boşken tek satır yer tutar ve yazdıkça büyür.
+ *
+ * Kayıt değişince panel `key` ile yeniden kuruluyor; yarım kalmış ad taslağı
+ * başka kayda taşınmaz.
  */
 export function YanPanel({
   alan,
@@ -20,49 +36,71 @@ export function YanPanel({
   onSil: () => void;
   onKapat: () => void;
 }) {
+  // Ad tuş tuş yazılmıyor: bir an boş kalan ad listede "Adsız" diye
+  // görünür, liste de her harfte yeniden dizilirdi. Taslak, alandan çıkınca yazılır.
+  const [taslak, setTaslak] = useState<string | null>(null);
+
+  const adiYaz = () => {
+    if (taslak === null) return;
+    const ad = taslak.trim();
+    setTaslak(null);
+    if (ad && ad !== madde.ad) onDegis({ ...madde, ad });
+  };
+
   return (
     <aside className={s.panel}>
       <div className={s.panelBas}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p className={s.panelUst}>{alan.ad}</p>
-          <h2 className={s.panelBaslik}>{madde.ad || "Adsız"}</h2>
+          {taslak !== null ? (
+            <input
+              className={s.baslikGiris}
+              value={taslak}
+              autoFocus
+              aria-label="Ad"
+              onChange={(e) => setTaslak(e.target.value)}
+              onBlur={adiYaz}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") setTaslak(null);
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className={s.baslikDugme}
+              onClick={() => setTaslak(madde.ad)}
+              title="Adı değiştir"
+            >
+              <span className={s.panelBaslik}>{madde.ad || "Adsız"}</span>
+              <Pencil size={13} className={s.kalem} />
+            </button>
+          )}
         </div>
         <Dugme tur="sade" ikon={<X size={16} />} onClick={onKapat} aria-label="Paneli kapat" />
       </div>
 
       <div>
-        <label className={s.etiketMetni} htmlFor="panel-ad">
-          Ad
-        </label>
-        <Giris
-          id="panel-ad"
-          value={madde.ad}
-          onChange={(e) => onDegis({ ...madde, ad: e.target.value })}
-        />
-      </div>
-
-      <div>
-        <label className={s.etiketMetni} htmlFor="panel-durum">
+        <p className={s.etiketMetni} id="panel-durum">
           Durum
-        </label>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span
-            className={s.durumNokta}
-            style={{ background: durumRengi(alan.durumlar, madde.durum) }}
-          />
-          <select
-            id="panel-durum"
-            className={s.secim}
-            style={{ flex: 1 }}
-            value={madde.durum}
-            onChange={(e) => onDegis({ ...madde, durum: e.target.value })}
-          >
-            {alan.durumlar.map((d) => (
-              <option key={d.ad} value={d.ad}>
+        </p>
+        <div className={s.durumCipleri} role="radiogroup" aria-labelledby="panel-durum">
+          {alan.durumlar.map((d) => {
+            const secili = d.ad === madde.durum;
+            return (
+              <button
+                key={d.ad}
+                type="button"
+                role="radio"
+                aria-checked={secili}
+                className={secili ? `${s.durumCip} ${s.durumCipSecili}` : s.durumCip}
+                onClick={() => !secili && onDegis({ ...madde, durum: d.ad })}
+              >
+                <span className={s.durumNokta} style={{ background: d.renk }} />
                 {d.ad}
-              </option>
-            ))}
-          </select>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -74,13 +112,14 @@ export function YanPanel({
           id="panel-not"
           className={s.notAlani}
           value={madde.not}
-          placeholder="Nerede kaldın, kimden duydun, nereden alınacak…"
+          rows={1}
+          placeholder="Not ekle…"
           onChange={(e) => onDegis({ ...madde, not: e.target.value })}
         />
       </div>
 
       <div className={s.panelDip}>
-        <span className={s.eklendi}>Eklendi: {madde.eklendi}</span>
+        <span className={s.eklendi}>Eklendi {tarihYaz(madde.eklendi)}</span>
         <Dugme tur="tehlike" ikon={<Trash2 size={15} />} onClick={onSil}>
           Sil
         </Dugme>

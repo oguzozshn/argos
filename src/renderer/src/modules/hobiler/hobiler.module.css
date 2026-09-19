@@ -133,14 +133,7 @@
   color: var(--metin-soluk);
 }
 
-/* --- ekleme satırı ----------------------------------------------------- */
-
-.ekleme {
-  display: flex;
-  gap: var(--b2);
-  padding: var(--b4) var(--b5);
-  border-bottom: 1px solid var(--cizgi);
-}
+/* --- açılır menü (durum düzenleyicide) ------------------------------- */
 
 .secim {
   border: 1px solid var(--cizgi-koyu);
@@ -157,50 +150,76 @@
   border-color: var(--vurgu);
 }
 
-/* --- süzgeç ------------------------------------------------------------ */
+/* --- durum grupları ---------------------------------------------------- */
 
-.suzgec {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--b2);
-  padding: var(--b3) var(--b5);
-  border-bottom: 1px solid var(--cizgi);
-  background: var(--kart-hover);
+.grup + .grup {
+  border-top: 1px solid var(--cizgi);
 }
 
-.cip {
-  display: inline-flex;
+.grupBas {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 11px;
-  border-radius: var(--r-tam);
-  border: 1px solid transparent;
-  background: transparent;
+  gap: var(--b2);
+  width: 100%;
+  padding: var(--b3) var(--b5);
+  border: none;
+  border-bottom: 1px solid var(--cizgi);
+  background: var(--kart-hover);
   color: var(--metin-orta);
   font-size: var(--y5);
   font-weight: var(--sik-orta);
+  text-align: left;
   cursor: pointer;
-  transition:
-    background var(--sure-hizli) var(--egri),
-    color var(--sure-hizli) var(--egri);
+  transition: background var(--sure-hizli) var(--egri);
 }
 
-.cip:hover {
+.grupBas:hover {
   background: var(--zemin-alt);
 }
 
-.cipSecili {
-  background: var(--vurgu);
-  color: var(--vurgu-metin);
+/* Kapalı grubun alt çizgisi bir sonraki grubun üst çizgisiyle üst üste binmesin. */
+.grupBas[aria-expanded="false"] {
+  border-bottom: none;
 }
 
-.cipSecili:hover {
-  background: var(--vurgu-koyu);
+.grupAd {
+  color: var(--metin);
 }
 
-.cipSayi {
+.grupSayi {
+  color: var(--metin-soluk);
   font-variant-numeric: tabular-nums;
-  opacity: 0.7;
+}
+
+/* Başlığa ya da ekleme satırına bırakılırsa kayıt grubun başına iner. */
+.grupBas[data-hedef="grup"],
+.ekleAc[data-hedef="grup"] {
+  background: var(--vurgu-yumusak);
+  box-shadow: inset 0 0 0 1px var(--vurgu);
+}
+
+/* Satırlar grup başlığındaki adla aynı hizada başlar: ok + nokta kadar içeride. */
+.ekleAc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: var(--b2) var(--b5) var(--b2) calc(var(--b5) + 22px);
+  border: none;
+  background: transparent;
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--sure-hizli) var(--egri);
+}
+
+.ekleAc:hover {
+  color: var(--metin);
+}
+
+.ekleSatir {
+  padding: var(--b2) var(--b5) var(--b2) calc(var(--b5) + 22px);
 }
 
 /* --- madde ------------------------------------------------------------- */
@@ -214,7 +233,7 @@
   display: flex;
   align-items: center;
   gap: var(--b3);
-  padding: var(--b3) var(--b5);
+  padding: var(--b3) var(--b5) var(--b3) calc(var(--b5) + 22px);
   cursor: pointer;
   width: 100%;
   border: none;
@@ -364,12 +383,6 @@
   white-space: nowrap;
 }
 
-.kutuDurum {
-  color: var(--metin-orta);
-  font-size: var(--y5);
-  margin-top: auto;
-}
-
 /* --- yan panel --------------------------------------------------------- */
 
 .panel {
@@ -412,25 +425,100 @@
   margin-bottom: var(--b1);
 }
 
+/* Başlık düğme gibi görünmesin; kalem yalnız üzerine gelince belirir. */
+.baslikDugme {
+  display: flex;
+  align-items: baseline;
+  gap: var(--b2);
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: text;
+}
+
+.kalem {
+  flex-shrink: 0;
+  color: var(--metin-soluk);
+  opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.baslikDugme:hover .kalem,
+.baslikDugme:focus-visible .kalem {
+  opacity: 1;
+}
+
+.baslikGiris {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--y2);
+  font-weight: var(--sik-orta);
+  line-height: 1.3;
+  padding: 0 0 2px;
+  border: none;
+  border-bottom: 1px solid var(--vurgu);
+  background: transparent;
+  color: var(--metin);
+  outline: none;
+}
+
+.durumCipleri {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.durumCip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-tam);
+  border: 1px solid var(--cizgi-koyu);
+  background: transparent;
+  color: var(--metin-orta);
+  font-size: var(--y5);
+  cursor: pointer;
+  transition:
+    border-color var(--sure-hizli) var(--egri),
+    background var(--sure-hizli) var(--egri);
+}
+
+.durumCip:hover {
+  border-color: var(--metin-soluk);
+}
+
+.durumCipSecili {
+  background: var(--vurgu-yumusak);
+  border-color: var(--vurgu);
+  color: var(--metin);
+  font-weight: var(--sik-orta);
+  cursor: default;
+}
+
+/* Boşken tek satır, yazdıkça büyür: boş kutu panelin en büyük parçasıydı. */
 .notAlani {
   width: 100%;
   box-sizing: border-box;
-  min-height: 132px;
-  resize: vertical;
-  background: var(--kart);
-  border: 1px solid var(--cizgi-koyu);
-  border-radius: var(--r1);
-  padding: var(--b3);
+  field-sizing: content;
+  min-height: calc(1.6em + var(--b2) * 2);
+  max-height: 320px;
+  resize: none;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--cizgi-koyu);
+  padding: var(--b2) 0;
   line-height: 1.6;
   outline: none;
-  transition:
-    border-color var(--sure-hizli) var(--egri),
-    box-shadow var(--sure-hizli) var(--egri);
+  transition: border-color var(--sure-hizli) var(--egri);
 }
 
 .notAlani:focus {
-  border-color: var(--vurgu);
-  box-shadow: 0 0 0 3px var(--vurgu-yumusak);
+  border-bottom: 1px solid var(--vurgu);
 }
 
 .panelDip {

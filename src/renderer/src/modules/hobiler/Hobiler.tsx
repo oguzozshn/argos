@@ -1,15 +1,24 @@
 import { AnimatePresence, motion } from "motion/react";
-import { Gamepad2, LayoutGrid, List, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Gamepad2,
+  LayoutGrid,
+  List,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { bugunIso } from "@ortak/plan";
-import { tasi } from "@ortak/siralama";
+import { grubaTasi, tasi } from "@ortak/siralama";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { silVeBildir } from "@/ui/toast";
 import { maddeGecisi } from "@/ui/hareket";
 import { useDosya } from "@/veri/kanca";
 import { DurumDuzenleyici } from "./DurumDuzenleyici";
 import { YanPanel } from "./YanPanel";
-import { useAlanlar, useGorunum } from "./kanca";
+import { useAlanlar, useGorunum, useKapaliGruplar } from "./kanca";
 import s from "./hobiler.module.css";
 import {
   SABLONLAR,
@@ -142,6 +151,15 @@ function AlanListesi({
 
 /* --- seçili alanın ekranı ---------------------------------------------- */
 
+/** Bırakılırsa kaydın ineceği yer: bir kaydın önü/arkası ya da bir grubun başı. */
+type Hedef = { tip: "madde"; id: string; once: boolean } | { tip: "grup"; durum: string };
+
+/**
+ * Liste duruma göre gruplu. Durum ayrıca yazılmıyor, kaydın hangi grupta
+ * durduğundan okunuyor; değiştirmek için kayıt başka bir gruba sürükleniyor.
+ * Eskiden durum üç yerde dağınıktı (ekleme menüsü, süzgeç, panel) ve listede
+ * soluk bir yazıdan ibaretti.
+ */
 function AlanEkrani({
   slug,
   yan,
@@ -153,29 +171,22 @@ function AlanEkrani({
   onAlanSil: (alan: Alan) => void;
 }) {
   const { veri: ham, yukleniyor, hata, disaridanDegisti, yaz } = useDosya<unknown>(dosyaYolu(slug));
-  const [yeni, setYeni] = useState("");
-  const [yeniDurum, setYeniDurum] = useState<string | null>(null);
-  const [suzgec, setSuzgec] = useState<string | null>(null);
   const [seciliId, setSeciliId] = useState<string | null>(null);
   const [durumlarAcik, setDurumlarAcik] = useState(false);
   const [gorunum, setGorunum] = useGorunum(slug);
+  // Hangi grubun ekleme satırı açık ve içine ne yazılıyor.
+  const [ekleGrup, setEkleGrup] = useState<string | null>(null);
+  const [yeni, setYeni] = useState("");
   // Sürüklenen kayıt ve bırakılırsa nereye ineceği.
   const [suruklenen, setSuruklenen] = useState<string | null>(null);
-  const [hedef, setHedef] = useState<{ id: string; once: boolean } | null>(null);
+  const [hedef, setHedef] = useState<Hedef | null>(null);
 
   // Eski biçim (durumlar: string[]) burada yeni biçime çevrilir; ilk yazmada
   // diske de yeni biçim iner, eskisi .bak olarak kalır.
   const veri = useMemo(() => normalize(ham, slug), [ham, slug]);
-
-  const sayilar = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const x of veri?.maddeler ?? []) m.set(x.durum, (m.get(x.durum) ?? 0) + 1);
-    return m;
-  }, [veri]);
-
-  const gorunen = useMemo(
-    () => (veri?.maddeler ?? []).filter((m) => !suzgec || m.durum === suzgec),
-    [veri, suzgec],
+  const [kapali, kapaliCevir] = useKapaliGruplar(
+    slug,
+    (veri?.durumlar ?? []).map((d) => d.ad),
   );
 
   if (yukleniyor) {
@@ -201,26 +212,31 @@ function AlanEkrani({
   }
 
   const durumlar = veri.durumlar;
-  const varsayilanDurum = yeniDurum ?? durumlar[0]?.ad ?? "";
   const secili = veri.maddeler.find((m) => m.id === seciliId) ?? null;
+  // Durumu listede olmayan kayıt (dosya elle düzenlenmiş) kaybolmasın: kendi
+  // grubunda, sonda görünür.
+  const bilinmeyen = [
+    ...new Set(veri.maddeler.map((m) => m.durum).filter((d) => !durumlar.some((x) => x.ad === d))),
+  ].map((ad) => ({ ad, renk: durumRengi(durumlar, ad) }));
 
   const kaydet = (yeniAlan: Alan) => void yaz(yeniAlan);
   const maddeleriKaydet = (maddeler: Madde[]) => kaydet({ ...veri, maddeler });
 
-  const ekle = () => {
+  const ekle = (durum: string) => {
     const ad = yeni.trim();
     if (!ad) return;
     const madde: Madde = {
       id: yeniId(),
       ad,
-      durum: varsayilanDurum,
+      durum,
       not: "",
       // Yerel gün: UTC ile gece 00-03 arası eklenen madde düne yazılıyordu.
       eklendi: bugunIso(),
     };
+    // Dizinin başı, grubun da başı: grup dizideki sırayla süzülüyor.
     maddeleriKaydet([madde, ...veri.maddeler]);
+    // Kutu açık kalır: arka arkaya birkaç şey eklemek tek tek açmaktan hızlı.
     setYeni("");
-    setSeciliId(madde.id);
   };
 
   const maddeDegistir = (yeniMadde: Madde) =>
@@ -231,21 +247,36 @@ function AlanEkrani({
     setSeciliId(null);
   };
 
-  const sirala = (kaynakId: string, hedefId: string, once: boolean) => {
-    const yeni = tasi(veri.maddeler, kaynakId, hedefId, once);
-    if (yeni !== veri.maddeler) maddeleriKaydet(yeni);
-  };
-
   const suruklemeBitti = () => {
     setSuruklenen(null);
     setHedef(null);
   };
 
+  const birak = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (suruklenen && hedef) {
+      const hedefMadde = hedef.tip === "madde" ? veri.maddeler.find((m) => m.id === hedef.id) : null;
+      const grup = hedef.tip === "grup" ? hedef.durum : hedefMadde?.durum;
+      if (grup !== undefined) {
+        const yeniDizi = grubaTasi(
+          veri.maddeler,
+          suruklenen,
+          "durum",
+          grup,
+          hedef.tip === "madde" ? hedef : null,
+        );
+        if (yeniDizi !== veri.maddeler) maddeleriKaydet(yeniDizi);
+      }
+    }
+    suruklemeBitti();
+  };
+
   /**
-   * Kaydı sürükleyip başka bir kaydın önüne/arkasına bırakma. Satırda üst-alt
-   * yarıya, ızgarada sol-sağ yarıya bakılır: ızgara soldan sağa akıyor.
+   * Kaydı sürükleyip başka bir kaydın önüne/arkasına bırakma — aynı grupta
+   * sıralar, başka grupta durumu da değiştirir. Satırda üst-alt yarıya,
+   * ızgarada sol-sağ yarıya bakılır: ızgara soldan sağa akıyor.
    */
-  const surukleme = (m: Madde, yatay: boolean) => ({
+  const surukleme = (m: Madde, yatay: boolean, grupMaddeleri: Madde[]) => ({
     draggable: true,
     onDragStart: (e: React.DragEvent) => {
       e.dataTransfer.effectAllowed = "move";
@@ -258,38 +289,166 @@ function AlanEkrani({
       e.dataTransfer.dropEffect = "move";
       const r = e.currentTarget.getBoundingClientRect();
       const once = yatay ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2;
-      if (hedef?.id !== m.id || hedef.once !== once) setHedef({ id: m.id, once });
+      if (hedef?.tip !== "madde" || hedef.id !== m.id || hedef.once !== once)
+        setHedef({ tip: "madde", id: m.id, once });
     },
-    onDrop: (e: React.DragEvent) => {
-      e.preventDefault();
-      if (suruklenen && hedef) sirala(suruklenen, hedef.id, hedef.once);
-      suruklemeBitti();
-    },
+    onDrop: birak,
     onDragEnd: suruklemeBitti,
-    // Fare kullanmadan da sıralanabilsin: Alt + ok tuşları görünen komşuyla yer değiştirir.
+    // Fare kullanmadan da sıralanabilsin: Alt + ok tuşları grup içindeki komşuyla yer değiştirir.
     onKeyDown: (e: React.KeyboardEvent) => {
       if (!e.altKey) return;
       const geri = e.key === "ArrowUp" || e.key === "ArrowLeft";
       const ileri = e.key === "ArrowDown" || e.key === "ArrowRight";
       if (!geri && !ileri) return;
       e.preventDefault();
-      const i = gorunen.findIndex((x) => x.id === m.id);
-      const komsu = gorunen[geri ? i - 1 : i + 1];
-      if (komsu) sirala(m.id, komsu.id, geri);
+      const i = grupMaddeleri.findIndex((x) => x.id === m.id);
+      const komsu = grupMaddeleri[geri ? i - 1 : i + 1];
+      if (!komsu) return;
+      const yeniDizi = tasi(veri.maddeler, m.id, komsu.id, geri);
+      if (yeniDizi !== veri.maddeler) maddeleriKaydet(yeniDizi);
     },
-    title: "Sürükleyerek sırala · Alt + ok tuşları",
+    onClick: () => {
+      setSeciliId(m.id);
+      setDurumlarAcik(false);
+    },
+    title: "Sürükleyerek sırala ya da başka gruba taşı · Alt + ok tuşları",
+  });
+
+  /** Grup başlığı ve ekleme satırı da bırakma yeri: kayıt grubun başına iner. */
+  const grubaBirakma = (durum: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!suruklenen) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (hedef?.tip !== "grup" || hedef.durum !== durum) setHedef({ tip: "grup", durum });
+    },
+    onDrop: birak,
+    "data-hedef": hedef?.tip === "grup" && hedef.durum === durum ? "grup" : undefined,
   });
 
   /** Bırakma çizgisi ve sürüklenenin soluklaşması CSS'te, data özniteliğiyle. */
   const isaret = (m: Madde) => ({
     "data-suruklenen": m.id === suruklenen || undefined,
     "data-hedef":
-      hedef?.id === m.id && m.id !== suruklenen ? (hedef.once ? "once" : "sonra") : undefined,
+      hedef?.tip === "madde" && hedef.id === m.id && m.id !== suruklenen
+        ? hedef.once
+          ? "once"
+          : "sonra"
+        : undefined,
   });
 
   /** Liste dışına çıkınca çizgi kalmasın. */
   const disariCikti = (e: React.DragEvent) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHedef(null);
+  };
+
+  const grup = (d: { ad: string; renk: string }) => {
+    const grupMaddeleri = veri.maddeler.filter((m) => m.durum === d.ad);
+    const acik = !kapali.has(d.ad);
+
+    return (
+      <section key={d.ad} className={s.grup}>
+        <button
+          type="button"
+          className={s.grupBas}
+          aria-expanded={acik}
+          onClick={() => kapaliCevir(d.ad)}
+          {...grubaBirakma(d.ad)}
+        >
+          {acik ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <span className={s.durumNokta} style={{ background: d.renk }} />
+          <span className={s.grupAd}>{d.ad}</span>
+          <span className={s.grupSayi}>{grupMaddeleri.length}</span>
+        </button>
+
+        {acik && (
+          <>
+            {gorunum === "izgara" ? (
+              grupMaddeleri.length > 0 && (
+                <div className={s.izgara}>
+                  {grupMaddeleri.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className={m.id === seciliId ? `${s.kutu} ${s.kutuSecili}` : s.kutu}
+                      {...surukleme(m, true, grupMaddeleri)}
+                      {...isaret(m)}
+                    >
+                      <span className={s.kutuSerit} style={{ background: d.renk }} />
+                      <span className={s.kutuAd}>{m.ad}</span>
+                      {m.not && <span className={s.kutuNot}>{m.not}</span>}
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : (
+              // Çıkış animasyonu yok, bilerek: AnimatePresence içindeki satırın
+              // çıkışı hiç başlamıyordu (motion 13.2) — silinen ya da başka
+              // gruba taşınan kayıt eski yerinde hayalet gibi kalıyordu.
+              // Giriş ve yer değiştirme animasyonu duruyor.
+              <>
+                {grupMaddeleri.map((m) => (
+                  <motion.div
+                    key={m.id}
+                    className={s.madde}
+                    variants={maddeGecisi}
+                    initial="giris"
+                    animate="duruyor"
+                    layout
+                    {...isaret(m)}
+                  >
+                    <button
+                      type="button"
+                      className={
+                        m.id === seciliId ? `${s.maddeBas} ${s.maddeSecili}` : s.maddeBas
+                      }
+                      {...surukleme(m, false, grupMaddeleri)}
+                    >
+                      <span className={s.maddeAd}>{m.ad}</span>
+                      {m.not && <span className={s.maddeNot}>{m.not}</span>}
+                    </button>
+                  </motion.div>
+                ))}
+              </>
+            )}
+
+            {ekleGrup === d.ad ? (
+              <div className={s.ekleSatir}>
+                <Giris
+                  value={yeni}
+                  autoFocus
+                  placeholder={`${d.ad} grubuna ekle…`}
+                  onChange={(e) => setYeni(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") ekle(d.ad);
+                    if (e.key === "Escape") {
+                      setEkleGrup(null);
+                      setYeni("");
+                    }
+                  }}
+                  onBlur={() => {
+                    // Yazılmış bir şey varken dışarı tıklamak onu silmesin.
+                    if (!yeni.trim()) setEkleGrup(null);
+                  }}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={s.ekleAc}
+                onClick={() => {
+                  setEkleGrup(d.ad);
+                  setYeni("");
+                }}
+                {...grubaBirakma(d.ad)}
+              >
+                <Plus size={14} /> ekle
+              </button>
+            )}
+          </>
+        )}
+      </section>
+    );
   };
 
   const panelVar = durumlarAcik || secili !== null;
@@ -342,126 +501,14 @@ function AlanEkrani({
           </div>
         }
       >
-        <div className={s.ekleme}>
-          <Giris
-            value={yeni}
-            placeholder={`${veri.ad} listesine ekle…`}
-            onChange={(e) => setYeni(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && ekle()}
-          />
-          <select
-            className={s.secim}
-            value={varsayilanDurum}
-            onChange={(e) => setYeniDurum(e.target.value)}
-            aria-label="Yeni kaydın durumu"
-          >
-            {durumlar.map((d) => (
-              <option key={d.ad} value={d.ad}>
-                {d.ad}
-              </option>
-            ))}
-          </select>
-          <Dugme tur="dolu" onClick={ekle} disabled={!yeni.trim()}>
-            Ekle
-          </Dugme>
-        </div>
-
-        <div className={s.suzgec}>
-          <button
-            type="button"
-            className={suzgec === null ? `${s.cip} ${s.cipSecili}` : s.cip}
-            onClick={() => setSuzgec(null)}
-          >
-            hepsi <span className={s.cipSayi}>{veri.maddeler.length}</span>
-          </button>
-          {durumlar.map((d) => (
-            <button
-              key={d.ad}
-              type="button"
-              className={suzgec === d.ad ? `${s.cip} ${s.cipSecili}` : s.cip}
-              onClick={() => setSuzgec(suzgec === d.ad ? null : d.ad)}
-            >
-              {d.ad} <span className={s.cipSayi}>{sayilar.get(d.ad) ?? 0}</span>
-            </button>
-          ))}
-        </div>
-
-        {gorunen.length === 0 ? (
-          <BosDurum
-            baslik={suzgec ? `"${suzgec}" durumunda kayıt yok` : "Liste boş"}
-            metin={suzgec ? undefined : "Yukarıdaki kutudan ilk kaydı ekle."}
-            eylem={
-              suzgec ? <Dugme onClick={() => setSuzgec(null)}>Süzgeci kaldır</Dugme> : undefined
-            }
-          />
-        ) : gorunum === "izgara" ? (
-          <div className={s.izgara} onDragLeave={disariCikti}>
-            {gorunen.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={m.id === seciliId ? `${s.kutu} ${s.kutuSecili}` : s.kutu}
-                {...surukleme(m, true)}
-                {...isaret(m)}
-                onClick={() => {
-                  setSeciliId(m.id);
-                  setDurumlarAcik(false);
-                }}
-              >
-                <span
-                  className={s.kutuSerit}
-                  style={{ background: durumRengi(durumlar, m.durum) }}
-                />
-                <span className={s.kutuAd}>{m.ad}</span>
-                {m.not && <span className={s.kutuNot}>{m.not}</span>}
-                <span className={s.kutuDurum}>{m.durum}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div onDragLeave={disariCikti}>
-            <AnimatePresence initial={false}>
-              {gorunen.map((m) => (
-                <motion.div
-                  key={m.id}
-                  className={s.madde}
-                  variants={maddeGecisi}
-                  initial="giris"
-                  animate="duruyor"
-                  exit="cikis"
-                  layout
-                  {...isaret(m)}
-                >
-                  <button
-                    type="button"
-                    className={
-                      m.id === seciliId ? `${s.maddeBas} ${s.maddeSecili}` : s.maddeBas
-                    }
-                    {...surukleme(m, false)}
-                    onClick={() => {
-                      setSeciliId(m.id);
-                      setDurumlarAcik(false);
-                    }}
-                  >
-                    <span
-                      className={s.durumNokta}
-                      style={{ background: durumRengi(durumlar, m.durum) }}
-                    />
-                    <span className={s.maddeAd}>{m.ad}</span>
-                    {m.not && <span className={s.maddeNot}>{m.not}</span>}
-                    <span className={s.eklendi}>{m.durum}</span>
-                  </button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
+        <div onDragLeave={disariCikti}>{[...durumlar, ...bilinmeyen].map(grup)}</div>
       </Kart>
 
       {durumlarAcik ? (
         <DurumDuzenleyici alan={veri} onDegis={kaydet} onKapat={() => setDurumlarAcik(false)} />
       ) : secili ? (
         <YanPanel
+          key={secili.id}
           alan={veri}
           madde={secili}
           onDegis={maddeDegistir}

@@ -113,3 +113,48 @@ export function useGorunum(slug: string): [Gorunum, (g: Gorunum) => void] {
 
   return [g, degistir];
 }
+
+/**
+ * Hangi durum gruplarının kapalı olduğu, alan başına. Hiç dokunulmadıysa
+ * bitmiş ve bırakılmış olanlar kapalı başlar: liste şu an ilgilenilenleri
+ * göstersin, arşivi değil. Görünüm gibi makine tercihi, `localStorage`'ta.
+ */
+const VARSAYILAN_KAPALI = new Set(["bitti", "bıraktım"]);
+
+export function useKapaliGruplar(
+  slug: string,
+  durumAdlari: string[],
+): [Set<string>, (durum: string) => void] {
+  const anahtar = `argos.kapali.${slug}`;
+  const [kayitli, setKayitli] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    try {
+      const ham = localStorage.getItem(anahtar);
+      const dizi: unknown = ham ? JSON.parse(ham) : null;
+      setKayitli(Array.isArray(dizi) ? dizi.filter((x) => typeof x === "string") : null);
+    } catch {
+      setKayitli(null);
+    }
+  }, [anahtar]);
+
+  const kapali =
+    kayitli !== null
+      ? new Set(kayitli)
+      : new Set(durumAdlari.filter((d) => VARSAYILAN_KAPALI.has(d.toLocaleLowerCase("tr"))));
+
+  const cevir = (durum: string) => {
+    const yeni = new Set(kapali);
+    if (yeni.has(durum)) yeni.delete(durum);
+    else yeni.add(durum);
+    const dizi = [...yeni];
+    setKayitli(dizi);
+    try {
+      localStorage.setItem(anahtar, JSON.stringify(dizi));
+    } catch {
+      // Depolama kapalıysa oturum boyunca geçerli kalır.
+    }
+  };
+
+  return [kapali, cevir];
+}
