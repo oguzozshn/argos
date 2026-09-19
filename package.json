@@ -8,14 +8,18 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "tipler": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "tipler": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.bot.json",
     "test": "node araclar/veri-testi.mts && node araclar/pencere-testi.mts && node araclar/todoist-testi.mts && node araclar/asistan-testi.mts && node araclar/kural-testi.mts && node araclar/odak-testi.mts && node araclar/siralama-testi.mts && node araclar/bosalt-testi.mts && node araclar/harcama-testi.mts && node araclar/ekstre-testi.mts && node araclar/parite-testi.mts && node araclar/bot-testi.mts",
-    "paket": "electron-vite build && electron-builder --win"
+    "paket": "electron-vite build && electron-builder --win",
+    "bot:dev": "wrangler dev -c bot/wrangler.toml",
+    "bot:yukle": "wrangler deploy -c bot/wrangler.toml",
+    "bot:kur": "node araclar/bot-kurulum.mts"
   },
   "dependencies": {
     "chokidar": "^5.0.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260919.1",
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
@@ -32,12 +36,15 @@
     "react-router-dom": "^7.18.3",
     "typescript": "^7.0.2",
     "vite": "^7.3.6",
+    "wrangler": "^4.135.0",
     "zustand": "^5.0.15"
   },
   "allowScripts": {
     "electron@44.2.0": true,
     "esbuild@0.25.12": true,
-    "esbuild@0.28.2": true
+    "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true,
+    "workerd@1.20260918.1": true
   },
   "build": {
     "appId": "com.oguzozsahin.argos",

@@ -10,3 +10,7 @@ gizli.json
 
 # Yerel yol ayarı: her makinede farklı olabilir
 argos.config.local.json
+
+# Worker: yerel gizli değerler ve wrangler önbelleği
+.dev.vars
+.wrangler/

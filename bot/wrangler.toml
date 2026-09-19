@@ -1,0 +1,19 @@
+# Argos Telegram botu — Cloudflare Worker.
+# Yerelde: npm run bot:dev   Yükleme: npm run bot:yukle
+# Gizli değerler burada DEĞİL: `npx wrangler secret put <AD> -c bot/wrangler.toml`
+# (yerelde bot/.dev.vars). Adlar: TELEGRAM_TOKEN, TELEGRAM_GIZLI,
+# SAHIP_CHAT_ID, TODOIST_TOKEN, ARGOS_ANAHTARI.
+
+name = "argos-bot"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Argos'un gönderdiği plan görünümü ve Telegram'dan gelen ekleme kuyruğu.
+# id: `npx wrangler kv namespace create ARGOS -c bot/wrangler.toml` çıktısı.
+[[kv_namespaces]]
+binding = "ARGOS"
+id = "YEREL"
+
+# 05:00 UTC = 08:00 İstanbul (yaz saati yok).
+[triggers]
+crons = ["0 5 * * *"]

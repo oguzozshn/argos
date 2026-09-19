@@ -1,0 +1,8 @@
+# Yerel deneme için: bu dosyayı bot/.dev.vars adıyla kopyala (o dosya depoya girmez).
+# Gerçek anahtar koyma; araclar/bot-yerel-deneme.mts sahte Telegram'la çalışır.
+TELEGRAM_TOKEN=sahte
+TELEGRAM_GIZLI=yerel-gizli
+SAHIP_CHAT_ID=42
+TODOIST_TOKEN=sahte
+ARGOS_ANAHTARI=yerel-anahtar
+TELEGRAM_API=http://127.0.0.1:8788
