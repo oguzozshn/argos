@@ -96,6 +96,10 @@ export function bugunIso(d = new Date()): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
+/** Hatırla maddesi kimliği: `h-` + zaman damgası (milisaniyeye kadar). */
+export const yeniHatirlaId = (d = new Date()): string =>
+  "h-" + d.toISOString().replace(/[-:T.]/g, "").slice(0, 17);
+
 /**
  * Günün öne çıkan hatırlatmaları. app.py'deki `hatirla_bugun` ile AYNI seçim:
  * tarihten türer, gün içinde sabit kalır, ertesi gün kayar. İki uygulama aynı

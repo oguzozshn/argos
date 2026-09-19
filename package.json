@@ -9,7 +9,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "tipler": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
-    "test": "node araclar/veri-testi.mts && node araclar/pencere-testi.mts && node araclar/todoist-testi.mts && node araclar/asistan-testi.mts && node araclar/kural-testi.mts && node araclar/odak-testi.mts && node araclar/siralama-testi.mts && node araclar/bosalt-testi.mts && node araclar/harcama-testi.mts && node araclar/ekstre-testi.mts && node araclar/parite-testi.mts",
+    "test": "node araclar/veri-testi.mts && node araclar/pencere-testi.mts && node araclar/todoist-testi.mts && node araclar/asistan-testi.mts && node araclar/kural-testi.mts && node araclar/odak-testi.mts && node araclar/siralama-testi.mts && node araclar/bosalt-testi.mts && node araclar/harcama-testi.mts && node araclar/ekstre-testi.mts && node araclar/parite-testi.mts && node araclar/bot-testi.mts",
     "paket": "electron-vite build && electron-builder --win"
   },
   "dependencies": {

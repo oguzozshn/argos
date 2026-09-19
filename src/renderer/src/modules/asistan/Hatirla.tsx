@@ -1,6 +1,6 @@
 import { Archive, Plus, RotateCcw, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { bugunIso, hatirlaBugun, type HatirlaMaddesi } from "@ortak/plan";
+import { bugunIso, hatirlaBugun, yeniHatirlaId, type HatirlaMaddesi } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { silVeBildir } from "@/ui/toast";
 import { useDosya } from "@/veri/kanca";
@@ -19,13 +19,6 @@ interface HatirlaDosyasi {
   maddeler: HatirlaMaddesi[];
 }
 
-const yeniId = (): string =>
-  "h-" +
-  new Date()
-    .toISOString()
-    .replace(/[-:T.]/g, "")
-    .slice(0, 17);
-
 export function Hatirla() {
   const { kurallar } = usePlanVerisi();
   const { veri, yukleniyor, hata, yaz, degistir } = useDosya<HatirlaDosyasi>("hatirla.json");
@@ -42,7 +35,7 @@ export function Hatirla() {
   const ekle = () => {
     const metin = yeni.trim();
     if (!metin) return;
-    kaydet([...maddeler, { id: yeniId(), metin, eklendi: bugunIso(), arsiv: false }]);
+    kaydet([...maddeler, { id: yeniHatirlaId(), metin, eklendi: bugunIso(), arsiv: false }]);
     setYeni("");
   };
 
