@@ -596,3 +596,32 @@
   font-size: var(--y4);
   color: var(--hata);
 }
+
+/* Kartın başındaki ekleme satırı: metin + hangi gruba + ekle. */
+.ustEkle {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b3) var(--b5);
+  border-bottom: 1px solid var(--cizgi);
+  background: var(--kart-hover);
+}
+
+.ustEkle > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.ustEkleGrup {
+  flex: none;
+  max-width: 40%;
+  height: 36px;
+  padding: 0 var(--b2);
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  cursor: pointer;
+}

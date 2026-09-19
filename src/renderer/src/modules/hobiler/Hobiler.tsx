@@ -8,6 +8,7 @@ import {
   Plus,
   SlidersHorizontal,
   Trash2,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { bugunIso } from "@ortak/plan";
@@ -177,6 +178,9 @@ function AlanEkrani({
   const [gorunum, setGorunum] = useGorunum(slug);
   // Hangi grubun ekleme satırı açık ve içine ne yazılıyor.
   const [ekleGrup, setEkleGrup] = useState<string | null>(null);
+  // Kartın başındaki ekleme satırı ve seçilen grup (oturum boyunca hatırlanır).
+  const [ustEkle, setUstEkle] = useState(false);
+  const [ustGrupSecim, setUstGrupSecim] = useState("");
   const [yeni, setYeni] = useState("");
   // Sürüklenen kayıt ve bırakılırsa nereye ineceği.
   const [suruklenen, setSuruklenen] = useState<string | null>(null);
@@ -364,27 +368,6 @@ function AlanEkrani({
 
         {acik && (
           <>
-            {ekleGrup === d.ad && (
-              <div className={s.ekleSatir}>
-                <Giris
-                  value={yeni}
-                  autoFocus
-                  placeholder={`${d.ad} grubuna ekle… (Enter ekler, Esc kapatır)`}
-                  onChange={(e) => setYeni(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") ekle(d.ad);
-                    if (e.key === "Escape") {
-                      setEkleGrup(null);
-                      setYeni("");
-                    }
-                  }}
-                  onBlur={() => {
-                    // Yazılmış bir şey varken dışarı tıklamak onu silmesin.
-                    if (!yeni.trim()) setEkleGrup(null);
-                  }}
-                />
-              </div>
-            )}
             {gorunum === "izgara" ? (
               grupMaddeleri.length > 0 && (
                 <div className={s.izgara}>
@@ -434,11 +417,32 @@ function AlanEkrani({
               </>
             )}
 
-            {ekleGrup !== d.ad && (
+            {ekleGrup === d.ad ? (
+              <div className={s.ekleSatir}>
+                <Giris
+                  value={yeni}
+                  autoFocus
+                  placeholder={`${d.ad} grubuna ekle…`}
+                  onChange={(e) => setYeni(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") ekle(d.ad);
+                    if (e.key === "Escape") {
+                      setEkleGrup(null);
+                      setYeni("");
+                    }
+                  }}
+                  onBlur={() => {
+                    // Yazılmış bir şey varken dışarı tıklamak onu silmesin.
+                    if (!yeni.trim()) setEkleGrup(null);
+                  }}
+                />
+              </div>
+            ) : (
               <button
                 type="button"
                 className={s.ekleAc}
                 onClick={() => {
+                  setUstEkle(false);
                   setEkleGrup(d.ad);
                   setYeni("");
                 }}
@@ -456,19 +460,26 @@ function AlanEkrani({
   const panelVar = durumlarAcik || secili !== null;
 
   /**
-   * Yeni kayıt: ilk açık grubun ekleme satırı. Hepsi kapalıysa ilk grup açılır —
-   * kapalı gruba eklenen kayıt görünmezdi. Başlıktaki "Ekle" ve N aynı işi yapar;
-   * önceden eklemek için grubun sonuna kaydırmak gerekiyordu.
+   * Üstten yeni kayıt: kartın başında, grup seçilerek. Önceden eklemek için
+   * grubun sonuna kaydırmak gerekiyordu; hangi gruba gideceğini de kullanıcı
+   * seçer (kullanıcı isteği) — bulunulan grup varsayılmaz. Başlıktaki "Ekle"
+   * ve N bunu açar.
    */
-  const ilkAcikGrup = durumlar.find((d) => !kapali.has(d.ad))?.ad ?? null;
-  const hedefGrup = ilkAcikGrup ?? durumlar[0]?.ad ?? null;
-  const yeniKayit = hedefGrup
-    ? () => {
-        if (kapali.has(hedefGrup)) kapaliCevir(hedefGrup);
-        setEkleGrup(hedefGrup);
-        setYeni("");
-      }
-    : null;
+  const ustGrup = durumlar.some((d) => d.ad === ustGrupSecim) ? ustGrupSecim : (durumlar[0]?.ad ?? "");
+  const yeniKayit =
+    durumlar.length > 0
+      ? () => {
+          setEkleGrup(null);
+          setYeni("");
+          setUstEkle(true);
+        }
+      : null;
+  const ustEkleGonder = () => {
+    if (!yeni.trim() || !ustGrup) return;
+    ekle(ustGrup);
+    // Kapalı gruba eklenen kayıt görünmezdi: grup açılır.
+    if (kapali.has(ustGrup)) kapaliCevir(ustGrup);
+  };
 
   return (
     <div className={panelVar ? `${s.duzen} ${s.duzenPanelli}` : s.duzen}>
@@ -538,6 +549,47 @@ function AlanEkrani({
           </div>
         }
       >
+        {ustEkle && (
+          <div className={s.ustEkle}>
+            <Giris
+              value={yeni}
+              autoFocus
+              placeholder="Ne ekleyeceksin? (Enter ekler, Esc kapatır)"
+              onChange={(e) => setYeni(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") ustEkleGonder();
+                if (e.key === "Escape") {
+                  setUstEkle(false);
+                  setYeni("");
+                }
+              }}
+            />
+            <select
+              className={s.ustEkleGrup}
+              value={ustGrup}
+              onChange={(e) => setUstGrupSecim(e.target.value)}
+              aria-label="Hangi gruba"
+            >
+              {durumlar.map((d) => (
+                <option key={d.ad} value={d.ad}>
+                  {d.ad}
+                </option>
+              ))}
+            </select>
+            <Dugme tur="dolu" onClick={ustEkleGonder} disabled={!yeni.trim()}>
+              Ekle
+            </Dugme>
+            <Dugme
+              tur="sade"
+              ikon={<X size={15} />}
+              onClick={() => {
+                setUstEkle(false);
+                setYeni("");
+              }}
+              aria-label="Kapat"
+            />
+          </div>
+        )}
         <div onDragLeave={disariCikti}>{[...durumlar, ...bilinmeyen].map(grup)}</div>
       </Kart>
 
