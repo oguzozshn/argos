@@ -19,7 +19,7 @@ import {
 } from "@ortak/odak";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { useDosya } from "@/veri/kanca";
-import { useOdak } from "./odak-store";
+import { odakBaslat, odakDuraklat, useOdak } from "./odak-store";
 import { saatMetni, usePlanVerisi } from "@/veri/plan";
 import s from "./odak.module.css";
 
@@ -319,13 +319,8 @@ function OdakIcerik({
     setNot(ok ? `${dk} dk kaydedildi.` : "Seans kaydedilemedi.");
   };
 
-  const basla = () =>
-    setD((x) => (x.calisiyor ? x : { ...x, calisiyor: true, basladi: Date.now() }));
-
-  const duraklat = () =>
-    setD((x) =>
-      x.calisiyor ? { ...x, gecen: gecenSn(x, Date.now()), calisiyor: false, basladi: null } : x,
-    );
+  const basla = () => odakBaslat();
+  const duraklat = odakDuraklat;
 
   // Sayaç sıfırlanınca uykudaki arayı eklemenin anlamı kalmaz.
   const sifirla = () => {

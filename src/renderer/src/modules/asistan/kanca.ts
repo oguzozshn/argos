@@ -11,6 +11,8 @@ import { bugunIso, type Hafta, type HatirlaMaddesi } from "@ortak/plan";
  */
 export function useGuncelHafta() {
   const [hafta, setHafta] = useState<Hafta | null>(null);
+  /** Seçilen dosyanın kodu (W38); yazmak isteyen `useDosya` ile açar. */
+  const [kod, setKod] = useState<string | null>(null);
   const [yukleniyor, setYukleniyor] = useState(true);
 
   const tazele = useCallback(async () => {
@@ -25,23 +27,25 @@ export function useGuncelHafta() {
         .sort((a, b) => Number(a.slice(1, -5)) - Number(b.slice(1, -5)));
 
       const bugun = bugunIso();
-      let sonuncu: Hafta | null = null;
-      let iceren: Hafta | null = null;
+      let sonuncu: { v: Hafta; kod: string } | null = null;
+      let iceren: { v: Hafta; kod: string } | null = null;
 
       for (const d of dosyalar) {
         const v = (await k.veri.oku<Hafta>(d)).veri;
         if (!v?.gunler?.length) continue;
-        sonuncu = v;
+        sonuncu = { v, kod: d.slice(0, -5) };
         const tarihler = v.gunler.map((g) => g.isoTarih).filter(Boolean);
         if (tarihler.length === 0) continue;
         const enKucuk = tarihler.reduce((a, b) => (a < b ? a : b));
         const enBuyuk = tarihler.reduce((a, b) => (a > b ? a : b));
         if (enKucuk <= bugun && bugun <= enBuyuk) {
-          iceren = v;
+          iceren = { v, kod: d.slice(0, -5) };
           break;
         }
       }
-      setHafta(iceren ?? sonuncu);
+      const secilen = iceren ?? sonuncu;
+      setHafta(secilen?.v ?? null);
+      setKod(secilen?.kod ?? null);
     } finally {
       setYukleniyor(false);
     }
@@ -60,7 +64,7 @@ export function useGuncelHafta() {
     });
   }, [tazele]);
 
-  return { hafta, yukleniyor };
+  return { hafta, kod, yukleniyor };
 }
 
 interface HatirlaDosyasi {

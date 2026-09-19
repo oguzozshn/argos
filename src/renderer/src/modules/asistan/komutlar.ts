@@ -7,13 +7,12 @@ import {
   tarihBasligi,
   type HatirlaDosyasi,
 } from "@ortak/bot";
-import { gecenSn } from "@ortak/odak";
 import type { Kurallar } from "@ortak/ozet";
 import { bugunIso, type Hafta } from "@ortak/plan";
 import type { Komut } from "@/modules";
 import { dosyayiGuncelle } from "@/veri/guncelle";
 import { kopru } from "@/veri/kanca";
-import { useOdak } from "./odak-store";
+import { odakBaslat, odakDuraklat, useOdak } from "./odak-store";
 
 /**
  * Asistan'ın palet komutları. Sözdizimi ve kurallar Telegram botuyla ortak
@@ -84,7 +83,7 @@ export const asistanKomutlari: Komut[] = [
     uygun: () => !odakCalisiyor(),
     // Odak ekranındaki "Başlat" ile aynı geçiş; seans kaydı o ekranda.
     calistir: () => {
-      useOdak.getState().setD((x) => (x.calisiyor ? x : { ...x, calisiyor: true, basladi: Date.now() }));
+      odakBaslat();
       return "Odak sayacı başladı";
     },
   },
@@ -95,9 +94,7 @@ export const asistanKomutlari: Komut[] = [
     anahtarlar: ["odak", "pomodoro", "sayaç", "dur"],
     uygun: odakCalisiyor,
     calistir: () => {
-      useOdak
-        .getState()
-        .setD((x) => (x.calisiyor ? { ...x, gecen: gecenSn(x, Date.now()), calisiyor: false, basladi: null } : x));
+      odakDuraklat();
       return "Odak sayacı duraklatıldı";
     },
   },

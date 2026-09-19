@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { BOS_DURUM, uykuyuYakala, type Kesinti, type OdakDurumu } from "@ortak/odak";
+import { BOS_DURUM, gecenSn, uykuyuYakala, type Kesinti, type OdakDurumu } from "@ortak/odak";
 
 /**
  * Odak sayacı ekranın değil uygulamanın durumu. Bileşen içinde tutulunca
@@ -52,6 +52,22 @@ export const useOdak = create<OdakDeposu>()((set, get) => ({
     ),
   kesintiyiKapat: () => set({ kesinti: null }),
 }));
+
+/**
+ * Başlat / duraklat: Odak ekranı, Bugün panosu ve komut paleti aynı geçişi
+ * kullanır. `slotId` verilirse seans o slota bağlanır.
+ */
+export function odakBaslat(slotId?: string): void {
+  const o = useOdak.getState();
+  if (slotId) o.setOdakSlot(slotId);
+  o.setD((x) => (x.calisiyor ? x : { ...x, calisiyor: true, basladi: Date.now() }));
+}
+
+export function odakDuraklat(): void {
+  useOdak
+    .getState()
+    .setD((x) => (x.calisiyor ? { ...x, gecen: gecenSn(x, Date.now()), calisiyor: false, basladi: null } : x));
+}
 
 /**
  * Nabız ekrandan bağımsız atar: kullanıcı Takvim'deyken uyusa da sayaç

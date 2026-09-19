@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DURUM_ISARETI, type Hafta as HaftaTipi, type Slot } from "@ortak/plan";
 import { siklikMetni, siklikOku } from "@ortak/ozet";
 import { gunEkle } from "@ortak/gun";
-import { slotTasi } from "@ortak/plan-islem";
+import { DURUM_SIRASI, aliskanlikCevir, slotDurumunuDondur, slotTasi } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
 import {
   dakika,
@@ -38,7 +38,6 @@ import s from "./hafta.module.css";
  * işaretleme dosyaya yazılır, eşitleme ayrı bir iştir.
  */
 
-const DURUM_SIRASI = ["planli", "yapildi", "kacti", "tasindi"];
 
 /* --- sürükleme ----------------------------------------------------------- */
 
@@ -361,13 +360,7 @@ function HaftaIcerik({
   };
 
   /** Durum işaretine tıklayınca sırayla döner: ☐ → ☑ → ⊘ → ☐. */
-  const durumDondur = (x: Slot) => {
-    const i = DURUM_SIRASI.indexOf(x.durum);
-    // Döngü ilk üç durumda; "taşındı" döngüde değil, tıklanınca plana döner —
-    // yoksa taşınmış slot tek tıkla "yapıldı" oluyordu.
-    const yeni = i >= 0 && i < 3 ? DURUM_SIRASI[(i + 1) % 3]! : "planli";
-    slotDegis({ ...x, durum: yeni });
-  };
+  const durumDondur = (x: Slot) => kaydet(slotDurumunuDondur(veri, x.id));
 
   const slotEkle = (gunNo: number) => {
     const gunSlot = gununSlotlari(veri, gunNo);
@@ -403,18 +396,7 @@ function HaftaIcerik({
     });
   };
 
-  const aliskanlikDegis = (ad: string, gunNo: number) => {
-    kaydet({
-      ...veri,
-      gunlukAliskanliklar: (veri.gunlukAliskanliklar ?? []).map((a) => {
-        if (a.ad !== ad) return a;
-        const gunler = { ...(a.gunler ?? {}) };
-        if (gunler[String(gunNo)]) delete gunler[String(gunNo)];
-        else gunler[String(gunNo)] = true;
-        return { ...a, gunler };
-      }),
-    });
-  };
+  const aliskanlikDegis = (ad: string, gunNo: number) => kaydet(aliskanlikCevir(veri, ad, gunNo));
 
   const kotaDegis = (alan: "haftaSonu" | "haftaIci") => {
     const k = veri.sosyalKota ?? {};

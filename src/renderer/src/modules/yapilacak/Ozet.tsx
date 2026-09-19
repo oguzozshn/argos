@@ -13,6 +13,7 @@ import s from "./yapilacak.module.css";
  */
 export function YapilacakOzet() {
   const [gorevler, setGorevler] = useState<TodoistGorev[] | null>(null);
+  const [gecikmisAcik, setGecikmisAcik] = useState(false);
 
   useEffect(() => {
     const k = kopru();
@@ -60,39 +61,59 @@ export function YapilacakOzet() {
   const bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 10);
-  const gecikmis = gorevler.filter((g) => g.tarih && g.tarih.slice(0, 10) < bugun).length;
+  const gecikmisMi = (g: TodoistGorev) => Boolean(g.tarih && g.tarih.slice(0, 10) < bugun);
+  const gecikmisler = gorevler.filter(gecikmisMi);
+  const bugunkuler = gorevler.filter((g) => !gecikmisMi(g));
+  // Gecikmişler bugünkülerin arasına karışınca liste taşıyordu: sayı olarak
+  // durur, tıklanınca açılır.
+  const liste = gecikmisAcik ? [...gecikmisler, ...bugunkuler] : bugunkuler;
+  const gorunen = liste.slice(0, gecikmisAcik ? 15 : 7);
+
+  const satir = (g: TodoistGorev) => (
+    <Satir
+      key={g.id}
+      baslik={g.icerik}
+      alt={g.tarihMetni ?? undefined}
+      sol={
+        <button
+          type="button"
+          className={s.kutucuk}
+          onClick={() => void kapat(g)}
+          aria-label={`"${g.icerik}" görevini tamamla`}
+        >
+          <Check size={12} strokeWidth={3} />
+        </button>
+      }
+      sag={gecikmisMi(g) ? <Etiket tur="hata">gecikmiş</Etiket> : null}
+    />
+  );
 
   return (
     <Kart
       dolgulu={false}
       baslik="Bugün yapılacaklar"
       not={<Link to="/yapilacak/">Yapılacaklar →</Link>}
+      bas={
+        gecikmisler.length > 0 && (
+          <button
+            type="button"
+            className={gecikmisAcik ? `${s.gecikmisCip} ${s.gecikmisAcik}` : s.gecikmisCip}
+            onClick={() => setGecikmisAcik((x) => !x)}
+            aria-expanded={gecikmisAcik}
+          >
+            {gecikmisler.length} gecikmiş {gecikmisAcik ? "▴" : "▾"}
+          </button>
+        )
+      }
     >
-      {gorevler.slice(0, 7).map((g) => (
-        <Satir
-          key={g.id}
-          baslik={g.icerik}
-          alt={g.tarihMetni ?? undefined}
-          sol={
-            <button
-              type="button"
-              className={s.kutucuk}
-              onClick={() => void kapat(g)}
-              aria-label={`"${g.icerik}" görevini tamamla`}
-            >
-              <Check size={12} strokeWidth={3} />
-            </button>
-          }
-          sag={
-            g.tarih && g.tarih.slice(0, 10) < bugun ? <Etiket tur="hata">gecikmiş</Etiket> : null
-          }
-        />
-      ))}
-      {gorevler.length > 7 && (
-        <p className={s.projeNot}>
-          {gorevler.length - 7} görev daha{gecikmis > 0 ? ` · ${gecikmis} gecikmiş` : ""}
+      {gorunen.length === 0 ? (
+        <p className={s.projeNot} style={{ borderTop: "none", marginTop: 0 }}>
+          Bugüne görev yok.
         </p>
+      ) : (
+        gorunen.map(satir)
       )}
+      {liste.length > gorunen.length && <p className={s.projeNot}>{liste.length - gorunen.length} görev daha</p>}
     </Kart>
   );
 }

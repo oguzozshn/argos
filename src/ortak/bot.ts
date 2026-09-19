@@ -14,6 +14,7 @@
 
 import { AY_TAM, GUN_ADLARI, gunEkle, haftaninGunu, kSirala } from "./gun.ts";
 import { dakika, yeniSlotId } from "./kural.ts";
+import { aliskanlikBekleniyor } from "./plan-islem.ts";
 import { DURUM_ISARETI, hatirlaBugun, yeniHatirlaId, type Hafta, type HatirlaMaddesi, type Slot } from "./plan.ts";
 import type { TodoistGorev } from "./tipler.ts";
 
@@ -67,10 +68,7 @@ export function anlikKur(
       .sort((a, b) => kSirala(a.saat, b.saat))
       .map((s) => ({ saat: s.saat, sureDk: s.sureDk, alan: s.alan, konu: s.konu, durum: s.durum }));
     const aliskanliklar = (v.gunlukAliskanliklar ?? [])
-      .filter((a) => {
-        const bek = a.beklenenGunler;
-        return bek === null || bek === undefined || bek.includes(no);
-      })
+      .filter((a) => aliskanlikBekleniyor(a, no))
       .map((a) => ({ ad: a.ad, yapildi: Boolean((a.gunler ?? {})[String(no)]) }));
     const hatirlaGunu = hatirla
       ? hatirlaBugun(hatirla.maddeler, hatirla.gunlukAdet, yerelGun(iso)).map((m) => m.metin)

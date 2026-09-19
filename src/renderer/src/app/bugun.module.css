@@ -1,0 +1,7 @@
+/* Bugün panosu: kartlar ızgarada; dar pencerede tek sütun. */
+.izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: var(--b5);
+  align-items: start;
+}

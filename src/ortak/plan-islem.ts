@@ -215,3 +215,66 @@ export function slotTasi(
 
   return { hafta, tasindi: true, not: uyarilar.length ? uyarilar.join(" · ") : null };
 }
+
+/* --- işaretleme ----------------------------------------------------------- */
+
+/** Durumların sırası; Hafta ekranındaki seçici de bu sırayla dizer. */
+export const DURUM_SIRASI = ["planli", "yapildi", "kacti", "tasindi"];
+
+/**
+ * İşarete tıklanınca sıradaki durum: ☐ → ☑ → ⊘ → ☐. "Taşındı" döngüde
+ * değil, tıklanınca plana döner — yoksa taşınmış slot tek tıkla "yapıldı"
+ * oluyordu.
+ */
+export function sonrakiDurum(durum: string): string {
+  const i = DURUM_SIRASI.indexOf(durum);
+  return i >= 0 && i < 3 ? DURUM_SIRASI[(i + 1) % 3]! : "planli";
+}
+
+/**
+ * Slotun durumunu döndürür. Yalnızca durum değişir: süre, roadmap adımı ve
+ * Todoist'e dokunulmaz (Hafta ekranıyla aynı davranış).
+ */
+export const slotDurumunuDondur = (v: Hafta, id: string): Hafta => ({
+  ...v,
+  slotlar: v.slotlar.map((x) => (x.id === id ? { ...x, durum: sonrakiDurum(x.durum) } : x)),
+});
+
+/** Alışkanlık o gün bekleniyor mu: `beklenenGunler` yoksa her gün. */
+export const aliskanlikBekleniyor = (a: { beklenenGunler?: number[] | null }, gunNo: number): boolean =>
+  a.beklenenGunler === null || a.beklenenGunler === undefined || a.beklenenGunler.includes(gunNo);
+
+/** Alışkanlığın o günkü işaretini çevirir. İşaret kalkınca anahtar silinir, `false` yazılmaz. */
+export function aliskanlikCevir(v: Hafta, ad: string, gunNo: number): Hafta {
+  return {
+    ...v,
+    gunlukAliskanliklar: (v.gunlukAliskanliklar ?? []).map((a) => {
+      if (a.ad !== ad) return a;
+      const gunler = { ...(a.gunler ?? {}) };
+      if (gunler[String(gunNo)]) delete gunler[String(gunNo)];
+      else gunler[String(gunNo)] = true;
+      return { ...a, gunler };
+    }),
+  };
+}
+
+/* --- şimdi / sıradaki ------------------------------------------------------ */
+
+export interface SimdiSiradaki {
+  /** Şu an süresi içinde olunan, henüz işaretlenmemiş slot. */
+  simdi: Slot | null;
+  /** Başlamamış ilk planlı slot. */
+  siradaki: Slot | null;
+}
+
+/**
+ * Günün slotlarından şu anki ve sıradaki. Yalnızca "planlı" olanlar sayılır:
+ * yapılmış ya da kaçmış slot "şimdi" diye gösterilmez. `simdiDk` gece
+ * yarısından bu yana dakika.
+ */
+export function simdiVeSiradaki(slotlar: Slot[], simdiDk: number): SimdiSiradaki {
+  const planli = slotlar.filter((s) => s.durum === "planli").sort((a, b) => dakika(a.saat) - dakika(b.saat));
+  const simdi = planli.find((s) => dakika(s.saat) <= simdiDk && simdiDk < dakika(s.saat) + s.sureDk) ?? null;
+  const siradaki = planli.find((s) => dakika(s.saat) > simdiDk) ?? null;
+  return { simdi, siradaki };
+}

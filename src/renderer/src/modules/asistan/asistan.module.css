@@ -268,3 +268,120 @@
   flex: 1;
   min-width: 0;
 }
+
+/* --- Bugün panosu ----------------------------------------------------- */
+
+/* Panoda tüm satırı kaplar (Bugün ızgarası). */
+.genis {
+  grid-column: 1 / -1;
+}
+
+.simdi {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--b5);
+  padding: var(--b5) var(--b6);
+}
+
+.simdiSol {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--b1);
+}
+
+.simdiEtiket {
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vurgu);
+}
+
+.simdiSlot {
+  font-size: var(--y2);
+  font-weight: var(--sik-kalin);
+  color: var(--metin);
+}
+
+.simdiSlot .saat {
+  width: auto;
+  margin-right: var(--b1);
+  font-size: var(--y2);
+}
+
+.simdiAlt {
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+}
+
+.simdiSag {
+  display: flex;
+  align-items: center;
+  gap: var(--b4);
+}
+
+.miniSayac {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.miniRakam {
+  font-family: var(--aile-sayi);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--metin);
+}
+
+.simdiBag {
+  font-size: var(--y4);
+  color: var(--metin-orta);
+}
+
+.slotSimdi {
+  background: var(--vurgu-yumusak);
+}
+
+.isaretDugme {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform var(--sure-hizli) var(--egri);
+}
+
+.isaretDugme:hover {
+  transform: scale(1.18);
+}
+
+.aliskanlikSatiri {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--b2);
+  padding: var(--b3) var(--b6);
+  border-top: 1px solid var(--cizgi);
+}
+
+.aliskanlikCip {
+  padding: 3px 10px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r-tam);
+  background: var(--kart);
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  cursor: pointer;
+  transition: background var(--sure-hizli) var(--egri);
+}
+
+.aliskanlikYapildi {
+  border-color: transparent;
+  background: var(--iyi-yumusak);
+  color: var(--iyi);
+}
