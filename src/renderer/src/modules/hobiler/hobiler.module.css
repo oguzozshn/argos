@@ -261,6 +261,50 @@
   background: var(--vurgu-yumusak);
 }
 
+/* --- sürükleyerek sıralama ---------------------------------------------- */
+
+/* Bırakılırsa kaydın ineceği yer: satırda üst/alt kenarda, ızgarada kutunun
+   solunda/sağında, boşluğa taşan bir çizgi. */
+.madde[data-hedef="once"] {
+  box-shadow: inset 0 2px 0 var(--vurgu);
+}
+
+.madde[data-hedef="sonra"] {
+  box-shadow: inset 0 -2px 0 var(--vurgu);
+}
+
+/* Kutunun kenarlığına yapışınca seçili kenarlıktan ayırt edilmiyordu; çizgi
+   iki kutunun arasındaki boşluğun ortasında duruyor. */
+.kutu[data-hedef] {
+  position: relative;
+}
+
+.kutu[data-hedef]::before {
+  content: "";
+  position: absolute;
+  top: var(--b2);
+  bottom: var(--b2);
+  width: 3px;
+  border-radius: var(--r-tam);
+  background: var(--vurgu);
+  pointer-events: none;
+}
+
+.kutu[data-hedef="once"]::before {
+  left: calc(var(--b3) / -2 - 2.5px);
+}
+
+.kutu[data-hedef="sonra"]::before {
+  right: calc(var(--b3) / -2 - 2.5px);
+}
+
+/* Satırın kendi opaklığını hareket kütüphanesi satır içi yazıyor; soluklaşma
+   içindeki düğmeye veriliyor ki ezilmesin. */
+.madde[data-suruklenen] > .maddeBas,
+.kutu[data-suruklenen] {
+  opacity: 0.45;
+}
+
 /* --- ızgara ------------------------------------------------------------ */
 
 .izgara {

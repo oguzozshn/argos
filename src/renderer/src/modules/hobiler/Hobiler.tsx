@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Gamepad2, LayoutGrid, List, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { bugunIso } from "@ortak/plan";
+import { tasi } from "@ortak/siralama";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { silVeBildir } from "@/ui/toast";
 import { maddeGecisi } from "@/ui/hareket";
@@ -158,6 +159,9 @@ function AlanEkrani({
   const [seciliId, setSeciliId] = useState<string | null>(null);
   const [durumlarAcik, setDurumlarAcik] = useState(false);
   const [gorunum, setGorunum] = useGorunum(slug);
+  // Sürüklenen kayıt ve bırakılırsa nereye ineceği.
+  const [suruklenen, setSuruklenen] = useState<string | null>(null);
+  const [hedef, setHedef] = useState<{ id: string; once: boolean } | null>(null);
 
   // Eski biçim (durumlar: string[]) burada yeni biçime çevrilir; ilk yazmada
   // diske de yeni biçim iner, eskisi .bak olarak kalır.
@@ -225,6 +229,67 @@ function AlanEkrani({
   const maddeSil = (id: string) => {
     maddeleriKaydet(veri.maddeler.filter((x) => x.id !== id));
     setSeciliId(null);
+  };
+
+  const sirala = (kaynakId: string, hedefId: string, once: boolean) => {
+    const yeni = tasi(veri.maddeler, kaynakId, hedefId, once);
+    if (yeni !== veri.maddeler) maddeleriKaydet(yeni);
+  };
+
+  const suruklemeBitti = () => {
+    setSuruklenen(null);
+    setHedef(null);
+  };
+
+  /**
+   * Kaydı sürükleyip başka bir kaydın önüne/arkasına bırakma. Satırda üst-alt
+   * yarıya, ızgarada sol-sağ yarıya bakılır: ızgara soldan sağa akıyor.
+   */
+  const surukleme = (m: Madde, yatay: boolean) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", m.id);
+      setSuruklenen(m.id);
+    },
+    onDragOver: (e: React.DragEvent) => {
+      if (!suruklenen) return; // dışarıdan gelen metin/dosya bırakılmaz
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      const r = e.currentTarget.getBoundingClientRect();
+      const once = yatay ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2;
+      if (hedef?.id !== m.id || hedef.once !== once) setHedef({ id: m.id, once });
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      if (suruklenen && hedef) sirala(suruklenen, hedef.id, hedef.once);
+      suruklemeBitti();
+    },
+    onDragEnd: suruklemeBitti,
+    // Fare kullanmadan da sıralanabilsin: Alt + ok tuşları görünen komşuyla yer değiştirir.
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (!e.altKey) return;
+      const geri = e.key === "ArrowUp" || e.key === "ArrowLeft";
+      const ileri = e.key === "ArrowDown" || e.key === "ArrowRight";
+      if (!geri && !ileri) return;
+      e.preventDefault();
+      const i = gorunen.findIndex((x) => x.id === m.id);
+      const komsu = gorunen[geri ? i - 1 : i + 1];
+      if (komsu) sirala(m.id, komsu.id, geri);
+    },
+    title: "Sürükleyerek sırala · Alt + ok tuşları",
+  });
+
+  /** Bırakma çizgisi ve sürüklenenin soluklaşması CSS'te, data özniteliğiyle. */
+  const isaret = (m: Madde) => ({
+    "data-suruklenen": m.id === suruklenen || undefined,
+    "data-hedef":
+      hedef?.id === m.id && m.id !== suruklenen ? (hedef.once ? "once" : "sonra") : undefined,
+  });
+
+  /** Liste dışına çıkınca çizgi kalmasın. */
+  const disariCikti = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHedef(null);
   };
 
   const panelVar = durumlarAcik || secili !== null;
@@ -330,12 +395,14 @@ function AlanEkrani({
             }
           />
         ) : gorunum === "izgara" ? (
-          <div className={s.izgara}>
+          <div className={s.izgara} onDragLeave={disariCikti}>
             {gorunen.map((m) => (
               <button
                 key={m.id}
                 type="button"
                 className={m.id === seciliId ? `${s.kutu} ${s.kutuSecili}` : s.kutu}
+                {...surukleme(m, true)}
+                {...isaret(m)}
                 onClick={() => {
                   setSeciliId(m.id);
                   setDurumlarAcik(false);
@@ -352,38 +419,42 @@ function AlanEkrani({
             ))}
           </div>
         ) : (
-          <AnimatePresence initial={false}>
-            {gorunen.map((m) => (
-              <motion.div
-                key={m.id}
-                className={s.madde}
-                variants={maddeGecisi}
-                initial="giris"
-                animate="duruyor"
-                exit="cikis"
-                layout
-              >
-                <button
-                  type="button"
-                  className={
-                    m.id === seciliId ? `${s.maddeBas} ${s.maddeSecili}` : s.maddeBas
-                  }
-                  onClick={() => {
-                    setSeciliId(m.id);
-                    setDurumlarAcik(false);
-                  }}
+          <div onDragLeave={disariCikti}>
+            <AnimatePresence initial={false}>
+              {gorunen.map((m) => (
+                <motion.div
+                  key={m.id}
+                  className={s.madde}
+                  variants={maddeGecisi}
+                  initial="giris"
+                  animate="duruyor"
+                  exit="cikis"
+                  layout
+                  {...isaret(m)}
                 >
-                  <span
-                    className={s.durumNokta}
-                    style={{ background: durumRengi(durumlar, m.durum) }}
-                  />
-                  <span className={s.maddeAd}>{m.ad}</span>
-                  {m.not && <span className={s.maddeNot}>{m.not}</span>}
-                  <span className={s.eklendi}>{m.durum}</span>
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                  <button
+                    type="button"
+                    className={
+                      m.id === seciliId ? `${s.maddeBas} ${s.maddeSecili}` : s.maddeBas
+                    }
+                    {...surukleme(m, false)}
+                    onClick={() => {
+                      setSeciliId(m.id);
+                      setDurumlarAcik(false);
+                    }}
+                  >
+                    <span
+                      className={s.durumNokta}
+                      style={{ background: durumRengi(durumlar, m.durum) }}
+                    />
+                    <span className={s.maddeAd}>{m.ad}</span>
+                    {m.not && <span className={s.maddeNot}>{m.not}</span>}
+                    <span className={s.eklendi}>{m.durum}</span>
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         )}
       </Kart>
 
