@@ -97,8 +97,20 @@ export function oran(d: OdakDurumu, k: OdakAyarlari, simdi: number): number {
 
 export const ikiHane = (n: number): string => String(n).padStart(2, "0");
 
-export const saatMetni = (sn: number): string =>
-  `${ikiHane(Math.floor(sn / 60))}:${ikiHane(sn % 60)}`;
+/**
+ * Sayacın parçaları: bir saatin altında ["29", "58"], üstünde ["7", "30", "03"].
+ * Yalnızca dakika:saniye yazılınca uzun fazla mesai "450:03" gibi okunmaz
+ * hâle geliyordu.
+ */
+export function sayacParcalari(sn: number): string[] {
+  const t = Math.max(0, Math.floor(sn));
+  const sa = Math.floor(t / 3600);
+  const dk = Math.floor((t % 3600) / 60);
+  const s = t % 60;
+  return sa > 0 ? [String(sa), ikiHane(dk), ikiHane(s)] : [ikiHane(dk), ikiHane(s)];
+}
+
+export const sayacMetni = (sn: number): string => sayacParcalari(sn).join(":");
 
 /** app.py'deki `s-%Y%m%d%H%M%S` biçimi. */
 export function seansId(simdi: Date): string {

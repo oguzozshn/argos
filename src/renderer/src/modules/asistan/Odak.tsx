@@ -1,5 +1,5 @@
 import { Coffee, Pause, Play, RotateCcw, Square, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { Hafta as HaftaTipi, Seans } from "@ortak/plan";
 import {
   BOS_DURUM,
@@ -10,6 +10,8 @@ import {
   ikiHane,
   kayitYeterli,
   oran,
+  sayacMetni,
+  sayacParcalari,
   seansKaydi,
   type Kesinti,
   type OdakAyarlari,
@@ -52,9 +54,7 @@ function Dijital({ sn, dolulukOrani, doldu }: { sn: number; dolulukOrani: number
         />
       </svg>
       <div className={s.halkaMetin}>
-        <span className={s.rakam}>
-          {ikiHane(Math.floor(sn / 60))}:{ikiHane(sn % 60)}
-        </span>
+        <span className={s.rakam}>{sayacMetni(sn)}</span>
         {doldu && <span className={s.rakamAlt}>fazla mesai</span>}
       </div>
     </div>
@@ -98,15 +98,16 @@ function Analog({ sn, dolulukOrani }: { sn: number; dolulukOrani: number }) {
         fontSize="15"
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
-        {ikiHane(Math.floor(sn / 60))}:{ikiHane(sn % 60)}
+        {sayacMetni(sn)}
       </text>
     </svg>
   );
 }
 
-function Flip({ sn }: { sn: number }) {
-  const dk = ikiHane(Math.floor(sn / 60));
-  const sa = ikiHane(sn % 60);
+function Flip({ sn, doldu }: { sn: number; doldu: boolean }) {
+  const parcalar = sayacParcalari(sn);
+  // Son parça saniye: kart çevirme yalnızca onda.
+  const sa = parcalar.at(-1)!;
   const oncekiSa = useRef(sa);
   const [degisti, setDegisti] = useState(false);
 
@@ -119,10 +120,21 @@ function Flip({ sn }: { sn: number }) {
   }, [sa]);
 
   return (
-    <div className={s.flip}>
-      <div className={s.flipKart}>{dk}</div>
-      <span className={s.flipIki}>:</span>
-      <div className={degisti ? `${s.flipKart} ${s.flipDegisti}` : s.flipKart}>{sa}</div>
+    // Hedef dolunca sayı yeniden yukarı sayıyor; etiket olmadan geri sayım
+    // sanılıyordu.
+    <div className={s.flipSarmal}>
+      <div className={s.flip}>
+        {parcalar.map((p, i) => {
+          const son = i === parcalar.length - 1;
+          return (
+            <Fragment key={i}>
+              {i > 0 && <span className={s.flipIki}>:</span>}
+              <div className={son && degisti ? `${s.flipKart} ${s.flipDegisti}` : s.flipKart}>{p}</div>
+            </Fragment>
+          );
+        })}
+      </div>
+      {doldu && <span className={s.rakamAlt}>fazla mesai</span>}
     </div>
   );
 }
@@ -153,14 +165,16 @@ function KesintiUyarisi({
         {ikiHane(an.getMinutes())}). Aradaki {ara} sayılmadı.
       </span>
       <div className={s.kesintiDugmeler}>
+        {/* Saatlerce uykuyu "çalıştım" saymak nadiren doğru: vurgu Tamam'da.
+            Dolu değil: sayacın "Devam" düğmesiyle yarışmasın. */}
+        <Dugme tur="cizgili" onClick={kapat}>
+          Tamam
+        </Dugme>
         {sayilabilir && (
-          <Dugme tur="cizgili" onClick={say}>
+          <Dugme tur="sade" onClick={say}>
             Aradaki süreyi de say
           </Dugme>
         )}
-        <Dugme tur="sade" onClick={kapat}>
-          Tamam
-        </Dugme>
       </div>
     </div>
   );
@@ -278,9 +292,12 @@ function OdakIcerik({
   const dolulukOrani = oran(d, odakAyarlari, simdi);
 
   // Hedef dolunca: molada faz kendiliğinden biter, çalışmada sayaç sürer.
+  // Çalışmada duraklatılmışken de dolabilir (uykudaki ara sayılınca):
+  // ekran 00:00'da takılmasın, doğrudan fazla mesaiyi göstersin.
   useEffect(() => {
-    if (hedef === null || d.doldu || !d.calisiyor || gecen < hedef) return;
+    if (hedef === null || d.doldu || gecen < hedef) return;
     if (d.faz === "mola") {
+      if (!d.calisiyor) return;
       setD((x) => ({ ...x, calisiyor: false, basladi: null, gecen: 0, doldu: false, faz: "calisma" }));
       setNot("Mola bitti.");
     } else {
@@ -419,7 +436,7 @@ function OdakIcerik({
               <Dijital sn={goster} dolulukOrani={dolulukOrani} doldu={d.doldu} />
             )}
             {bicim === "analog" && <Analog sn={goster} dolulukOrani={dolulukOrani} />}
-            {bicim === "flip" && <Flip sn={goster} />}
+            {bicim === "flip" && <Flip sn={goster} doldu={d.doldu} />}
 
             <div className={s.dugmeler}>
               {d.calisiyor ? (

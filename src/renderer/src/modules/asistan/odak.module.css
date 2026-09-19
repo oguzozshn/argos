@@ -118,6 +118,13 @@
 
 /* --- flip --------------------------------------------------------------- */
 
+.flipSarmal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--b2);
+}
+
 .flip {
   display: flex;
   gap: 8px;

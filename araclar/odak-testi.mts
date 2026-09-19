@@ -14,6 +14,8 @@ import {
   kalanSn,
   kayitYeterli,
   oran,
+  sayacMetni,
+  sayacParcalari,
   seansId,
   seansKaydi,
   uykuyuYakala,
@@ -114,6 +116,14 @@ kontrol(
   seansKaydi({ tip: "kronometre", dk: 5, odakMetin: "  networking  ", simdi: an }).odakMetin ===
     "networking",
 );
+
+console.log("\nSayaç metni");
+kontrol("saatin altında dakika:saniye", sayacMetni(1798) === "29:58");
+kontrol("sıfır", sayacMetni(0) === "00:00");
+kontrol("tam bir saat", sayacMetni(3600) === "1:00:00");
+kontrol("uzun fazla mesai saatle yazılır", sayacMetni(27003) === "7:30:03", sayacMetni(27003));
+kontrol("parçalar flip için ayrı", sayacParcalari(3725).join("|") === "1|02|05");
+kontrol("negatif ve kesirli girdi bozmaz", sayacMetni(-5) === "00:00" && sayacMetni(59.9) === "00:59");
 
 console.log("\nUyku");
 const DK = 60_000;
