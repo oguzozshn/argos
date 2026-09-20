@@ -1,6 +1,7 @@
 // Uzantılar açık: bu dosya düz Node ile de koşuyor (araclar/bot-argos-testi.mts).
 import {
   anlikKur,
+  durumKaydiniUygula,
   gunuBul,
   notKaydiniUygula,
   slotKaydiniUygula,
@@ -100,8 +101,11 @@ export interface IslemSonucu {
   sonuclar: KuyrukSonucu[];
 }
 
-const kayitAdi = (k: KuyrukKaydi): string =>
-  k.tur === "slot" ? `${k.tarih.slice(8, 10)}.${k.tarih.slice(5, 7)} ${k.saat} ${k.konu}` : `Hatırla: ${k.metin}`;
+function kayitAdi(k: KuyrukKaydi): string {
+  if (k.tur === "slot") return `${k.tarih.slice(8, 10)}.${k.tarih.slice(5, 7)} ${k.saat} ${k.konu}`;
+  if (k.tur === "durum") return `${k.ad} ☑`;
+  return `Hatırla: ${k.metin}`;
+}
 
 /**
  * Bir dosyaya uygulayıp yazar. Dosya okunduktan sonra dışarıdan değiştiyse
@@ -150,6 +154,15 @@ export async function kuyruguIsle(kok: string, a: BotAyari, bugun: string): Prom
         }
         u = await uygulaVeYaz<Hafta>(kok, `${hedef.kod}.json`, (v) =>
           v ? slotKaydiniUygula(v, k, kurallar?.alanlar) : { tur: "reddet", sebep: `${hedef.kod}.json okunamadı` },
+        );
+      } else if (k.tur === "durum") {
+        const hedef = gunuBul(await haftalariOku(kok), k.tarih);
+        if (!hedef) {
+          sonuc.sonuclar.push({ id: k.id, durum: "reddedildi", sebep: `${k.tarih} için hafta dosyası yok` });
+          continue;
+        }
+        u = await uygulaVeYaz<Hafta>(kok, `${hedef.kod}.json`, (v) =>
+          v ? durumKaydiniUygula(v, k) : { tur: "reddet", sebep: `${hedef.kod}.json okunamadı` },
         );
       } else {
         u = await uygulaVeYaz<HatirlaDosyasi>(kok, "hatirla.json", (d) => notKaydiniUygula(d, k, bugun));

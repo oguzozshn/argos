@@ -21,6 +21,8 @@ import type { TodoistGorev } from "./tipler.ts";
 /* --- görünüm (Argos → Worker) ------------------------------------------- */
 
 export interface AnlikSlot {
+  /** Hafta dosyasındaki slot kimliği; Telegram düğmesi bununla işaretliyor. */
+  id: string;
   saat: string;
   sureDk: number;
   alan: string;
@@ -66,7 +68,7 @@ export function anlikKur(
     const slotlar = (v.slotlar ?? [])
       .filter((s) => s.gun === no && s.durum !== "tasindi")
       .sort((a, b) => kSirala(a.saat, b.saat))
-      .map((s) => ({ saat: s.saat, sureDk: s.sureDk, alan: s.alan, konu: s.konu, durum: s.durum }));
+      .map((s) => ({ id: s.id, saat: s.saat, sureDk: s.sureDk, alan: s.alan, konu: s.konu, durum: s.durum }));
     const aliskanliklar = (v.gunlukAliskanliklar ?? [])
       .filter((a) => aliskanlikBekleniyor(a, no))
       .map((a) => ({ ad: a.ad, yapildi: Boolean((a.gunler ?? {})[String(no)]) }));
@@ -109,7 +111,18 @@ export type KuyrukKaydi =
       alan: string | null;
       konu: string;
     }
-  | { id: string; tur: "not"; zaman: string; metin: string };
+  | { id: string; tur: "not"; zaman: string; metin: string }
+  | {
+      id: string;
+      tur: "durum";
+      zaman: string;
+      tarih: string;
+      slotId: string;
+      /** Şimdilik yalnız "yapildi"; Telegram'dan başka durum verilmiyor. */
+      durum: string;
+      /** Bildirimde okunaklı olsun diye slotun adı. */
+      ad: string;
+    };
 
 export type KuyrukSonucu =
   | { id: string; durum: "eklendi"; not?: string }
@@ -187,6 +200,24 @@ export function slotKaydiniUygula(
   };
 }
 
+/**
+ * Telegram'dan gelen "yapıldı" işareti. Yalnızca slotun durumu değişir —
+ * Bugün panosu ve Hafta ekranıyla aynı davranış; süre, roadmap ve Todoist'e
+ * dokunulmaz. Slot zaten o durumdaysa dosya yeniden yazılmaz.
+ */
+export function durumKaydiniUygula(
+  v: Hafta,
+  k: Extract<KuyrukKaydi, { tur: "durum" }>,
+): Uygulama<Hafta> {
+  const slot = (v.slotlar ?? []).find((x) => x.id === k.slotId);
+  if (!slot) return { tur: "reddet", sebep: `${k.slotId} bu hafta dosyasında yok` };
+  if (slot.durum === k.durum) return { tur: "zatenVar" };
+  return {
+    tur: "eklendi",
+    veri: { ...v, slotlar: v.slotlar.map((x) => (x.id === k.slotId ? { ...x, durum: k.durum } : x)) },
+  };
+}
+
 /** Büyük/küçük harf ve Türkçe karakter farkı gözetmeden; tek bir ön ek eşleşmesi de kabul. */
 export function alanEsle(yazilan: string, alanlar: string[]): string | null {
   const sade = (x: string) => x.trim().toLocaleLowerCase("tr");
@@ -255,6 +286,8 @@ export const YARDIM_METNI = [
   "   gün: bugün, yarın, pzt…paz ya da 25.09; süre: 45dk, 1.5sa (varsayılan 60dk)",
   "/not metin — Hatırla'ya not",
   "Düz yazı — Todoist'e görev (tarih, #proje, p1 anlaşılır)",
+  "",
+  "Mesajın altındaki düğmeler: ☑ slotu yapıldı işaretler, ✅ Todoist görevini kapatır.",
   "",
   "Plana ve Hatırla'ya eklenenler Argos açılınca bilgisayara işlenir.",
 ].join("\n");
@@ -455,13 +488,22 @@ export function gunMesaji(
   const bekleyenSlot = bekleyenler.filter(
     (k): k is Extract<KuyrukKaydi, { tur: "slot" }> => k.tur === "slot" && k.tarih === tarih,
   );
+  // Telegram'dan işaretlenmiş ama Argos'a henüz geçmemiş slotlar.
+  const bekleyenDurum = new Map(
+    bekleyenler
+      .filter((k): k is Extract<KuyrukKaydi, { tur: "durum" }> => k.tur === "durum" && k.tarih === tarih)
+      .map((k) => [k.slotId, k.durum]),
+  );
   const planSatirlari = [
-    ...(gun?.slotlar ?? []).map((s) => ({
-      saat: s.saat,
-      metin: `${DURUM_ISARETI[s.durum] ?? "☐"} ${s.saat}  ${kacis(s.konu || s.alan)}${
-        s.konu && s.alan ? ` <i>${kacis(s.alan)}</i>` : ""
-      } · ${sureMetni(s.sureDk)}`,
-    })),
+    ...(gun?.slotlar ?? []).map((s) => {
+      const bekleyen = bekleyenDurum.get(s.id);
+      return {
+        saat: s.saat,
+        metin: `${bekleyen ? `${DURUM_ISARETI[bekleyen] ?? "☑"}⏳` : (DURUM_ISARETI[s.durum] ?? "☐")} ${s.saat}  ${kacis(
+          s.konu || s.alan,
+        )}${s.konu && s.alan ? ` <i>${kacis(s.alan)}</i>` : ""} · ${sureMetni(s.sureDk)}`,
+      };
+    }),
     ...bekleyenSlot.map((k) => ({
       saat: k.saat,
       metin: `⏳ ${k.saat}  ${kacis(k.konu)} · ${sureMetni(k.sureDk)}`,
@@ -516,6 +558,7 @@ export function gunMesaji(
 
 /** Kuyruğa alınan eklemenin onay mesajı. */
 export function kuyrukOnayi(k: KuyrukKaydi, bugun: string): string {
+  if (k.tur === "durum") return `⏳ ${kacis(k.ad)} işaretlendi — Argos açılınca plana işlenecek.`;
   if (k.tur === "not") return `⏳ Not kaydedildi, Argos açılınca Hatırla'ya işlenecek:\n${kacis(k.metin)}`;
   const gun = k.tarih === bugun ? "bugün" : k.tarih === gunEkle(bugun, 1) ? "yarın" : tarihBasligi(k.tarih);
   return `⏳ Kaydedildi: ${gun} ${k.saat} ${kacis(k.konu)} · ${sureMetni(k.sureDk)}${

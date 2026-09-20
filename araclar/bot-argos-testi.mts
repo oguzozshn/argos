@@ -94,6 +94,18 @@ try {
   kontrol("not ikinci kez eklenmez", hatirlaOku().maddeler.filter((m: { metin: string }) => m.metin === "Faturayı sor").length === 1);
   kontrol("yine de 'eklendi' bildirilir, toast yok", s2.eklenenler.length === 0 && gelenSonuclar.every((x) => x.durum === "eklendi"));
 
+  console.log("\ndurum işareti");
+  kuyruk = [
+    { id: "u5", tur: "durum", zaman: "2026-09-19T08:00:00.000Z", tarih: BUGUN, slotId: "W38-D6-09", durum: "yapildi", ad: "09:00 Okuma" },
+    { id: "u6", tur: "durum", zaman: "2026-09-19T08:00:00.000Z", tarih: BUGUN, slotId: "yok", durum: "yapildi", ad: "hayalet" },
+  ];
+  const sd = await kuyruguIsle(kok, AYAR, BUGUN);
+  kontrol("slot yapıldı olarak yazıldı", haftaOku().slotlar.find((x) => x.id === "W38-D6-09")?.durum === "yapildi");
+  kontrol("işaret toast'a düşer", sd.eklenenler.some((x) => x.includes("09:00 Okuma")));
+  kontrol("olmayan slot reddedilir", gelenSonuclar.find((x) => x.id === "u6")?.durum === "reddedildi");
+  kontrol("ikinci kez yazılmaz", (await kuyruguIsle(kok, AYAR, BUGUN)).eklenenler.length === 0);
+  kuyruk = [];
+
   console.log("\nhatalar");
   kuyruk = [];
   const bos = await kuyruguIsle(kok, AYAR, BUGUN);

@@ -7,6 +7,8 @@
 
 import {
   anlikKur,
+  durumKaydiniUygula,
+  kuyrukOnayi,
   alanEsle,
   gunMesaji,
   komutCoz,
@@ -193,6 +195,16 @@ if (d1.tur === "eklendi") {
   kontrol("aynı zamana ek harf", d2.tur === "eklendi" && d2.veri.maddeler[1]!.id === "h-20260919070000123a");
 }
 
+console.log("\ndurum işareti");
+const dk = (slotId: string, durum = "yapildi"): Extract<KuyrukKaydi, { tur: "durum" }> => ({
+  id: "q3", tur: "durum", zaman: "2026-09-19T08:00:00.000Z", tarih: BUGUN, slotId, durum, ad: "19:00 Literatür",
+});
+const du = durumKaydiniUygula(hafta(), dk("W38-D6-19"));
+kontrol("slot yapıldı olur, başkasına dokunulmaz", du.tur === "eklendi" && du.veri.slotlar[0]!.durum === "yapildi" && du.veri.slotlar[1]!.durum === "yapildi");
+kontrol("zaten o durumdaysa yazma yok", durumKaydiniUygula(du.tur === "eklendi" ? du.veri : hafta(), dk("W38-D6-19")).tur === "zatenVar");
+kontrol("olmayan slot reddedilir", durumKaydiniUygula(hafta(), dk("yok")).tur === "reddet");
+kontrol("onay metni", kuyrukOnayi(dk("W38-D6-19"), BUGUN).includes("19:00 Literatür"));
+
 console.log("\nmesaj");
 const gorev = (o: Partial<TodoistGorev>): TodoistGorev => ({
   id: "t",
@@ -212,7 +224,7 @@ const mesaj = gunMesaji(
   BUGUN,
   anlik,
   [gorev({ icerik: "Rapor <taslak>", tarih: "2026-09-17", oncelik: 4 }), gorev({ icerik: "Toplantı", tarih: "2026-09-19T15:00:00" })],
-  [k({ saat: "12:00", konu: "Bekleyen" }), n("not bekliyor")],
+  [k({ saat: "12:00", konu: "Bekleyen" }), n("not bekliyor"), dk("W38-D6-19")],
 );
 kontrol("başlık", mesaj.startsWith("<b>☀️ Cumartesi 19 Eylül</b>"), mesaj.split("\n")[0]);
 kontrol("bekleyen slot saatine göre araya girer", /09:00[\s\S]*⏳ 12:00  Bekleyen[\s\S]*19:00/.test(mesaj));
@@ -220,6 +232,7 @@ kontrol("HTML kaçışı", mesaj.includes("Rapor &lt;taslak&gt;"));
 kontrol("gecikmiş işareti", mesaj.includes("(gecikmiş)"));
 kontrol("görev saati", mesaj.includes("• 15:00 Toplantı"));
 kontrol("bekleyen not", mesaj.includes("⏳ not bekliyor"));
+kontrol("Telegram'dan işaretlenen slot ⏳ ile ☑", mesaj.includes("☑⏳ 19:00"));
 kontrol("güncelleme satırı İstanbul saatiyle", mesaj.includes("Plan son güncelleme: bugün 09:00"));
 const bos = gunMesaji("2026-09-22", BUGUN, anlik, { hata: "401" }, []);
 kontrol("plan yoksa söylenir", bos.includes("Bu günün planı yüklenmemiş."));
