@@ -24,7 +24,7 @@ import {
 } from "../../src/ortak/bot.ts";
 import { gunEkle } from "../../src/ortak/gun.ts";
 import type { TodoistGorev } from "../../src/ortak/tipler.ts";
-import { bugunVeGecikmis, hizliEkle, tarihAraligi } from "../../src/main/todoist-cekirdek.ts";
+import { bugunVeGecikmis, hizliEkle, kapat, tarihAraligi } from "../../src/main/todoist-cekirdek.ts";
 import { dugmeyiCevapla, duzenle, gonder, telegramTabani, type Klavye } from "./telegram.ts";
 
 export interface Env {
@@ -69,7 +69,8 @@ export default {
     telegramTabani(env.TELEGRAM_API);
     if (!env.SAHIP_CHAT_ID) return;
     const bugun = bugunIstanbul();
-    await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID, await gunMetni(env, bugun, bugun), gunKlavyesi(bugun, bugun));
+    const g = await gunIcerik(env, bugun, bugun);
+    await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID, g.metin, g.klavye);
   },
 } satisfies ExportedHandler<Env>;
 
@@ -128,7 +129,12 @@ async function sonucAl(istek: Request, env: Env): Promise<Response> {
     const anahtar = KUYRUK + s.id;
     const k = await env.ARGOS.get<KuyrukKaydi>(anahtar, "json");
     if (!k) continue;
-    const ad = k.tur === "slot" ? `${tarihBasligi(k.tarih)} ${k.saat} ${k.konu}` : k.metin;
+    const ad =
+      k.tur === "slot"
+        ? `${tarihBasligi(k.tarih)} ${k.saat} ${k.konu}`
+        : k.tur === "durum"
+          ? k.ad
+          : k.metin;
     let mesaj: string | null = null;
     if (s.durum === "reddedildi") mesaj = `⚠️ Eklenemedi: ${kacis(ad)}\n${kacis(s.sebep)}`;
     else if (s.not) mesaj = `✅ Plana işlendi: ${kacis(ad)}\nℹ️ ${kacis(s.not)}`;
@@ -180,7 +186,7 @@ async function telegram(istek: Request, env: Env): Promise<Response> {
   if (await env.ARGOS.get(islendi)) return new Response("tamam\n");
 
   try {
-    if (g.callback_query) await dugme(env, g.callback_query, chatId);
+    if (g.callback_query) await dugme(env, g.callback_query, chatId, g.update_id);
     else if (g.message?.text !== undefined) await mesaj(env, g.update_id, chatId, g.message.text);
   } catch (e) {
     console.error("[bot]", e);
@@ -204,9 +210,11 @@ async function mesaj(env: Env, updateId: number, chatId: number, metin: string):
     case "hata":
       await yaz(kacis(k.mesaj));
       return;
-    case "gun":
-      await yaz(await gunMetni(env, k.tarih, bugun), gunKlavyesi(k.tarih, bugun));
+    case "gun": {
+      const g = await gunIcerik(env, k.tarih, bugun);
+      await yaz(g.metin, g.klavye);
       return;
+    }
     case "todoist": {
       let gorev;
       try {
@@ -235,33 +243,103 @@ async function mesaj(env: Env, updateId: number, chatId: number, metin: string):
   }
 }
 
-/** Düğme verisi `gun:<iso>`: mesaj o günle yerinde yenilenir. */
-async function dugme(env: Env, q: NonNullable<Guncelleme["callback_query"]>, chatId: number): Promise<void> {
-  const tarih = q.data?.startsWith("gun:") ? q.data.slice(4) : null;
+/**
+ * Düğmeler: `gun:<iso>` günü değiştirir, `gorev:<iso>:<id>` Todoist görevini
+ * kapatır, `slot:<iso>:<slotId>` slotu "yapıldı" diye işaretler (kuyruğa).
+ * Her durumda mesaj o günün güncel hâliyle yerinde yenilenir.
+ */
+async function dugme(
+  env: Env,
+  q: NonNullable<Guncelleme["callback_query"]>,
+  chatId: number,
+  updateId: number,
+): Promise<void> {
+  const [tur, tarih, deger] = (q.data ?? "").split(":");
   if (!tarih || !/^\d{4}-\d{2}-\d{2}$/.test(tarih) || !q.message) {
     await dugmeyiCevapla(env.TELEGRAM_TOKEN, q.id);
     return;
   }
   const bugun = bugunIstanbul();
-  await duzenle(env.TELEGRAM_TOKEN, chatId, q.message.message_id, await gunMetni(env, tarih, bugun), gunKlavyesi(tarih, bugun));
-  await dugmeyiCevapla(env.TELEGRAM_TOKEN, q.id, "Güncellendi");
+  let cevap = "Güncellendi";
+
+  if (tur === "gorev" && deger) {
+    try {
+      await kapat(env.TODOIST_TOKEN, deger);
+      cevap = "✅ Görev kapatıldı";
+    } catch (e) {
+      cevap = `Kapatılamadı: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  } else if (tur === "slot" && deger) {
+    const anlik = await env.ARGOS.get<Anlik>(ANLIK, "json");
+    const slot = anlik?.gunler[tarih]?.slotlar.find((x) => x.id === deger);
+    const id = `u${updateId}`;
+    const kayit: KuyrukKaydi = {
+      id,
+      tur: "durum",
+      zaman: new Date().toISOString(),
+      tarih,
+      slotId: deger,
+      durum: "yapildi",
+      ad: slot ? `${slot.saat} ${slot.konu || slot.alan}` : deger,
+    };
+    await env.ARGOS.put(KUYRUK + id, JSON.stringify(kayit));
+    cevap = "⏳ İşaretlendi — Argos açılınca plana işlenecek";
+  }
+
+  const g = await gunIcerik(env, tarih, bugun);
+  await duzenle(env.TELEGRAM_TOKEN, chatId, q.message.message_id, g.metin, g.klavye);
+  await dugmeyiCevapla(env.TELEGRAM_TOKEN, q.id, cevap);
 }
 
-function gunKlavyesi(tarih: string, bugun: string): Klavye {
-  const satir = [{ text: "🔄 Yenile", callback_data: `gun:${tarih}` }];
-  if (tarih > bugun) satir.unshift({ text: "◀️ Önceki", callback_data: `gun:${gunEkle(tarih, -1)}` });
-  satir.push({ text: "Sonraki ▶️", callback_data: `gun:${gunEkle(tarih, 1)}` });
-  return [satir];
+/** Telegram düğme yazısı dar: uzun ad kısaltılır. */
+const kisalt = (x: string, n = 24): string => (x.length <= n ? x : x.slice(0, n - 1) + "…");
+
+/**
+ * Mesajın düğmeleri: işaretlenmemiş slotlar ve açık görevler için birer
+ * tamamlama düğmesi, altta gün gezintisi. Telegram uzun klavyeyi kötü
+ * gösteriyor: ilk üçer tane.
+ */
+function gunKlavyesi(
+  tarih: string,
+  bugun: string,
+  slotlar: { id: string; saat: string; konu: string; alan: string; durum: string }[],
+  gorevler: TodoistGorev[],
+  isaretlenen: Set<string>,
+): Klavye {
+  const satirlar: Klavye = [];
+  for (const s of slotlar.filter((x) => x.durum === "planli" && !isaretlenen.has(x.id)).slice(0, 3)) {
+    satirlar.push([{ text: `☑ ${s.saat} ${kisalt(s.konu || s.alan)}`, callback_data: `slot:${tarih}:${s.id}` }]);
+  }
+  for (const g of gorevler.slice(0, 3)) {
+    satirlar.push([{ text: `✅ ${kisalt(g.icerik)}`, callback_data: `gorev:${tarih}:${g.id}` }]);
+  }
+  const gez = [{ text: "🔄 Yenile", callback_data: `gun:${tarih}` }];
+  if (tarih > bugun) gez.unshift({ text: "◀️ Önceki", callback_data: `gun:${gunEkle(tarih, -1)}` });
+  gez.push({ text: "Sonraki ▶️", callback_data: `gun:${gunEkle(tarih, 1)}` });
+  satirlar.push(gez);
+  return satirlar;
 }
 
-/** Bir günün mesajı: KV'deki görünüm + kuyruk + canlı Todoist. */
-async function gunMetni(env: Env, tarih: string, bugun: string): Promise<string> {
+/** Bir günün mesajı ve düğmeleri: KV'deki görünüm + kuyruk + canlı Todoist. */
+async function gunIcerik(env: Env, tarih: string, bugun: string): Promise<{ metin: string; klavye: Klavye }> {
   const [anlik, kuyruk, gorevler] = await Promise.all([
     env.ARGOS.get<Anlik>(ANLIK, "json"),
     bekleyenler(env),
     gununGorevleri(env, tarih, bugun),
   ]);
-  return gunMesaji(tarih, bugun, anlik, gorevler, kuyruk);
+  const isaretlenen = new Set(
+    kuyruk.filter((k) => k.tur === "durum" && k.tarih === tarih).map((k) => (k.tur === "durum" ? k.slotId : "")),
+  );
+  return {
+    metin: gunMesaji(tarih, bugun, anlik, gorevler, kuyruk),
+    klavye: gunKlavyesi(
+      tarih,
+      bugun,
+      anlik?.gunler[tarih]?.slotlar ?? [],
+      "hata" in gorevler ? [] : gorevler,
+      isaretlenen,
+    ),
+  };
 }
 
 /**
