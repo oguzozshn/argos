@@ -14,6 +14,7 @@ compatibility_date = "2026-09-01"
 binding = "ARGOS"
 id = "af89b6db740d4c79bef146e6ab24f977"
 
-# 05:00 UTC = 08:00 İstanbul (yaz saati yok).
+# 05:00 UTC = 08:00 İstanbul (yaz saati yok): sabah özeti.
+# Beş dakikada bir: yaklaşan slot hatırlatması.
 [triggers]
-crons = ["0 5 * * *"]
+crons = ["0 5 * * *", "*/5 * * * *"]

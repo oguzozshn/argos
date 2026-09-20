@@ -624,6 +624,54 @@ export function gunMesaji(
   return satirlar.join("\n");
 }
 
+/* --- hatırlatma ------------------------------------------------------------ */
+
+export interface Yaklasan {
+  slot: AnlikSlot;
+  /** Başlamasına kaç dakika kaldı. */
+  kala: number;
+}
+
+/**
+ * Yakında başlayacak slotlar. Worker'ın 5 dakikalık turu bunu çağırır;
+ * `ustSinirDk` bir turluk pencereden büyük seçilir ki hiçbir slot aradan
+ * kaçmasın — aynı slotu iki kez söylememek gönderenin işi (KV'de işaret).
+ *
+ * Yalnız "planlı" slotlar: yapılmış, kaçmış ya da taşınmış olan hatırlatılmaz.
+ * Telegram'dan işaretlenip Argos'a henüz geçmemiş olanlar da elenir.
+ */
+export function yaklasanSlotlar(
+  gun: AnlikGun | undefined,
+  simdiDk: number,
+  ustSinirDk: number,
+  isaretlenen: ReadonlySet<string> = new Set(),
+): Yaklasan[] {
+  return (gun?.slotlar ?? [])
+    .filter((s) => s.durum === "planli" && !isaretlenen.has(s.id))
+    .map((s) => ({ slot: s, kala: dakika(s.saat) - simdiDk }))
+    .filter((y) => y.kala > 0 && y.kala <= ustSinirDk)
+    .sort((a, b) => a.kala - b.kala);
+}
+
+/** Hatırlatma mesajı: ne, ne zaman, ne kadar sürecek. */
+export const hatirlatmaMesaji = (y: Yaklasan): string =>
+  `⏰ <b>${y.slot.saat}</b> ${kacis(y.slot.konu || y.slot.alan)}` +
+  `${y.slot.konu && y.slot.alan ? ` <i>${kacis(y.slot.alan)}</i>` : ""}` +
+  "\n" +
+  `${y.kala} dk sonra başlıyor · ${sureMetni(y.slot.sureDk)}`;
+
+/**
+ * Plan kopyası bu kadar eskiyse hatırlatma yapılmaz: Argos günlerdir
+ * açılmadıysa eski haftanın slotları için telefon çalmasın.
+ */
+export const HATIRLATMA_TAZELIK_SAAT = 48;
+
+export function planTaze(anlik: Anlik | null, simdi: number): boolean {
+  if (!anlik) return false;
+  const t = Date.parse(anlik.guncellendi);
+  return Number.isFinite(t) && simdi - t <= HATIRLATMA_TAZELIK_SAAT * 3600 * 1000;
+}
+
 /** Kuyruğa alınan eklemenin onay mesajı. */
 export function kuyrukOnayi(k: KuyrukKaydi, bugun: string): string {
   if (k.tur === "durum") return `⏳ ${kacis(k.ad)} işaretlendi — Argos açılınca plana işlenecek.`;

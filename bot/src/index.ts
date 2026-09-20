@@ -6,6 +6,7 @@
  *  GET  /kuyruk          Argos'un çekeceği bekleyen eklemeler.
  *  POST /kuyruk/sonuc    Argos'un "işledim / işleyemedim" cevabı.
  *  cron 05:00 UTC        Sabah özeti.
+ *  cron her 5 dakika     Yaklaşan slot hatırlatması (5–10 dk önce).
  *
  * Yerel plan dosyalarını görmez: Argos'un bıraktığı görünümü okur ve
  * yerele yazılacak eklemeleri kuyrukta bekletir. Kurallar Argos'ta.
@@ -14,8 +15,11 @@
 import {
   YARDIM_METNI,
   gunMesaji,
+  hatirlatmaMesaji,
   kapatCevabi,
   kapatCoz,
+  planTaze,
+  yaklasanSlotlar,
   komutCoz,
   kuyrukOnayi,
   kacis,
@@ -46,6 +50,10 @@ export interface Env {
 
 const KUYRUK = "kuyruk:";
 const ANLIK = "anlik";
+/** Hatırlatılan slotun işareti; gün sonunda kendiliğinden düşer. */
+const HATIRLATILDI = "hatirlatildi:";
+/** Tur 5 dakikada bir; pencere biraz geniş ki iki tur arasına düşen slot kaçmasın. */
+const HATIRLATMA_PENCERE_DK = 10;
 
 /** İstanbul'a göre bugün. Worker UTC'de çalışıyor; 00:00–03:00 arası yoksa dün sayılırdı. */
 export const bugunIstanbul = (d = new Date()): string =>
@@ -68,14 +76,55 @@ export default {
     }
   },
 
-  async scheduled(_olay: ScheduledController, env: Env): Promise<void> {
+  async scheduled(olay: ScheduledController, env: Env): Promise<void> {
     telegramTabani(env.TELEGRAM_API);
     if (!env.SAHIP_CHAT_ID) return;
     const bugun = bugunIstanbul();
-    const g = await gunIcerik(env, bugun, bugun);
-    await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID, g.metin, g.klavye);
+    // Günde bir sabah özeti; aradaki turlar yaklaşan slotlara bakar.
+    if (olay.cron === "0 5 * * *") {
+      const g = await gunIcerik(env, bugun, bugun);
+      await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID, g.metin, g.klavye);
+      return;
+    }
+    await hatirlat(env, bugun);
   },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * Yaklaşan slotları hatırlatır. Plan kopyası bayatsa hiç yapılmaz: Argos
+ * günlerdir açılmadıysa eski haftanın slotları için telefon çalmasın.
+ * Aynı slot bir kez söylenir (KV işareti, gün sonunda düşer).
+ */
+async function hatirlat(env: Env, bugun: string): Promise<void> {
+  const simdi = Date.now();
+  const [anlik, kuyruk] = await Promise.all([env.ARGOS.get<Anlik>(ANLIK, "json"), bekleyenler(env)]);
+  if (!planTaze(anlik, simdi)) return;
+
+  const t = new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(simdi));
+  const sa = Number(t.find((x) => x.type === "hour")?.value ?? "0");
+  const dk = Number(t.find((x) => x.type === "minute")?.value ?? "0");
+
+  const isaretlenen = new Set(
+    kuyruk.flatMap((k) => (k.tur === "durum" && k.tarih === bugun ? [k.slotId] : [])),
+  );
+
+  for (const y of yaklasanSlotlar(anlik?.gunler[bugun], sa * 60 + dk, HATIRLATMA_PENCERE_DK, isaretlenen)) {
+    const anahtar = `${HATIRLATILDI}${bugun}:${y.slot.id}`;
+    if (await env.ARGOS.get(anahtar)) continue;
+    await env.ARGOS.put(anahtar, "1", { expirationTtl: 86400 });
+    await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID!, hatirlatmaMesaji(y), [
+      [
+        { text: "☑ Yapıldı", callback_data: `slot:${bugun}:${y.slot.id}` },
+        { text: "📅 Bugün", callback_data: `gun:${bugun}` },
+      ],
+    ]);
+  }
+}
 
 /* --- yetki --------------------------------------------------------------- */
 
@@ -281,9 +330,10 @@ async function mesaj(env: Env, updateId: number, chatId: number, metin: string):
 /**
  * Düğmeler: `gun:<iso>` günü değiştirir; mesaj yerinde yenilenir.
  *
- * `gorev:` ve `slot:` artık üretilmiyor — kapatma `/kapat <ad>` ile — ama
- * sohbette duran eski mesajların düğmeleri hâlâ çalışsın diye karşılanıyor.
- * Yenilenen mesaj zaten yeni klavyeyle döner.
+ * `slot:` yalnız tek slotluk hatırlatma mesajında üretilir: orada hangi işin
+ * kastedildiği açık, gün listesindeki gibi kırpılmış bir seçim yok. Gün
+ * listesinde kapatma `/kapat <ad>` ile. `gorev:` hiç üretilmiyor; ikisi de
+ * sohbette duran eski mesajlar çalışsın diye karşılanmaya devam ediyor.
  */
 async function dugme(
   env: Env,

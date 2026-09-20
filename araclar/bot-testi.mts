@@ -7,6 +7,9 @@
 
 import {
   anlikKur,
+  hatirlatmaMesaji,
+  planTaze,
+  yaklasanSlotlar,
   durumKaydiniUygula,
   kuyrukOnayi,
   alanEsle,
@@ -209,6 +212,19 @@ kontrol("slot yapıldı olur, başkasına dokunulmaz", du.tur === "eklendi" && d
 kontrol("zaten o durumdaysa yazma yok", durumKaydiniUygula(du.tur === "eklendi" ? du.veri : hafta(), dk("W38-D6-19")).tur === "zatenVar");
 kontrol("olmayan slot reddedilir", durumKaydiniUygula(hafta(), dk("yok")).tur === "reddet");
 kontrol("onay metni", kuyrukOnayi(dk("W38-D6-19"), BUGUN).includes("19:00 Literatür"));
+
+console.log("\nhatırlatma");
+const hg = anlik.gunler[BUGUN]!;
+kontrol("pencere dışındaki slot yok", yaklasanSlotlar(hg, 8 * 60 + 55, 70).length === 0);
+kontrol("pencere içindeki planlı slot gelir", yaklasanSlotlar(hg, 18 * 60 + 55, 10).map((y) => y.slot.saat).join() === "19:00");
+kontrol("geçmiş saat hatırlatılmaz", yaklasanSlotlar(hg, 9 * 60 + 30, 600).every((y) => y.slot.saat > "09:30"));
+kontrol("yapılmış slot hatırlatılmaz", yaklasanSlotlar(hg, 8 * 60, 120).every((y) => y.slot.durum === "planli"));
+kontrol("işaretlenen elenir", yaklasanSlotlar(hg, 18 * 60, 120, new Set(["W38-D6-19"])).length === 0);
+const yk = yaklasanSlotlar(hg, 18 * 60 + 52, 15)[0]!;
+kontrol("mesaj: saat, konu, kalan, süre", hatirlatmaMesaji(yk).includes("19:00") && hatirlatmaMesaji(yk).includes("8 dk sonra") && hatirlatmaMesaji(yk).includes("1 sa"), hatirlatmaMesaji(yk));
+kontrol("bayat plan hatırlatmaz", !planTaze({ guncellendi: "2026-09-10T06:00:00.000Z", gunler: {} }, Date.parse("2026-09-19T06:00:00.000Z")));
+kontrol("taze plan hatırlatır", planTaze(anlik, Date.parse("2026-09-19T12:00:00.000Z")));
+kontrol("plan yoksa hatırlatma yok", !planTaze(null, Date.now()));
 
 console.log("\nmesaj");
 const gorev = (o: Partial<TodoistGorev>): TodoistGorev => ({
