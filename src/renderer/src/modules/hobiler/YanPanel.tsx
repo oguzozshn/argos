@@ -1,8 +1,20 @@
-import { Pencil, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { bugunIso } from "@ortak/plan";
 import { Dugme } from "@/ui/bilesenler";
 import s from "./hobiler.module.css";
-import { kategoriCikar, kategoriEkle, kategorileriYaz, kategoriyiEsle, type Alan, type Madde } from "./tipler";
+import {
+  kategoriCikar,
+  kategoriEkle,
+  kategorileriYaz,
+  kategoriyiEsle,
+  notDegistir,
+  notEkle,
+  notSil,
+  notlariOku,
+  type Alan,
+  type Madde,
+} from "./tipler";
 
 const tarihYil = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 const tarihKisa = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" });
@@ -46,6 +58,14 @@ export function YanPanel({
   const [taslak, setTaslak] = useState<string | null>(null);
 
   const [kategoriTaslak, setKategoriTaslak] = useState("");
+  const [taslakNot, setTaslakNot] = useState("");
+  const notlar = notlariOku(madde);
+  // Notlar alt alta: her biri ayrı satır, en yenisi üstte, tek tek silinir.
+  const notuEkle = () => {
+    if (!taslakNot.trim()) return;
+    onDegis(notEkle(madde, taslakNot, bugunIso()));
+    setTaslakNot("");
+  };
   const kategoriler = madde.kategoriler ?? [];
   const oneriler = kategoriOnerileri.filter(
     (k) => !kategoriler.some((x) => x.toLocaleLowerCase("tr") === k.toLocaleLowerCase("tr")),
@@ -176,16 +196,53 @@ export function YanPanel({
 
       <div>
         <label className={s.etiketMetni} htmlFor="panel-not">
-          Not
+          Notlar
         </label>
-        <textarea
-          id="panel-not"
-          className={s.notAlani}
-          value={madde.not}
-          rows={1}
-          placeholder="Not ekle…"
-          onChange={(e) => onDegis({ ...madde, not: e.target.value })}
-        />
+        <div className={s.notEkleSatir}>
+          <textarea
+            id="panel-not"
+            className={s.notAlani}
+            value={taslakNot}
+            rows={1}
+            placeholder="Not ekle… (Enter kaydeder, Shift+Enter satır atlar)"
+            onChange={(e) => setTaslakNot(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || e.shiftKey) return;
+              e.preventDefault();
+              notuEkle();
+            }}
+            onBlur={notuEkle}
+          />
+          <Dugme
+            tur="sade"
+            ikon={<Plus size={15} />}
+            onClick={notuEkle}
+            disabled={!taslakNot.trim()}
+            aria-label="Notu ekle"
+          />
+        </div>
+
+        {notlar.map((n) => (
+          <div key={n.id} className={s.notSatir}>
+            <textarea
+              className={s.notMetin}
+              value={n.metin}
+              rows={1}
+              aria-label="Not"
+              onChange={(e) => onDegis(notDegistir(madde, n.id, e.target.value))}
+            />
+            <span className={s.notTarih}>{tarihYaz(n.eklendi)}</span>
+            <button
+              type="button"
+              className={s.notSil}
+              onClick={() => onDegis(notSil(madde, n.id))}
+              aria-label="Notu sil"
+              title="Notu sil"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        ))}
       </div>
 
       <div className={s.panelDip}>

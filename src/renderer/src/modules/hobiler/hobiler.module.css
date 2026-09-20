@@ -765,3 +765,80 @@
   color: var(--metin-soluk);
   line-height: 1.6;
 }
+
+/* --- notlar ------------------------------------------------------------ */
+
+.notEkleSatir {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--b2);
+}
+
+.notEkleSatir > textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.notSatir {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--b2);
+  padding: var(--b2) 0;
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.notSatir:last-child {
+  border-bottom: none;
+}
+
+/* Kayıtlı not: kutu gibi değil metin gibi; tıklayınca düzenlenir. */
+.notMetin {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  field-sizing: content;
+  resize: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: var(--y4);
+  line-height: 1.55;
+  color: var(--metin);
+  outline: none;
+}
+
+.notMetin:focus {
+  color: var(--metin);
+}
+
+.notTarih {
+  flex: none;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+.notSil {
+  flex: none;
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--r-tam);
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.notSatir:hover .notSil,
+.notSil:focus-visible {
+  opacity: 1;
+}
+
+.notSil:hover {
+  background: var(--cizgi);
+  color: var(--hata);
+}

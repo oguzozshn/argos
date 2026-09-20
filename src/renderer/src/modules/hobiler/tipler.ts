@@ -6,6 +6,8 @@
  * bitmemiş oyun sayısı gösteren ekran suçluluk yığını üretir.
  */
 
+import type { HobiNotu } from "@ortak/hobi-not";
+
 export interface Madde {
   id: string;
   ad: string;
@@ -13,6 +15,8 @@ export interface Madde {
   durum: string;
   not: string;
   eklendi: string;
+  /** Alt alta notlar; eski `not` alanı ilk notu taşır. */
+  notlar?: HobiNotu[];
   /**
    * İsteğe bağlı kategoriler ("RPG", "Souls"). Yoksa alan hiç yazılmaz; eski
    * kayıtlar ve app.py olduğu gibi çalışır.
@@ -129,3 +133,12 @@ export {
   tumKategoriler,
   type KategoriGrubu,
 } from "@ortak/hobi-kategori";
+
+export {
+  notDegistir,
+  notEkle,
+  notSil,
+  notlariOku,
+  yeniNotId,
+  type HobiNotu,
+} from "@ortak/hobi-not";

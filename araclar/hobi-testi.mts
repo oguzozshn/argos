@@ -11,6 +11,7 @@ import {
   kategoriyiEsle,
   tumKategoriler,
 } from "../src/ortak/hobi-kategori.ts";
+import { notEkle, notSil, notlariOku, notDegistir } from "../src/ortak/hobi-not.ts";
 
 interface Madde {
   id: string;
@@ -62,6 +63,19 @@ kontrol("grup sırası, kategorisiz sonda", esit(g.map((x) => x.kategori), ["Ind
 kontrol("çok kategorili her grubunda", esit(g[1]!.maddeler.map((x) => x.id), ["a", "c"]) && g[2]!.maddeler[0]!.id === "a");
 kontrol("boş dizi de kategorisiz", esit(g[3]!.maddeler.map((x) => x.id), ["b", "e"]));
 kontrol("hiç kategori yoksa tek grup", esit(kategoriyeGoreGrupla([m("x")]).map((x) => x.kategori), [null]));
+
+console.log("\nnotlar");
+const n0 = { id: "x", ad: "Spore", durum: "sırada", not: "eski not", eklendi: "2026-09-01" };
+kontrol("eski tek metin ilk not sayılır", notlariOku(n0).map((n) => n.metin).join() === "eski not");
+const n1 = notEkle(n0, "  ikinci  ", "2026-09-20", "n-1");
+kontrol("yeni not en üste", notlariOku(n1).map((n) => n.metin).join() === "ikinci,eski not");
+kontrol("kısa not ilk nottan", n1.not === "ikinci");
+kontrol("boş not eklenmez", notEkle(n1, "   ", "2026-09-20") === n1);
+const n2 = notSil(n1, "n-1");
+kontrol("silinince kısa not güncellenir", notlariOku(n2).length === 1 && n2.not === "eski not");
+const n3 = notDegistir(n2, notlariOku(n2)[0]!.id, "düzeltildi");
+kontrol("not düzenlenir", n3.not === "düzeltildi" && notlariOku(n3).length === 1);
+kontrol("boşa çevrilen not silinir", notlariOku(notDegistir(n3, notlariOku(n3)[0]!.id, " ")).length === 0);
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
 if (kalan > 0) process.exit(1);
