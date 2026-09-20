@@ -625,3 +625,143 @@
   color: var(--metin);
   cursor: pointer;
 }
+
+/* --- kategoriler ------------------------------------------------------- */
+
+.istege {
+  color: var(--metin-soluk);
+  opacity: 0.8;
+}
+
+.kategoriCip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  border: 1px solid var(--cizgi);
+  color: var(--metin);
+  font-size: var(--y5);
+}
+
+.kategoriSil {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--r-tam);
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.kategoriSil:hover {
+  background: var(--cizgi);
+  color: var(--metin);
+}
+
+.kategoriGiris {
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--b2);
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+}
+
+.oneriler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.oneri {
+  padding: 2px 8px;
+  border: 1px dashed var(--cizgi-koyu);
+  border-radius: var(--r-tam);
+  background: none;
+  font: inherit;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.oneri:hover {
+  color: var(--metin);
+  border-color: var(--metin-soluk);
+}
+
+/* Satır ve ızgarada kaydın kategorileri: sessiz, küçük. */
+.maddeKategori {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Kategori görünümü */
+.kategoriGrubu + .kategoriGrubu {
+  border-top: 1px solid var(--cizgi);
+}
+
+.kategoriBas {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b3) var(--b5);
+  font-size: var(--y4);
+  font-weight: var(--sik-kalin);
+  color: var(--metin);
+}
+
+.kategoriBasSoluk {
+  color: var(--metin-soluk);
+  font-weight: var(--sik-orta);
+}
+
+.kategoriSayi {
+  font-weight: var(--sik-normal);
+  color: var(--metin-soluk);
+}
+
+.kategoriSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  width: 100%;
+  padding: 7px var(--b5) 7px calc(var(--b5) + 22px);
+  border: 0;
+  border-top: 1px solid var(--cizgi);
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  text-align: left;
+  cursor: pointer;
+}
+
+.kategoriSatir:hover {
+  background: var(--kart-hover);
+}
+
+.kategoriSatirSecili {
+  background: var(--vurgu-yumusak);
+}
+
+.kategoriDurum {
+  margin-left: auto;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.kategoriBos {
+  padding: var(--b6) var(--b5);
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  line-height: 1.6;
+}

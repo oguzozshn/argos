@@ -2,13 +2,15 @@ import { Pencil, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { Dugme } from "@/ui/bilesenler";
 import s from "./hobiler.module.css";
-import type { Alan, Madde } from "./tipler";
+import { kategoriCikar, kategoriEkle, kategorileriYaz, kategoriyiEsle, type Alan, type Madde } from "./tipler";
 
 const tarihYil = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 const tarihKisa = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" });
 
 /** "2026-09-05" → "5 Eylül"; başka yıldansa yıl da yazılır. */
-function tarihYaz(iso: string): string {
+function tarihYaz(iso: string | undefined): string {
+  // Eski ya da dışarıdan gelen kayıtta alan olmayabilir; panel bu yüzden çökmesin.
+  if (!iso) return "";
   const [y, a, g] = iso.split("-").map(Number);
   if (!y || !a || !g) return iso;
   const t = new Date(y, a - 1, g);
@@ -29,16 +31,31 @@ export function YanPanel({
   onDegis,
   onSil,
   onKapat,
+  kategoriOnerileri,
 }: {
   alan: Alan;
   madde: Madde;
   onDegis: (yeni: Madde) => void;
   onSil: () => void;
   onKapat: () => void;
+  /** Alandaki diğer kayıtların kategorileri: aynı adı iki yazımla girmeyelim. */
+  kategoriOnerileri: string[];
 }) {
   // Ad tuş tuş yazılmıyor: bir an boş kalan ad listede "Adsız" diye
   // görünür, liste de her harfte yeniden dizilirdi. Taslak, alandan çıkınca yazılır.
   const [taslak, setTaslak] = useState<string | null>(null);
+
+  const [kategoriTaslak, setKategoriTaslak] = useState("");
+  const kategoriler = madde.kategoriler ?? [];
+  const oneriler = kategoriOnerileri.filter(
+    (k) => !kategoriler.some((x) => x.toLocaleLowerCase("tr") === k.toLocaleLowerCase("tr")),
+  );
+  const kategoriyiEkle = (ham: string) => {
+    const k = kategoriyiEsle(ham, kategoriOnerileri);
+    const yeni = kategoriEkle(kategoriler, k);
+    setKategoriTaslak("");
+    if (yeni !== kategoriler) onDegis(kategorileriYaz(madde, yeni));
+  };
 
   const adiYaz = () => {
     if (taslak === null) return;
@@ -105,6 +122,59 @@ export function YanPanel({
       </div>
 
       <div>
+        <label className={s.etiketMetni} htmlFor="panel-kategori">
+          Kategoriler <span className={s.istege}>· isteğe bağlı</span>
+        </label>
+        {kategoriler.length > 0 && (
+          <div className={s.durumCipleri} style={{ marginBottom: 6 }}>
+            {kategoriler.map((k) => (
+              <span key={k} className={s.kategoriCip}>
+                {k}
+                <button
+                  type="button"
+                  className={s.kategoriSil}
+                  onClick={() => onDegis(kategorileriYaz(madde, kategoriCikar(kategoriler, k)))}
+                  aria-label={`${k} kategorisini kaldır`}
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <input
+          id="panel-kategori"
+          className={s.kategoriGiris}
+          value={kategoriTaslak}
+          list="panel-kategori-onerileri"
+          placeholder={kategoriler.length ? "Bir tane daha…" : "Kategori ekle (RPG, Souls…)"}
+          onChange={(e) => setKategoriTaslak(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              kategoriyiEkle(kategoriTaslak);
+            }
+          }}
+          onBlur={() => kategoriTaslak.trim() && kategoriyiEkle(kategoriTaslak)}
+        />
+        <datalist id="panel-kategori-onerileri">
+          {oneriler.map((k) => (
+            <option key={k} value={k} />
+          ))}
+        </datalist>
+        {/* Önerilen kategoriler tek tıkla: yazmadan seçilebilsin. */}
+        {oneriler.length > 0 && (
+          <div className={s.oneriler}>
+            {oneriler.slice(0, 8).map((k) => (
+              <button key={k} type="button" className={s.oneri} onClick={() => kategoriyiEkle(k)}>
+                + {k}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
         <label className={s.etiketMetni} htmlFor="panel-not">
           Not
         </label>
@@ -119,7 +189,7 @@ export function YanPanel({
       </div>
 
       <div className={s.panelDip}>
-        <span className={s.eklendi}>Eklendi {tarihYaz(madde.eklendi)}</span>
+        <span className={s.eklendi}>{madde.eklendi ? `Eklendi ${tarihYaz(madde.eklendi)}` : ""}</span>
         <Dugme tur="tehlike" ikon={<Trash2 size={15} />} onClick={onSil}>
           Sil
         </Dugme>

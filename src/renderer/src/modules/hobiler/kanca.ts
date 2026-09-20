@@ -85,7 +85,7 @@ export function useAlanlar() {
  * Görünüm biçimi alan başına hatırlanır: Oyunlar ızgara, Kitaplar satır
  * olabilir. Makine tercihi olduğu için `localStorage`'ta durur.
  */
-export type Gorunum = "satir" | "izgara";
+export type Gorunum = "satir" | "izgara" | "kategori";
 
 export function useGorunum(slug: string): [Gorunum, (g: Gorunum) => void] {
   const anahtar = `argos.gorunum.${slug}`;
@@ -93,7 +93,8 @@ export function useGorunum(slug: string): [Gorunum, (g: Gorunum) => void] {
 
   useEffect(() => {
     try {
-      setG(localStorage.getItem(anahtar) === "izgara" ? "izgara" : "satir");
+      const k = localStorage.getItem(anahtar);
+      setG(k === "izgara" || k === "kategori" ? k : "satir");
     } catch {
       setG("satir");
     }

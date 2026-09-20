@@ -7,6 +7,7 @@ import {
   List,
   Plus,
   SlidersHorizontal,
+  Tags,
   Trash2,
   X,
 } from "lucide-react";
@@ -27,10 +28,15 @@ import {
   dosyaYolu,
   durumRengi,
   durumlarKur,
+  kategorileriAyikla,
+  kategoriyeGoreGrupla,
+  kategoriyiEsle,
   normalize,
   slugla,
+  tumKategoriler,
   yeniId,
   type Alan,
+  type KategoriGrubu,
   type Madde,
 } from "./tipler";
 
@@ -228,8 +234,12 @@ function AlanEkrani({
   const maddeleriKaydet = (maddeler: Madde[]) => kaydet({ ...veri, maddeler });
 
   const ekle = (durum: string) => {
-    const ad = yeni.trim();
+    // "Elden Ring #RPG #Souls": # ile yazılanlar kategori olur (isteğe bağlı).
+    const { ad, kategoriler: yazilan } = kategorileriAyikla(yeni);
     if (!ad) return;
+    // Alanda zaten varsa oradaki yazım kullanılır ("rpg" → "RPG").
+    const mevcutKategoriler = tumKategoriler(veri.maddeler);
+    const kategoriler = yazilan.map((k) => kategoriyiEsle(k, mevcutKategoriler));
     const madde: Madde = {
       id: yeniId(),
       ad,
@@ -237,6 +247,7 @@ function AlanEkrani({
       not: "",
       // Yerel gün: UTC ile gece 00-03 arası eklenen madde düne yazılıyordu.
       eklendi: bugunIso(),
+      ...(kategoriler.length ? { kategoriler } : {}),
     };
     // Dizinin başı, grubun da başı: grup dizideki sırayla süzülüyor.
     maddeleriKaydet([madde, ...veri.maddeler]);
@@ -411,6 +422,9 @@ function AlanEkrani({
                     >
                       <span className={s.maddeAd}>{m.ad}</span>
                       {m.not && <span className={s.maddeNot}>{m.not}</span>}
+                      {m.kategoriler?.length ? (
+                        <span className={s.maddeKategori}>{m.kategoriler.join(" · ")}</span>
+                      ) : null}
                     </button>
                   </motion.div>
                 ))}
@@ -458,6 +472,8 @@ function AlanEkrani({
   };
 
   const panelVar = durumlarAcik || secili !== null;
+  const kategoriListesi = tumKategoriler(veri.maddeler);
+  const kategoriGruplari = kategoriyeGoreGrupla(veri.maddeler);
 
   /**
    * Üstten yeni kayıt: kartın başında, grup seçilerek. Önceden eklemek için
@@ -528,6 +544,13 @@ function AlanEkrani({
               aria-label="Izgara görünümü"
             />
             <Dugme
+              tur={gorunum === "kategori" ? "cizgili" : "sade"}
+              ikon={<Tags size={15} />}
+              onClick={() => setGorunum("kategori")}
+              title="Kategoriye göre"
+              aria-label="Kategoriye göre"
+            />
+            <Dugme
               tur={durumlarAcik ? "cizgili" : "sade"}
               ikon={<SlidersHorizontal size={15} />}
               onClick={() => {
@@ -590,7 +613,19 @@ function AlanEkrani({
             />
           </div>
         )}
-        <div onDragLeave={disariCikti}>{[...durumlar, ...bilinmeyen].map(grup)}</div>
+        {gorunum === "kategori" ? (
+          <KategoriGorunumu
+            gruplar={kategoriGruplari}
+            durumlar={durumlar}
+            seciliId={seciliId}
+            onSec={(id) => {
+              setSeciliId(id);
+              setDurumlarAcik(false);
+            }}
+          />
+        ) : (
+          <div onDragLeave={disariCikti}>{[...durumlar, ...bilinmeyen].map(grup)}</div>
+        )}
       </Kart>
 
       {durumlarAcik ? (
@@ -603,6 +638,7 @@ function AlanEkrani({
           onDegis={maddeDegistir}
           onSil={() => maddeSil(secili.id)}
           onKapat={() => setSeciliId(null)}
+          kategoriOnerileri={kategoriListesi}
         />
       ) : null}
     </div>
@@ -681,5 +717,54 @@ export function Hobiler() {
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Kategoriye göre görünüm. Birden çok kategorisi olan kayıt her grubunda
+ * görünür; kategorisizler sonda. Sürükleme yok: sıralama durum gruplarında.
+ */
+function KategoriGorunumu({
+  gruplar,
+  durumlar,
+  seciliId,
+  onSec,
+}: {
+  gruplar: KategoriGrubu<Madde>[];
+  durumlar: { ad: string; renk: string }[];
+  seciliId: string | null;
+  onSec: (id: string) => void;
+}) {
+  if (gruplar.every((g) => g.kategori === null)) {
+    return (
+      <p className={s.kategoriBos}>
+        Henüz kategori yok. Bir kaydı açıp "Kategoriler"e yazabilir ya da eklerken{" "}
+        <code>Elden Ring #RPG</code> gibi yazabilirsin.
+      </p>
+    );
+  }
+  return (
+    <div>
+      {gruplar.map((g) => (
+        <section key={g.kategori ?? "—"} className={s.kategoriGrubu}>
+          <div className={g.kategori ? s.kategoriBas : `${s.kategoriBas} ${s.kategoriBasSoluk}`}>
+            {g.kategori ?? "Kategorisiz"}
+            <span className={s.kategoriSayi}>{g.maddeler.length}</span>
+          </div>
+          {g.maddeler.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={m.id === seciliId ? `${s.kategoriSatir} ${s.kategoriSatirSecili}` : s.kategoriSatir}
+              onClick={() => onSec(m.id)}
+            >
+              <span className={s.durumNokta} style={{ background: durumRengi(durumlar, m.durum) }} />
+              {m.ad}
+              <span className={s.kategoriDurum}>{m.durum}</span>
+            </button>
+          ))}
+        </section>
+      ))}
+    </div>
   );
 }

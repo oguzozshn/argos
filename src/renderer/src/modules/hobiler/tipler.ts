@@ -13,6 +13,11 @@ export interface Madde {
   durum: string;
   not: string;
   eklendi: string;
+  /**
+   * İsteğe bağlı kategoriler ("RPG", "Souls"). Yoksa alan hiç yazılmaz; eski
+   * kayıtlar ve app.py olduğu gibi çalışır.
+   */
+  kategoriler?: string[];
 }
 
 export interface Durum {
@@ -110,3 +115,17 @@ export const dosyaYolu = (slug: string): string => `hobiler/${slug}.json`;
 
 export const durumRengi = (durumlar: Durum[], ad: string): string =>
   durumlar.find((d) => d.ad === ad)?.renk ?? "#847f75";
+
+/* --- kategoriler ------------------------------------------------------------ */
+
+// Saf yardımcılar ortakta: Node testleri renderer'a bağlanmadan sınasın.
+export {
+  kategoriCikar,
+  kategoriEkle,
+  kategorileriAyikla,
+  kategorileriYaz,
+  kategoriyiEsle,
+  kategoriyeGoreGrupla,
+  tumKategoriler,
+  type KategoriGrubu,
+} from "@ortak/hobi-kategori";
