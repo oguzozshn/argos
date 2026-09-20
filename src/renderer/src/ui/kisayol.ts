@@ -68,6 +68,8 @@ export function useKisayolDinleyicisi(susturulmus: boolean): void {
     const dinle = (e: KeyboardEvent) => {
       if (sus.current || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
       if (yaziyor(e.target)) return;
+      // Boşluk odaktaki düğmeye zaten basar; kısayol ikinci kez çalışmasın.
+      if (e.key === " " && e.target instanceof HTMLElement && e.target.closest("button, a")) return;
       const tus = tusAdi(e.key);
       const kayit = useKisayolDeposu
         .getState()
@@ -83,5 +85,5 @@ export function useKisayolDinleyicisi(susturulmus: boolean): void {
 
 /** Yardımda gösterilen tuş adı. */
 export const tusMetni = (tus: string): string =>
-  ({ ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", Escape: "Esc" })[tus] ??
+  ({ ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", Escape: "Esc", " ": "Space" })[tus] ??
   (tus.length === 1 ? tus.toLocaleUpperCase("tr") : tus);

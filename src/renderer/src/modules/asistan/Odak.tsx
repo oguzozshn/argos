@@ -6,7 +6,6 @@ import {
   VARSAYILAN_ODAK,
   gecenSn,
   gosterSn,
-  hedefSn,
   ikiHane,
   kayitYeterli,
   oran,
@@ -17,6 +16,7 @@ import {
   type OdakAyarlari,
   type OdakModu,
 } from "@ortak/odak";
+import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { useDosya } from "@/veri/kanca";
 import { odakBaslat, odakDuraklat, useOdak } from "./odak-store";
@@ -286,25 +286,19 @@ function OdakIcerik({
     }
   };
 
-  const hedef = hedefSn(d, odakAyarlari);
   const gecen = gecenSn(d, simdi);
   const goster = gosterSn(d, odakAyarlari, simdi);
   const dolulukOrani = oran(d, odakAyarlari, simdi);
 
-  // Hedef dolunca: molada faz kendiliğinden biter, çalışmada sayaç sürer.
-  // Çalışmada duraklatılmışken de dolabilir (uykudaki ara sayılınca):
-  // ekran 00:00'da takılmasın, doğrudan fazla mesaiyi göstersin.
+  // Hedef dolunca faz çevirme ve bildirim arka planda (OdakArkaPlan):
+  // ekran kapalıyken de çalışsın. Burada yalnızca sonucu söylüyoruz.
+  const olay = useOdak((o) => o.olay);
+  const setOlay = useOdak((o) => o.setOlay);
   useEffect(() => {
-    if (hedef === null || d.doldu || gecen < hedef) return;
-    if (d.faz === "mola") {
-      if (!d.calisiyor) return;
-      setD((x) => ({ ...x, calisiyor: false, basladi: null, gecen: 0, doldu: false, faz: "calisma" }));
-      setNot("Mola bitti.");
-    } else {
-      setD((x) => ({ ...x, doldu: true }));
-      setNot("Hedef doldu — sayaç fazla mesaiye geçti.");
-    }
-  }, [hedef, gecen, d.doldu, d.calisiyor, d.faz]);
+    if (!olay) return;
+    setNot(olay);
+    setOlay(null);
+  }, [olay, setOlay]);
 
   const seansEkle = async (dk: number) => {
     if (!veri) return;
@@ -401,6 +395,16 @@ function OdakIcerik({
 
   return (
     <>
+      <Kisayollar
+        grup="Odak"
+        liste={[
+          {
+            tus: " ",
+            aciklama: "Başlat / duraklat",
+            eylem: () => (d.calisiyor ? odakDuraklat() : odakBaslat()),
+          },
+        ]}
+      />
       <EkranBasi
         baslik="Odak"
         altyazi={`Seanslar ${kod} dosyasına yazılır · ${odakAyarlari.pomodoroDk} dk çalışma, ${odakAyarlari.kisaMolaDk}/${odakAyarlari.uzunMolaDk} dk mola`}

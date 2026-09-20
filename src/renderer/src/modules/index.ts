@@ -64,6 +64,11 @@ export interface Modul {
   Ozet?: ComponentType;
   /** Komut paletine verdiği eylemler. Ekranlara gitme komutları kabukta kendiliğinden üretilir. */
   komutlar?: Komut[];
+  /**
+   * Her ekranda çalışan, çizim yapmayan parça: sayaç bitişi, bildirim gibi
+   * modülün ekranı kapalıyken de sürmesi gereken işler.
+   */
+  ArkaPlan?: ComponentType;
 }
 
 // Kayıt. Yeni modül eklemek = klasör + buraya bir satır.

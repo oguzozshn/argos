@@ -133,6 +133,14 @@ function menuKur(): void {
   );
 }
 
+/**
+ * Sayaç çalışırken tepsi ipucunda kalan süre durur; pencere kapalıyken de
+ * "ne kadar kaldı" görünür. Durunca ipucu sade adına döner.
+ */
+export function tepsiOdak(metin: string | null): void {
+  tepsi?.setToolTip(metin ? `Argos · ${metin}` : "Argos");
+}
+
 export function tepsiKapat(): void {
   globalShortcut.unregister(YAKALA_KISAYOLU);
   tepsi?.destroy();

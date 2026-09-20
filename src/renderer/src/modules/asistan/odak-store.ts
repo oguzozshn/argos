@@ -24,10 +24,14 @@ interface OdakDeposu {
   /** Uykudaki arayı da say: çalışılmış kabul edilir. */
   kesintiyiSay: () => void;
   kesintiyiKapat: () => void;
+  /** Arka planın ürettiği son olay ("Mola bitti."); Odak ekranı gösterir. */
+  olay: string | null;
+  setOlay: (x: string | null) => void;
 }
 
 export const useOdak = create<OdakDeposu>()((set, get) => ({
   d: BOS_DURUM,
+  olay: null,
   odakSlot: "",
   odakMetin: "",
   sonGorulme: null,
@@ -51,6 +55,7 @@ export const useOdak = create<OdakDeposu>()((set, get) => ({
       s.kesinti ? { d: { ...s.d, gecen: s.d.gecen + s.kesinti.sn }, kesinti: null } : {},
     ),
   kesintiyiKapat: () => set({ kesinti: null }),
+  setOlay: (olay) => set({ olay }),
 }));
 
 /**

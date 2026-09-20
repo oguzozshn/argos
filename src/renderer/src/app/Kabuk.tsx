@@ -223,6 +223,14 @@ function Icerik() {
         )}
         <Yonlendirme />
       </main>
+      {/* Modüllerin ekransız parçaları: odak sayacının bitişi gibi. */}
+      {moduller.map((m) =>
+        m.ArkaPlan ? (
+          <HataSiniri key={`arka-${m.id}`} ad={m.ad}>
+            <m.ArkaPlan />
+          </HataSiniri>
+        ) : null,
+      )}
       <GenelKisayollar yardimAc={() => setYardimAcik(true)} />
       <KomutPaleti acik={palet.acik} acilis={palet.acilis} kapat={palet.kapat} />
       <KisayolYardimi acik={yardimAcik} kapat={() => setYardimAcik(false)} />

@@ -3,8 +3,9 @@ import { resolve } from "node:path";
 import { BASLIK_RENKLERI, KANAL } from "../ortak/tipler";
 import * as td from "./todoist";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
-import { todoistDegistiBildir, yakalamaHatasi, yakalamadanMi, yakalamayiGizle } from "./tepsi";
+import { tepsiOdak, todoistDegistiBildir, yakalamaHatasi, yakalamadanMi, yakalamayiGizle } from "./tepsi";
 import { klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
+import { bildirimGoster } from "./bildirim";
 import { yedekKlasorunuAc } from "./yedek";
 
 /**
@@ -114,4 +115,10 @@ export function ipcKur(): void {
   });
   ipcMain.handle(KANAL.yakalaGizle, () => yakalamayiGizle());
   ipcMain.handle(KANAL.yedekAc, () => yedekKlasorunuAc());
+  ipcMain.handle(KANAL.bildirim, (_o, baslik: string, govde: string) =>
+    bildirimGoster(String(baslik), String(govde)),
+  );
+  ipcMain.handle(KANAL.odakTepsi, (_o, metin: string | null) =>
+    tepsiOdak(typeof metin === "string" ? metin : null),
+  );
 }

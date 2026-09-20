@@ -141,6 +141,10 @@ export interface ArgosApi {
   botAl(): Promise<string[]>;
   /** Günlük yedeklerin klasörünü Gezgin'de açar. */
   yedekAc(): Promise<void>;
+  /** Windows bildirimi gösterir (odak sayacı bitince). */
+  bildirimGoster(baslik: string, govde: string): Promise<void>;
+  /** Tepsi ipucundaki kalan süre; null ipucunu sadeye döndürür. */
+  odakTepsi(metin: string | null): Promise<void>;
   /** Yalnızca hızlı yakalama penceresinde anlamlı. */
   yakala: {
     gizle(): Promise<void>;
@@ -175,6 +179,8 @@ export const KANAL = {
   botAktarildi: "bot:aktarildi",
   botAl: "bot:al",
   yedekAc: "yedek:ac",
+  bildirim: "bildirim:goster",
+  odakTepsi: "odak:tepsi",
 } as const;
 
 /**

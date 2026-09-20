@@ -4,6 +4,7 @@ import { Arsiv } from "./Arsiv";
 import { Hafta } from "./Hafta";
 import { Hatirla } from "./Hatirla";
 import { asistanKomutlari } from "./komutlar";
+import { OdakArkaPlan } from "./OdakArkaPlan";
 import { Odak } from "./Odak";
 import { AsistanOzet } from "./Ozet";
 import { YolHaritalari } from "./YolHaritalari";
@@ -30,4 +31,5 @@ export const asistanModulu: Modul = {
   ],
   Ozet: AsistanOzet,
   komutlar: asistanKomutlari,
+  ArkaPlan: OdakArkaPlan,
 };

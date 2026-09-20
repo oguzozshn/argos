@@ -127,6 +127,9 @@ if (!app.requestSingleInstanceLock()) {
     });
   }
 
+  // Windows bildirimleri uygulamanın kimliğini ister; yoksa bildirim hiç çıkmaz.
+  app.setAppUserModelId("com.oguzozsahin.argos");
+
   app.whenReady().then(() => {
     console.log("[argos] veri klasörü:", dataDir());
     const o = ortam();
