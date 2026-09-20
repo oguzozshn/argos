@@ -291,6 +291,7 @@ export const YARDIM_METNI = [
   "   örn. <code>/kapat evden çık</code>, <code>/kapat 15:00</code>",
   "   adın bir parçası yeter; birden çok iş eşleşirse bot sorar",
   "/not metin — Hatırla'ya not",
+  "/yardim — bu liste",
   "Düz yazı — Todoist'e görev (tarih, #proje, p1 anlaşılır)",
   "",
   "Plana ve Hatırla'ya eklenenler Argos açılınca bilgisayara işlenir.",

@@ -5,7 +5,7 @@
  *  PUT  /anlik           Argos'un gönderdiği plan görünümü (14 gün).
  *  GET  /kuyruk          Argos'un çekeceği bekleyen eklemeler.
  *  POST /kuyruk/sonuc    Argos'un "işledim / işleyemedim" cevabı.
- *  cron 05:00 UTC        Sabah özeti.
+ *  cron 05:00 UTC        Sabah özeti; komut menüsünü de tazeler.
  *  cron her 5 dakika     Yaklaşan slot hatırlatması (5–10 dk önce).
  *
  * Yerel plan dosyalarını görmez: Argos'un bıraktığı görünümü okur ve
@@ -13,6 +13,7 @@
  */
 
 import {
+  KOMUTLAR,
   YARDIM_METNI,
   gunMesaji,
   hatirlatmaMesaji,
@@ -32,7 +33,14 @@ import {
 import { gunEkle } from "../../src/ortak/gun.ts";
 import type { TodoistGorev } from "../../src/ortak/tipler.ts";
 import { bugunVeGecikmis, hizliEkle, kapat, tarihAraligi } from "../../src/main/todoist-cekirdek.ts";
-import { dugmeyiCevapla, duzenle, gonder, telegramTabani, type Klavye } from "./telegram.ts";
+import {
+  dugmeyiCevapla,
+  duzenle,
+  gonder,
+  menuyuKur,
+  telegramTabani,
+  type Klavye,
+} from "./telegram.ts";
 
 export interface Env {
   ARGOS: KVNamespace;
@@ -84,6 +92,11 @@ export default {
     if (olay.cron === "0 5 * * *") {
       const g = await gunIcerik(env, bugun, bugun);
       await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID, g.metin, g.klavye);
+      // Komut menüsü Telegram'da duruyor, dağıtımla güncellenmiyor. Günde bir
+      // yazılıyor ki KOMUTLAR'a eklenen komut menüde eksik kalmasın. Özet
+      // gönderildikten sonra ve hatası yutularak: menü yüzünden sabah mesajı
+      // kaçmasın.
+      await menuyuKur(env.TELEGRAM_TOKEN, KOMUTLAR).catch(() => {});
       return;
     }
     await hatirlat(env, bugun);

@@ -6,6 +6,8 @@
  */
 
 import {
+  KOMUTLAR,
+  YARDIM_METNI,
   anlikKur,
   hatirlatmaMesaji,
   planTaze,
@@ -281,6 +283,27 @@ kontrol("berabere kalanlar sorulur", ikiz.tur === "belirsiz" && ikiz.adaylar.len
 kontrol("belirsiz cevabı adayları sayar", ikiz.tur === "belirsiz" && kapatCevabi(ikiz, "tez").includes("Tez yazımı"));
 kontrol("tam ad beraberliği bozar", esit(kapatCoz("tez okuma", [aslot({ id: "a", konu: "Tez okuma" }), aslot({ id: "b", saat: "18:00", konu: "Tez okuma notları" })], []).tur, "tek"));
 kontrol("bulunamadı cevabı sorguyu kaçırır", kapatCevabi({ tur: "yok" }, "<x>").includes("&lt;x&gt;"));
+
+/* --- komut listeleri ------------------------------------------------------
+ * İki liste aynı komutları anlatıyor: KOMUTLAR `/` menüsüne gider (Telegram'da
+ * saklanır), YARDIM_METNI ise /yardim cevabı. Biri güncellenip öbürü
+ * unutulursa komut menüde ya da yardımda eksik kalır — sessiz bir sapma.
+ */
+console.log("\nkomut listeleri");
+for (const k of KOMUTLAR) {
+  kontrol(`/${k.komut} yardım metninde var`, YARDIM_METNI.includes(`/${k.komut}`));
+}
+const menudeki = new Set(KOMUTLAR.map((k) => k.komut));
+const yardimdaki = YARDIM_METNI.split("\n")
+  .filter((s) => s.startsWith("/"))
+  .map((s) => s.slice(1).split(/[^a-z0-9_]/)[0]);
+kontrol(
+  "yardımdaki her komut menüde de var",
+  yardimdaki.every((k) => menudeki.has(k)),
+  yardimdaki.filter((k) => !menudeki.has(k)).join(", "),
+);
+kontrol("komut adları Telegram kuralına uyar", KOMUTLAR.every((k) => /^[a-z0-9_]{1,32}$/.test(k.komut)));
+kontrol("açıklamalar 256 karakteri aşmaz", KOMUTLAR.every((k) => k.aciklama.length <= 256));
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
 if (kalan > 0) process.exit(1);

@@ -65,6 +65,19 @@ export async function duzenle(
   }
 }
 
+/**
+ * `/` yazınca açılan komut listesi. Bu liste kodda değil, Telegram'ın
+ * sunucusunda duruyor: dağıtım ona dokunmaz, ayrıca yazılması gerekir.
+ * Çağrı idempotent, aynı listeyle tekrar çağırmak zararsız.
+ */
+export const menuyuKur = (
+  token: string,
+  komutlar: readonly { komut: string; aciklama: string }[],
+): Promise<unknown> =>
+  api(token, "setMyCommands", {
+    commands: komutlar.map((k) => ({ command: k.komut, description: k.aciklama })),
+  });
+
 /** Düğmedeki bekleme simgesini kapatır; metin verilirse kısa bir baloncuk gösterir. */
 export const dugmeyiCevapla = (token: string, sorguId: string, metin?: string) =>
   api(token, "answerCallbackQuery", { callback_query_id: sorguId, ...(metin ? { text: metin } : {}) });

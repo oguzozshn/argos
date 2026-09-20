@@ -151,6 +151,12 @@ try {
   cagrilar = [];
   await fetch(`${W}/cdn-cgi/handler/scheduled?cron=0+5+*+*+*`);
   kontrol("sabah özeti sahibine gider", cagrilar.some((c) => c.yol.endsWith("sendMessage") && c.govde.chat_id === "42"));
+  const menu = cagrilar.find((c) => c.yol.endsWith("setMyCommands"));
+  kontrol("komut menüsü tazelenir", menu !== undefined);
+  kontrol(
+    "menüde /kapat var",
+    (menu?.govde.commands ?? []).some((k: { command: string }) => k.command === "kapat"),
+  );
 } finally {
   sunucu.close();
 }
