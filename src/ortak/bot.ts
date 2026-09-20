@@ -13,6 +13,7 @@
  */
 
 import { AY_TAM, GUN_ADLARI, gunEkle, haftaninGunu, kSirala } from "./gun.ts";
+import { metinPuani, sadelestir } from "./komut-ara.ts";
 import { dakika, yeniSlotId } from "./kural.ts";
 import { aliskanlikBekleniyor } from "./plan-islem.ts";
 import { DURUM_ISARETI, hatirlaBugun, yeniHatirlaId, type Hafta, type HatirlaMaddesi, type Slot } from "./plan.ts";
@@ -263,6 +264,7 @@ export type Komut =
   | { tur: "gun"; tarih: string }
   | { tur: "slot"; tarih: string; saat: string; sureDk: number; alan: string | null; konu: string }
   | { tur: "not"; metin: string }
+  | { tur: "kapat"; metin: string }
   | { tur: "todoist"; metin: string }
   | { tur: "yardim" }
   | { tur: "hata"; mesaj: string };
@@ -273,6 +275,7 @@ export const KOMUTLAR = [
   { komut: "bugun", aciklama: "Bugünün planı ve görevleri" },
   { komut: "yarin", aciklama: "Yarının planı ve görevleri" },
   { komut: "ekle", aciklama: "Plana slot ekle: /ekle yarın 16:00 Tez okuma 90dk" },
+  { komut: "kapat", aciklama: "Bugünün görevini/slotunu kapat: /kapat evden çık" },
   { komut: "not", aciklama: "Hatırla'ya not ekle" },
   { komut: "yardim", aciklama: "Komutlar" },
 ];
@@ -284,10 +287,11 @@ export const YARDIM_METNI = [
   "/ekle [gün] SS:DD konu [süre] [#alan] — plana slot",
   "   örn. <code>/ekle yarın 16:00 Tez okuma 90dk #Tez</code>",
   "   gün: bugün, yarın, pzt…paz ya da 25.09; süre: 45dk, 1.5sa (varsayılan 60dk)",
+  "/kapat ad — bugünün slotunu ya da Todoist görevini kapatır",
+  "   örn. <code>/kapat evden çık</code>, <code>/kapat 15:00</code>",
+  "   adın bir parçası yeter; birden çok iş eşleşirse bot sorar",
   "/not metin — Hatırla'ya not",
   "Düz yazı — Todoist'e görev (tarih, #proje, p1 anlaşılır)",
-  "",
-  "Mesajın altındaki düğmeler: ☑ slotu yapıldı işaretler, ✅ Todoist görevini kapatır.",
   "",
   "Plana ve Hatırla'ya eklenenler Argos açılınca bilgisayara işlenir.",
 ].join("\n");
@@ -382,6 +386,10 @@ export function komutCoz(ham: string, bugun: string): Komut {
       return govde.trim()
         ? { tur: "not", metin: govde.trim() }
         : { tur: "hata", mesaj: "Not boş. Örnek: /not faturayı sor" };
+    case "kapat":
+      return govde.trim()
+        ? { tur: "kapat", metin: govde.trim() }
+        : { tur: "hata", mesaj: "Ne kapatılacak? Örnek: /kapat evden çık" };
     case "ekle":
       return ekleCoz(kalan, bugun);
     default:
@@ -431,6 +439,66 @@ function ekleCoz(sozcukler: string[], bugun: string): Komut {
   const t = tarih ?? bugun;
   if (t < bugun) return { tur: "hata", mesaj: "Geçmiş bir güne eklenemez." };
   return { tur: "slot", tarih: t, saat, sureDk: sureDk ?? VARSAYILAN_SURE_DK, alan, konu };
+}
+
+/* --- kapatma ------------------------------------------------------------- */
+
+export interface KapatHedefi {
+  tur: "slot" | "gorev";
+  id: string;
+  /** Kullanıcıya gösterilecek ad; slotta saat de var. */
+  ad: string;
+}
+
+export type KapatSonucu =
+  | { tur: "yok" }
+  | { tur: "tek"; hedef: KapatHedefi }
+  | { tur: "belirsiz"; adaylar: KapatHedefi[] };
+
+/**
+ * `/kapat <ad>` için hedefi arar: günün açık slotları ve Todoist görevleri
+ * tek listede yarışır. Puanlama komut paletiyle aynı (`metinPuani`): tam ad >
+ * baştan > sözcük başı > içinde geçme. Slotun saati de aranır: "/kapat 15:00".
+ *
+ * `slotlar` yalnızca açık olanlar olmalı — kapatılmış ya da kuyrukta
+ * işaretlenmiş olan çağıran tarafında elenir.
+ *
+ * En yüksek puan tek başınaysa hedef odur; berabere kalanlar kullanıcıya
+ * sorulur: yanlış görevi kapatmak Telegram'dan geri alınamıyor.
+ */
+export function kapatCoz(sorgu: string, slotlar: AnlikSlot[], gorevler: TodoistGorev[]): KapatSonucu {
+  const q = sadelestir(sorgu);
+  if (!q) return { tur: "yok" };
+
+  const adaylar = [
+    ...slotlar.map((s) => ({
+      hedef: { tur: "slot" as const, id: s.id, ad: `${s.saat} ${s.konu || s.alan}` },
+      puan: Math.max(metinPuani(q, s.konu || s.alan), metinPuani(q, s.saat)),
+    })),
+    ...gorevler.map((g) => ({
+      hedef: { tur: "gorev" as const, id: g.id, ad: g.icerik },
+      puan: metinPuani(q, g.icerik),
+    })),
+  ]
+    .filter((a) => a.puan > 0)
+    .sort((a, b) => b.puan - a.puan);
+
+  if (adaylar.length === 0) return { tur: "yok" };
+  const enIyi = adaylar[0]!.puan;
+  const basta = adaylar.filter((a) => a.puan === enIyi);
+  return basta.length > 1
+    ? { tur: "belirsiz", adaylar: basta.map((a) => a.hedef) }
+    : { tur: "tek", hedef: adaylar[0]!.hedef };
+}
+
+/** `/kapat` eşleşmediğinde ya da birden çok işe uyduğunda verilen cevap. */
+export function kapatCevabi(sonuc: Extract<KapatSonucu, { tur: "yok" | "belirsiz" }>, sorgu: string): string {
+  if (sonuc.tur === "yok") return `🤔 "${kacis(sorgu)}" diye açık bir iş yok. /bugun ile listeye bak.`;
+  return [
+    `🤔 "${kacis(sorgu)}" birden çok işe uyuyor:`,
+    ...sonuc.adaylar.map((h) => `${h.tur === "slot" ? "☐" : "📋"} ${kacis(h.ad)}`),
+    "Daha uzun yaz.",
+  ].join("\n");
 }
 
 /* --- mesaj --------------------------------------------------------------- */

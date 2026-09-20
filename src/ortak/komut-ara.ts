@@ -40,7 +40,8 @@ function sirayla(igne: string, saman: string): boolean {
   return i === igne.length;
 }
 
-function metinPuani(sorgu: string, metin: string): number {
+/** Tek bir metnin sorguya uygunluğu; 0 eşleşme yok. `/kapat` da bunu kullanıyor. */
+export function metinPuani(sorgu: string, metin: string): number {
   const m = sadelestir(metin);
   if (!m) return 0;
   if (m === sorgu) return 100;

@@ -98,8 +98,20 @@ try {
   await tg("/ekle 16:00");
   for (const t of metinler()) console.log(`    → ${t.replace(/\n/g, " | ")}`);
   kontrol("yeniden yollanan güncelleme tek cevap alır", cagrilar.length === 3);
+
+  console.log("\n/kapat");
+  cagrilar = [];
+  await tg("/kapat literatür");
+  await tg("/kapat olmayan iş");
+  for (const t of metinler()) console.log(`    → ${t.replace(/\n/g, " | ")}`);
+  kontrol("slot kuyruğa işaretlenir", (metinler()[0] ?? "").includes("Literatür"));
+  kontrol("eşleşmeyen söylenir", (metinler()[1] ?? "").includes("açık bir iş yok"));
+
   const kuyruk = (await (await fetch(`${W}/kuyruk`, { headers: YETKI })).json()) as { id: string; tur: string }[];
-  kontrol("kuyrukta slot ve not", kuyruk.some((k) => k.tur === "slot") && kuyruk.some((k) => k.tur === "not"));
+  kontrol(
+    "kuyrukta slot, not ve durum",
+    ["slot", "not", "durum"].every((t) => kuyruk.some((k) => k.tur === t)),
+  );
 
   console.log("\ndüğme");
   cagrilar = [];
@@ -120,10 +132,13 @@ try {
     method: "POST",
     headers: YETKI,
     body: JSON.stringify({
+      // Yalnız notlu ve reddedilen bildirim doğurur; durum kaydı sessizce siliniyor.
       sonuclar: kuyruk.map((k) =>
         k.tur === "slot"
           ? { id: k.id, durum: "eklendi", not: "09:00 Literatür ile çakışıyor" }
-          : { id: k.id, durum: "reddedildi", sebep: "hatirla.json okunamadı" },
+          : k.tur === "not"
+            ? { id: k.id, durum: "reddedildi", sebep: "hatirla.json okunamadı" }
+            : { id: k.id, durum: "eklendi" },
       ),
     }),
   });

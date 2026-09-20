@@ -11,10 +11,13 @@ import {
   kuyrukOnayi,
   alanEsle,
   gunMesaji,
+  kapatCevabi,
+  kapatCoz,
   komutCoz,
   notKaydiniUygula,
   slotKaydiniUygula,
   tarihSozcugu,
+  type AnlikSlot,
   type KuyrukKaydi,
 } from "../src/ortak/bot.ts";
 import type { Hafta } from "../src/ortak/plan.ts";
@@ -81,6 +84,8 @@ kontrol("düz metin Todoist'e", esit(komutCoz("süt al yarın", BUGUN), { tur: "
 kontrol("/not", esit(komutCoz("/not  faturayı sor ", BUGUN), { tur: "not", metin: "faturayı sor" }));
 kontrol("/not boş hata", komutCoz("/not", BUGUN).tur === "hata");
 kontrol("/start yardım", komutCoz("/start", BUGUN).tur === "yardim");
+kontrol("/kapat", esit(komutCoz("/kapat  evden çık ", BUGUN), { tur: "kapat", metin: "evden çık" }));
+kontrol("/kapat boş hata", komutCoz("/kapat", BUGUN).tur === "hata");
 kontrol("bilinmeyen komut", komutCoz("/xyz", BUGUN).tur === "hata");
 
 kontrol(
@@ -238,6 +243,28 @@ const bos = gunMesaji("2026-09-22", BUGUN, anlik, { hata: "401" }, []);
 kontrol("plan yoksa söylenir", bos.includes("Bu günün planı yüklenmemiş."));
 kontrol("Todoist hatası söylenir", bos.includes("Görevler alınamadı: 401"));
 kontrol("anlık hiç yoksa", gunMesaji(BUGUN, BUGUN, null, [], []).includes("Argos henüz plan göndermedi."));
+
+console.log("\n/kapat hedefi");
+const aslot = (o: Partial<AnlikSlot>): AnlikSlot => ({
+  id: "s1", saat: "15:00", sureDk: 60, alan: "Serbest", konu: "Evden çık", durum: "planli", ...o,
+});
+const kSlotlar = [aslot({}), aslot({ id: "s2", saat: "16:00", konu: "Telafi" }), aslot({ id: "s3", saat: "20:00", konu: "", alan: "Spor" })];
+const kGorevler = [gorev({ id: "t1", icerik: "IELTS sınav tarihi al" }), gorev({ id: "t2", icerik: "Claude reddit'ine bak" })];
+const coz = (q: string) => kapatCoz(q, kSlotlar, kGorevler);
+
+kontrol("parça ad slotu bulur", esit(coz("evden"), { tur: "tek", hedef: { tur: "slot", id: "s1", ad: "15:00 Evden çık" } }));
+kontrol("saatle slot", esit(coz("16:00"), { tur: "tek", hedef: { tur: "slot", id: "s2", ad: "16:00 Telafi" } }));
+kontrol("konusuz slot alanıyla bulunur", esit(coz("spor"), { tur: "tek", hedef: { tur: "slot", id: "s3", ad: "20:00 Spor" } }));
+kontrol("Todoist görevi bulunur", esit(coz("ielts"), { tur: "tek", hedef: { tur: "gorev", id: "t1", ad: "IELTS sınav tarihi al" } }));
+kontrol("Türkçe harf farkı gözetilmez", coz("sinav").tur === "tek");
+kontrol("eşleşme yoksa yok", coz("fatura").tur === "yok");
+kontrol("boş sorgu yok", coz("   ").tur === "yok");
+
+const ikiz = kapatCoz("tez", [aslot({ id: "a", konu: "Tez okuma" }), aslot({ id: "b", saat: "18:00", konu: "Tez yazımı" })], []);
+kontrol("berabere kalanlar sorulur", ikiz.tur === "belirsiz" && ikiz.adaylar.length === 2);
+kontrol("belirsiz cevabı adayları sayar", ikiz.tur === "belirsiz" && kapatCevabi(ikiz, "tez").includes("Tez yazımı"));
+kontrol("tam ad beraberliği bozar", esit(kapatCoz("tez okuma", [aslot({ id: "a", konu: "Tez okuma" }), aslot({ id: "b", saat: "18:00", konu: "Tez okuma notları" })], []).tur, "tek"));
+kontrol("bulunamadı cevabı sorguyu kaçırır", kapatCevabi({ tur: "yok" }, "<x>").includes("&lt;x&gt;"));
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
 if (kalan > 0) process.exit(1);

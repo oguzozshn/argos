@@ -14,10 +14,13 @@
 import {
   YARDIM_METNI,
   gunMesaji,
+  kapatCevabi,
+  kapatCoz,
   komutCoz,
   kuyrukOnayi,
   kacis,
   tarihBasligi,
+  type AnlikSlot,
   type Anlik,
   type KuyrukKaydi,
   type KuyrukSonucu,
@@ -226,6 +229,38 @@ async function mesaj(env: Env, updateId: number, chatId: number, metin: string):
       await yaz(`✅ Todoist'e eklendi: ${kacis(gorev.icerik)}${gorev.tarihMetni ? ` · ${kacis(gorev.tarihMetni)}` : ""}`);
       return;
     }
+    case "kapat": {
+      const { slotlar, gorevler, gorevHatasi } = await acikIsler(env, bugun, bugun);
+      const uyari = gorevHatasi ? `\n⚠️ Todoist görevleri alınamadı: ${kacis(gorevHatasi)}` : "";
+      const sonuc = kapatCoz(k.metin, slotlar, gorevler);
+      if (sonuc.tur !== "tek") {
+        await yaz(kapatCevabi(sonuc, k.metin) + uyari);
+        return;
+      }
+      if (sonuc.hedef.tur === "gorev") {
+        try {
+          await kapat(env.TODOIST_TOKEN, sonuc.hedef.id);
+        } catch (e) {
+          await yaz(`❌ Kapatılamadı: ${kacis(e instanceof Error ? e.message : String(e))}`);
+          return;
+        }
+        await yaz(`✅ Görev kapatıldı: ${kacis(sonuc.hedef.ad)}`);
+        return;
+      }
+      // Slot Argos'un dosyasında; Worker yazamaz, kuyruğa bırakır.
+      const kayit: KuyrukKaydi = {
+        id: `u${updateId}`,
+        tur: "durum",
+        zaman: new Date().toISOString(),
+        tarih: bugun,
+        slotId: sonuc.hedef.id,
+        durum: "yapildi",
+        ad: sonuc.hedef.ad,
+      };
+      await env.ARGOS.put(KUYRUK + kayit.id, JSON.stringify(kayit));
+      await yaz(kuyrukOnayi(kayit, bugun));
+      return;
+    }
     case "slot":
     case "not": {
       // Kimlik güncellemeden türer: Telegram aynı mesajı yeniden yollarsa
@@ -244,9 +279,11 @@ async function mesaj(env: Env, updateId: number, chatId: number, metin: string):
 }
 
 /**
- * Düğmeler: `gun:<iso>` günü değiştirir, `gorev:<iso>:<id>` Todoist görevini
- * kapatır, `slot:<iso>:<slotId>` slotu "yapıldı" diye işaretler (kuyruğa).
- * Her durumda mesaj o günün güncel hâliyle yerinde yenilenir.
+ * Düğmeler: `gun:<iso>` günü değiştirir; mesaj yerinde yenilenir.
+ *
+ * `gorev:` ve `slot:` artık üretilmiyor — kapatma `/kapat <ad>` ile — ama
+ * sohbette duran eski mesajların düğmeleri hâlâ çalışsın diye karşılanıyor.
+ * Yenilenen mesaj zaten yeni klavyeyle döner.
  */
 async function dugme(
   env: Env,
@@ -291,33 +328,16 @@ async function dugme(
   await dugmeyiCevapla(env.TELEGRAM_TOKEN, q.id, cevap);
 }
 
-/** Telegram düğme yazısı dar: uzun ad kısaltılır. */
-const kisalt = (x: string, n = 24): string => (x.length <= n ? x : x.slice(0, n - 1) + "…");
-
 /**
- * Mesajın düğmeleri: işaretlenmemiş slotlar ve açık görevler için birer
- * tamamlama düğmesi, altta gün gezintisi. Telegram uzun klavyeyi kötü
- * gösteriyor: ilk üçer tane.
+ * Mesajın düğmeleri yalnız gün gezintisi. İşler zaten mesajın gövdesinde
+ * yazıyor; her biri için ayrı düğme listeyi ikinci kez, kırpılmış hâlde
+ * gösteriyordu. Kapatma artık `/kapat <ad>` ile.
  */
-function gunKlavyesi(
-  tarih: string,
-  bugun: string,
-  slotlar: { id: string; saat: string; konu: string; alan: string; durum: string }[],
-  gorevler: TodoistGorev[],
-  isaretlenen: Set<string>,
-): Klavye {
-  const satirlar: Klavye = [];
-  for (const s of slotlar.filter((x) => x.durum === "planli" && !isaretlenen.has(x.id)).slice(0, 3)) {
-    satirlar.push([{ text: `☑ ${s.saat} ${kisalt(s.konu || s.alan)}`, callback_data: `slot:${tarih}:${s.id}` }]);
-  }
-  for (const g of gorevler.slice(0, 3)) {
-    satirlar.push([{ text: `✅ ${kisalt(g.icerik)}`, callback_data: `gorev:${tarih}:${g.id}` }]);
-  }
+function gunKlavyesi(tarih: string, bugun: string): Klavye {
   const gez = [{ text: "🔄 Yenile", callback_data: `gun:${tarih}` }];
   if (tarih > bugun) gez.unshift({ text: "◀️ Önceki", callback_data: `gun:${gunEkle(tarih, -1)}` });
   gez.push({ text: "Sonraki ▶️", callback_data: `gun:${gunEkle(tarih, 1)}` });
-  satirlar.push(gez);
-  return satirlar;
+  return [gez];
 }
 
 /** Bir günün mesajı ve düğmeleri: KV'deki görünüm + kuyruk + canlı Todoist. */
@@ -327,18 +347,31 @@ async function gunIcerik(env: Env, tarih: string, bugun: string): Promise<{ meti
     bekleyenler(env),
     gununGorevleri(env, tarih, bugun),
   ]);
+  return { metin: gunMesaji(tarih, bugun, anlik, gorevler, kuyruk), klavye: gunKlavyesi(tarih, bugun) };
+}
+
+/**
+ * `/kapat`ın arayacağı açık işler: günün kapanmamış slotları — kuyrukta
+ * işaretlenmiş olanlar da düşer, iki kez kapatılmasın — ve Todoist görevleri.
+ * Todoist'e ulaşılamazsa slotlar yine aranır, hata cevaba eklenir.
+ */
+async function acikIsler(
+  env: Env,
+  tarih: string,
+  bugun: string,
+): Promise<{ slotlar: AnlikSlot[]; gorevler: TodoistGorev[]; gorevHatasi: string | null }> {
+  const [anlik, kuyruk, gorevler] = await Promise.all([
+    env.ARGOS.get<Anlik>(ANLIK, "json"),
+    bekleyenler(env),
+    gununGorevleri(env, tarih, bugun),
+  ]);
   const isaretlenen = new Set(
     kuyruk.filter((k) => k.tur === "durum" && k.tarih === tarih).map((k) => (k.tur === "durum" ? k.slotId : "")),
   );
   return {
-    metin: gunMesaji(tarih, bugun, anlik, gorevler, kuyruk),
-    klavye: gunKlavyesi(
-      tarih,
-      bugun,
-      anlik?.gunler[tarih]?.slotlar ?? [],
-      "hata" in gorevler ? [] : gorevler,
-      isaretlenen,
-    ),
+    slotlar: (anlik?.gunler[tarih]?.slotlar ?? []).filter((s) => s.durum === "planli" && !isaretlenen.has(s.id)),
+    gorevler: "hata" in gorevler ? [] : gorevler,
+    gorevHatasi: "hata" in gorevler ? gorevler.hata : null,
   };
 }
 
