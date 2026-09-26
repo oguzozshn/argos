@@ -48,7 +48,7 @@ import s from "./takvim.module.css";
 
 const kisaltAlan = (a: string): string => (a.length <= 4 ? a : a.slice(0, 3));
 
-const TIP_ADI: Record<string, string> = { ofis: "ofis", ev: "ev", haftaSonu: "h.sonu" };
+const TIP_ADI: Record<string, string> = { ofis: "ofis", ev: "ev" };
 /** Dar hücrede etiket kısalınca ipucu olarak tam adı. */
 const TIP_TAM: Record<string, string> = { ofis: "ofis günü", ev: "evden çalışma", haftaSonu: "hafta sonu" };
 
@@ -896,7 +896,8 @@ function AyIzgarasi({
             >
               <span className={s.hucreBas}>
                 <span className={s.gunNo}>{Number(iso.slice(8, 10))}</span>
-                {tip && (
+                {/* Hafta sonu sütun başlığında zaten yazıyor; etiket yalnızca iş günlerini ayırır. */}
+                {tip && tip !== "haftaSonu" && (
                   <span
                     className={tip === "ofis" ? `${s.gunTipi} ${s.tipOfis}` : s.gunTipi}
                     title={TIP_TAM[tip]}
@@ -1371,7 +1372,8 @@ function GunPaneliDosyali({
       <div className={s.panelBas}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p className={s.panelUst}>
-            {gun?.ad} · {TIP_ADI[tip]}
+            {gun?.ad}
+            {tip !== "haftaSonu" && ` · ${TIP_TAM[tip]}`}
           </p>
           <h2 className={s.panelBaslik}>{gun?.tarih ?? iso}</h2>
         </div>

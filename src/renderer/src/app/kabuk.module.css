@@ -230,6 +230,10 @@
   padding: var(--b8) var(--b7) var(--b9);
 }
 
+.icerikGenis {
+  max-width: var(--icerik-en-genis);
+}
+
 /* --- uyarı şeridi ------------------------------------------------------ */
 
 .serit {

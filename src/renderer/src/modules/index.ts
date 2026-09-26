@@ -60,6 +60,11 @@ export interface Modul {
    * kenar çubuğunda görünmez. Henüz ekranı olmayan modüller böyle durur.
    */
   rotalar: Rota[];
+  /**
+   * Ekran içerik genişlik sınırını (`--icerik-en`) aşsın mı. Metin ağırlıklı
+   * ekranlar dar kalır; ızgara gibi yayılması gerekenler geniş açılır.
+   */
+  genis?: boolean;
   /** Bugün ekranında görünecek kart. Modül isterse vermez. */
   Ozet?: ComponentType;
   /** Komut paletine verdiği eylemler. Ekranlara gitme komutları kabukta kendiliğinden üretilir. */

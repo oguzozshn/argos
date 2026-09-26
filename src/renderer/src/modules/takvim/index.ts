@@ -12,5 +12,7 @@ export const takvimModulu: Modul = {
   id: "takvim",
   ad: "Takvim",
   ikon: CalendarDays,
+  // Ay ızgarası ve gün paneli yan yana; 1080px'te hücreler sıkışıyordu.
+  genis: true,
   rotalar: [{ yol: "", ad: "Takvim", Ekran: Takvim }],
 };

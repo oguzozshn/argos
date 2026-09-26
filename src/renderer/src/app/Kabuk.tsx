@@ -19,7 +19,8 @@ import s from "./kabuk.module.css";
 function Yonlendirme() {
   const konum = useLocation();
   // Düşen ekranın adı söylensin; Bugün ekranında ad yok, genel metin kalır.
-  const modulAdi = moduller.find((m) => m.id === konum.pathname.split("/")[1])?.ad;
+  const modul = moduller.find((m) => m.id === konum.pathname.split("/")[1]);
+  const modulAdi = modul?.ad;
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
@@ -28,7 +29,7 @@ function Yonlendirme() {
         initial="giris"
         animate="duruyor"
         exit="cikis"
-        className={s.icerikIc}
+        className={modul?.genis ? `${s.icerikIc} ${s.icerikGenis}` : s.icerikIc}
       >
         <HataSiniri key={konum.pathname} ad={modulAdi}>
           <Routes location={konum}>

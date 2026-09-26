@@ -77,6 +77,7 @@
   --kenar-genislik: 236px;
   --baslik-yukseklik: 44px;
   --icerik-en: 1080px;
+  --icerik-en-genis: 1600px;
 
   /* --- hareket ------------------------------------------------------- */
   --sure-hizli: 120ms;
