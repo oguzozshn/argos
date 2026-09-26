@@ -22,6 +22,14 @@ import { dosyayiGuncelle } from "@/veri/guncelle";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
+import {
+  birakmayiCoz,
+  dakikaMetni,
+  gunBoyuAnahtari,
+  saateOtur,
+  sinirla,
+  type EksenOlcusu,
+} from "@ortak/gorev-zaman";
 import s from "./takvim.module.css";
 
 /**
@@ -68,10 +76,15 @@ const haftaninPazartesisi = (iso: string): string => gunEkle(iso, -haftaninGunu(
 /** Sürükleme ve boyutlandırma 15 dakikalık adımlarla. */
 const ADIM_DK = 15;
 
-const saatMetni = (dk: number): string =>
-  `${String(Math.floor(dk / 60)).padStart(2, "0")}:${String(dk % 60).padStart(2, "0")}`;
+const saatMetni = dakikaMetni;
 
-const sinirla = (x: number, alt: number, ust: number): number => Math.min(ust, Math.max(alt, x));
+/** Eksenin ölçüsü — piksel/dakika çevrimi @ortak/gorev-zaman'da. */
+const EKSEN_OLCU: EksenOlcusu = {
+  ilkSaat: ILK_SAAT,
+  sonSaat: SON_SAAT,
+  saatYuksekligi: SAAT_YUKSEKLIK,
+  adimDk: ADIM_DK,
+};
 
 /** Sürüklenen slotun o anki hayali yeri. */
 interface Tasima {
@@ -190,6 +203,12 @@ function EksenSutunu({
 
   const saatliGorevler = gorevler.filter((g) => gorevSaati(g) !== null);
 
+  // Sürüklenen görevin düşeceği dakika. Bırakmadan önce görünsün: 15 dakikalık
+  // adımla körlemesine bırakmak kullanılabilir değil.
+  const [onizleme, setOnizleme] = useState<number | null>(null);
+  const dakikayaCevir = (e: { clientY: number; currentTarget: Element }): number =>
+    saateOtur(e.clientY - e.currentTarget.getBoundingClientRect().top, EKSEN_OLCU);
+
   return (
     <div
       className={[dar ? `${s.slotSutunu} ${s.haftaSutun}` : s.slotSutunu, hedefSinifi(iso, surukle)]
@@ -205,7 +224,15 @@ function EksenSutunu({
         const dk = Math.floor(((y / SAAT_YUKSEKLIK) * 60 + ILK_SAAT * 60) / 30) * 30;
         duzen.ekle(kayit, iso, sinirla(dk, ILK_SAAT * 60, SON_SAAT * 60 - 60));
       }}
-      {...hedefOzellikleri(iso, surukle)}
+      {...hedefOzellikleri(iso, surukle, undefined, {
+        // Sütunun neresine bırakıldıysa o saat; anahtar sabit kalsa saat kaybolurdu.
+        birakAnahtari: (e) => {
+          setOnizleme(null);
+          return `${iso}T${saatMetni(dakikayaCevir(e))}`;
+        },
+        gezinme: (e) => setOnizleme(dakikayaCevir(e)),
+      })}
+      onDragLeaveCapture={() => setOnizleme(null)}
     >
       {Array.from({ length: (SON_SAAT - ILK_SAAT) * 2 + 1 }, (_, i) => (
         <div
@@ -224,6 +251,12 @@ function EksenSutunu({
           {!dar && <span className={s.bantEtiket}>{b.ad}</span>}
         </div>
       ))}
+
+      {onizleme !== null && (
+        <div className={s.saatOnizleme} style={{ top: yerDk(onizleme) }}>
+          <span className={s.saatOnizlemeEtiket}>{saatMetni(onizleme)}</span>
+        </div>
+      )}
 
       {slotlar.map((x) => {
         const t = duzen.tasima?.id === x.id ? duzen.tasima : null;
@@ -379,8 +412,17 @@ export function Takvim() {
   // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
   const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1), bugun);
 
+  // Anahtar hedefe göre değişiyor: "gün", "günTsaat" ya da "gün#gunboyu".
+  // Ay hücresi günü değiştirir ve saati korur; eksen saat verir; gün boyu
+  // şeridi saati siler.
   const surukle = useSurukle<TodoistGorev>(
-    useCallback((g: TodoistGorev, iso: string) => void td.tarihiDegistir(g, iso), [td]),
+    useCallback(
+      (g: TodoistGorev, anahtar: string) => {
+        const b = birakmayiCoz(anahtar);
+        if (b) void td.tarihiDegistir(g, b.iso, b.saat);
+      },
+      [td],
+    ),
   );
 
   const yil = Number(ayAnahtari.slice(0, 4));
@@ -617,6 +659,14 @@ export function Takvim() {
       {td.hata && (
         <p className={s.todoistHata}>
           Todoist'e ulaşılamadı — görevler gösterilmiyor. ({td.hata})
+        </p>
+      )}
+
+      {/* Anahtar yokken takvim hatasız ve görevsiz görünürdü; sebebi söylenmiyordu. */}
+      {td.anahtarYok && !td.hata && (
+        <p className={s.todoistHata}>
+          Todoist anahtarı tanımlı değil — görevler gösterilmiyor. Ayarlar'dan anahtar
+          dosyasını seç.
         </p>
       )}
 
@@ -977,7 +1027,10 @@ function HaftaEkseni({
             <div
               key={iso}
               className={[s.gunBoyuHucre, hedefSinifi(iso, surukle)].filter(Boolean).join(" ")}
-              {...hedefOzellikleri(iso, surukle)}
+              {...hedefOzellikleri(iso, surukle, undefined, {
+                // Gün boyu şeridine bırakmak "saati kaldır" demek.
+                birakAnahtari: () => gunBoyuAnahtari(iso),
+              })}
             >
               {(gorevler.get(iso) ?? [])
                 .filter((g) => gorevSaati(g) === null)

@@ -82,17 +82,34 @@ export function kaynakOzellikleri<Y>(
 const kabulEder = <Y,>(sr: SurukleDurumu<Y>, kabul?: (yuk: Y) => boolean): boolean =>
   sr.aktif !== null && (!kabul || kabul(sr.aktif));
 
+/**
+ * Hedefin içindeki konumu da önemliyse verilen kancalar. Takvim ekseninde
+ * bırakılan görev sütunun neresine düştüğüne göre saat alıyor.
+ *
+ * `gezinme` ayrı bir `onDragOver` yazmak yerine kanca olarak veriliyor:
+ * yayılan nitelikten sonra kendi `onDragOver`'ını yazan hedef, buradaki
+ * `preventDefault`'u ezer ve bırakma hiç çalışmaz.
+ */
+export interface HedefSecenegi {
+  /** Bırakma anında anahtarı olaydan üretir; verilmezse sabit anahtar kullanılır. */
+  birakAnahtari?: (e: DragEvent) => string;
+  /** Sürükleme hedefin üstünde gezerken; saat önizlemesi için. */
+  gezinme?: (e: DragEvent) => void;
+}
+
 /** Bırakma hedefinin nitelikleri. Kabul etmeyen hedef hiç dinlemez. */
 export function hedefOzellikleri<Y>(
   anahtar: string,
   sr: SurukleDurumu<Y>,
   kabul?: (yuk: Y) => boolean,
+  secenek: HedefSecenegi = {},
 ) {
   if (!kabulEder(sr, kabul)) return {};
   return {
     onDragOver: (e: DragEvent) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move" as const;
+      secenek.gezinme?.(e);
     },
     onDragEnter: () => sr.uzerinde(anahtar),
     onDragLeave: () => sr.uzerinde(null),
@@ -100,7 +117,7 @@ export function hedefOzellikleri<Y>(
       e.preventDefault();
       // İç hedef dıştakine de düşmesin: slota bırakılan görev güne düşmez.
       e.stopPropagation();
-      sr.birak(anahtar);
+      sr.birak(secenek.birakAnahtari?.(e) ?? anahtar);
     },
   };
 }

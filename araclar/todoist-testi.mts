@@ -21,6 +21,7 @@ import {
   projeler,
   tarihVer,
 } from "../src/main/todoist-cekirdek.ts";
+import { todoistTarihi } from "../src/ortak/gorev-zaman.ts";
 import { gizliYolu } from "./yol.mts";
 
 const PLAN_PROJESI = "6CrfrPC6f3G6wCMG";
@@ -108,6 +109,17 @@ async function sahteBolum(): Promise<void> {
 
   await tarihVer("T", "42", null);
   kontrol("tarih kaldırma 'no date' gönderir", sonIstek?.govde?.due_string === "no date");
+
+  // Takvimde göreve saat verme bu biçimi üretiyor (@ortak/gorev-zaman
+  // todoistTarihi). Todoist ISO "T" ayırıcısını due_string olarak çözmüyor.
+  await tarihVer("T", "42", todoistTarihi("2026-09-26", "14:30"));
+  kontrol(
+    "saatli taşıma 'GG SS:DD' biçiminde gider",
+    sonIstek?.govde?.due_string === "2026-09-26 14:30",
+    String(sonIstek?.govde?.due_string),
+  );
+  await tarihVer("T", "42", todoistTarihi("2026-09-26", null));
+  kontrol("gün boyuna çevirmede saat gitmez", sonIstek?.govde?.due_string === "2026-09-26");
 
   await kapat("T", "42");
   kontrol("kapat /close ucuna gider", sonIstek?.url.endsWith("/tasks/42/close"));

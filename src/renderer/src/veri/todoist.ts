@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  gorevSaati as saatiCoz,
+  hedefSaat,
+  iyimserTarih,
+  tasimaGereksiz,
+  todoistTarihi,
+  type BirakmaSaati,
+} from "@ortak/gorev-zaman";
 import type { TodoistGorev } from "@ortak/tipler";
 import { silVeBildir } from "@/ui/toast";
 import { kopru } from "./kanca";
@@ -11,16 +19,12 @@ import { kopru } from "./kanca";
 
 const mesaj = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-/** Saatli görevin saati; saatsizse null (gün boyu). */
-export const gorevSaati = (g: TodoistGorev): string | null =>
-  g.tarih && g.tarih.length > 10 ? g.tarih.slice(11, 16) : null;
-
 /**
- * Todoist'e yazılacak tarih metni. Doğal dil değil, düz ISO: sürükleme
- * kullanıcının yazdığı bir şey değil, bizim ürettiğimiz kesin tarih.
+ * Saatli görevin saati; saatsizse null (gün boyu). Mantık @ortak/gorev-zaman'da
+ * (düz Node ile test edilebilmesi için); burada görev nesnesini alan sarmalı
+ * duruyor, çağıranlar bunu kullanıyor.
  */
-const tarihMetni = (iso: string, saat: string | null): string =>
-  saat ? `${iso} ${saat}` : iso;
+export const gorevSaati = (g: TodoistGorev): string | null => saatiCoz(g.tarih);
 
 export interface AralikDurumu {
   gorevler: TodoistGorev[];
@@ -37,8 +41,12 @@ export interface AralikDurumu {
   /** Yeni görev — Inbox'a gider, tarihi verilen gün. */
   /** Eklendiyse true; hata `hata`da. Çağıran metni yalnızca başarıda temizlesin. */
   ekle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
-  /** Görevi başka güne taşır; saati varsa saat korunur. */
-  tarihiDegistir: (g: TodoistGorev, iso: string) => Promise<void>;
+  /**
+   * Görevi başka güne/saate taşır. `saat` verilmezse görevin kendi saati
+   * korunur; `{ tur: "ver" }` saat yazar, `{ tur: "sil" }` görevi gün boyu
+   * yapar.
+   */
+  tarihiDegistir: (g: TodoistGorev, iso: string, saat?: BirakmaSaati) => Promise<void>;
 }
 
 export function useTodoistAralik(basIso: string, sonIso: string, bugun: string): AralikDurumu {
@@ -173,7 +181,7 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
         const yeni = await k.todoist.ekle({
           icerik: metin,
           projeId: inbox.current,
-          tarihMetni: tarihMetni(iso, saat ?? null),
+          tarihMetni: todoistTarihi(iso, saat ?? null),
         });
         setGorevler((x) => [...x, yeni]);
         setHata(null);
@@ -187,11 +195,13 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
   );
 
   const tarihiDegistir = useCallback(
-    async (g: TodoistGorev, iso: string) => {
+    async (g: TodoistGorev, iso: string, istek: BirakmaSaati = { tur: "koru" }) => {
       const k = kopru();
       if (!k) return;
-      if (g.tarih?.slice(0, 10) === iso) return;
-      const saat = gorevSaati(g);
+      // Gün de saat de aynıysa istek atmaya gerek yok. Eskiden yalnız gün
+      // karşılaştırılıyordu, o yüzden aynı gün içinde saat değiştirilemiyordu.
+      if (tasimaGereksiz(g.tarih, iso, istek)) return;
+      const saat = hedefSaat(g.tarih, istek);
 
       // Gecikmiş görev görünen aralığın dışından gelebilir; o zaman listede
       // yok, eklenmesi gerekir. Yerine koymak yetmiyor.
@@ -201,11 +211,11 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
       const listedeydi = gorevler.some((y) => y.id === g.id);
 
       // İyimser: görev hemen yeni güne geçer, istek düşerse eski hâli geri gelir.
-      setGorevler(koy({ ...g, tarih: saat ? `${iso}T${saat}:00` : iso }));
+      setGorevler(koy({ ...g, tarih: iyimserTarih(iso, saat) }));
       if (iso >= bugun) setGecikmisler(at(g.id));
 
       try {
-        const guncel = await k.todoist.tarihVer(g.id, tarihMetni(iso, saat));
+        const guncel = await k.todoist.tarihVer(g.id, todoistTarihi(iso, saat));
         setGorevler(koy(guncel));
         setHata(null);
       } catch (e) {
