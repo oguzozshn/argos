@@ -1357,7 +1357,8 @@ function GorevEkle({ iso, onEkle }: { iso: string; onEkle: GorevEkleFn }) {
         <input
           ref={girdi}
           className={s.gorevEkleGiris}
-          placeholder="Görev ekle — sona 18:00 yazılabilir"
+          placeholder="Görev ekle"
+          title="Sona saat yazılabilir: Spor 18:00"
           value={metin}
           onChange={(e) => setMetin(e.target.value)}
           onKeyDown={(e) => e.key === "Escape" && setSecici(false)}

@@ -156,7 +156,7 @@ export function HizliYakala() {
           ) : onizleme?.ceviri ? (
             <span className={s.vurgu}>
               <CalendarClock size={14} /> {tarihMetniTurkce(onizleme.ceviri)}
-              <span className={s.soluk}> · „{onizleme.tarih}" tarih olarak alınacak</span>
+              <span className={s.soluk}> · “{onizleme.tarih}” tarih olarak alınacak</span>
             </span>
           ) : (
             <span className={s.soluk}>

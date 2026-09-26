@@ -902,6 +902,11 @@
   color: var(--metin);
 }
 
+.gorevEkleGiris:focus-visible {
+  /* Çerçeveyi satırın kendisi çiziyor; içteki ikinci halka fazlaydı. */
+  outline: none;
+}
+
 .gorevEkleGiris::placeholder {
   color: var(--metin-soluk);
 }
