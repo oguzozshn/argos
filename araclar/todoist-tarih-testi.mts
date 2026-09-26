@@ -5,7 +5,7 @@
  * kullanıcının görevi sessizce tarihsiz ya da yanlış güne düşer.
  */
 
-import { tarihMetniTurkce, tekrarAdi, tekrarMetni, todoistTarihMetni } from "../src/ortak/todoist-tarih.ts";
+import { hizliMetniCevir, tarihMetniTurkce, tekrarAdi, tekrarMetni, todoistTarihMetni } from "../src/ortak/todoist-tarih.ts";
 
 let gecen = 0;
 let kalan = 0;
@@ -81,6 +81,27 @@ esit("hafta içi", tarihMetniTurkce("every weekday"), "hafta içi her gün");
 esit("tanınmayan dokunulmaz", tarihMetniTurkce("every 3rd friday"), "every 3rd friday");
 esit("eski Türkçe metin dokunulmaz", tarihMetniTurkce("her pazartesi"), "her pazartesi");
 esit("null", tarihMetniTurkce(null), null);
+
+esit("gün adı", tarihMetniTurkce("friday"), "cuma");
+esit("haftaya", tarihMetniTurkce("next monday"), "haftaya pazartesi");
+esit("n gün sonra", tarihMetniTurkce("in 2 days"), "2 gün sonra");
+esit("ay günü", tarihMetniTurkce("sep 25"), "25 Eyl");
+esit("yarın saatli", tarihMetniTurkce("tomorrow at 18:00"), "yarın 18:00");
+
+console.log("Hızlı ekleme satırı");
+const hizli = (m: string) => hizliMetniCevir(m).metin;
+esit("sondaki tarih", hizli("fatura öde yarın 18:00"), "fatura öde tomorrow at 18:00");
+esit("işaretler yerinde kalır", hizli("fatura öde yarın 18:00 #Ev @iş p1"), "fatura öde tomorrow at 18:00 #Ev @iş p1");
+esit("tekrar", hizli("İngilizce çalış her gün 07:00 #Gelişim"), "İngilizce çalış every day at 07:00 #Gelişim");
+esit("baştaki tarih", hizli("her salı ve perşembe spor"), "every tue, thu spor");
+esit("aylık", hizli("kira öde her ayın 15'i"), "kira öde every 15th");
+esit("en sağdaki seçilir", hizli("pazar alışverişi yarın"), "pazar alışverişi tomorrow");
+esit("tarih yoksa dokunulmaz", hizli("süt al #Ev"), "süt al #Ev");
+esit("İngilizce dokunulmaz", hizli("call mom every friday"), "call mom every friday");
+esit("kısa kısaltma tek başına tarih değil", hizli("wash car"), "wash car");
+esit("görev adı tarihin kendisiyse dokunulmaz", hizli("Pazar"), "Pazar");
+esit("yalnız işaretle görev adı sayılmaz", hizli("yarın #Ev"), "yarın #Ev");
+esit("yakalanan parça söylenir", hizliMetniCevir("rapor gönder cuma 17:00 p2").tarih, "cuma 17:00");
 
 console.log(`\n${gecen} geçti, ${kalan} kaldı`);
 if (kalan > 0) process.exit(1);

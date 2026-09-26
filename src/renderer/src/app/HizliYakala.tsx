@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { AlertTriangle, Check, CornerDownLeft, Inbox } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, CornerDownLeft, Inbox } from "lucide-react";
 import type { TodoistGorev } from "@ortak/tipler";
+import { hizliMetniCevir, tarihMetniTurkce } from "@ortak/todoist-tarih";
 import { cozulmusTema } from "@/ui/tema";
 import { kopru } from "@/veri/kanca";
 import s from "./hizliYakala.module.css";
@@ -24,6 +25,8 @@ const EKLENDI_SURE = 1100;
 
 const tarihMetni = (g: TodoistGorev): string | null => {
   if (!g.tarih) return null;
+  // Tekrarlı görevde ilk günü değil düzeni söyle: "her salı 18:00".
+  if (g.tekrarli && g.tarihMetni) return g.tarihMetni;
   const [y, a, gun] = g.tarih.slice(0, 10).split("-").map(Number);
   const tarih = new Date(y!, a! - 1, gun!).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "short" });
   const saat = g.tarih.length > 10 ? g.tarih.slice(11, 16) : "";
@@ -108,6 +111,8 @@ export function HizliYakala() {
   };
 
   const tarih = durum.tur === "eklendi" ? tarihMetni(durum.gorev) : null;
+  // Todoist'e gitmeden hangi parçanın tarih sayılacağı görünsün: sihir görünmezse güvenilmez.
+  const onizleme = durum.tur === "bos" ? hizliMetniCevir(metin) : null;
 
   return (
     <div className={s.zemin}>
@@ -126,7 +131,7 @@ export function HizliYakala() {
               }
             }}
             onKeyDown={tus}
-            placeholder="Görev ekle — yarın 18:00 fatura öde #Ev p1"
+            placeholder="Görev ekle — fatura öde her ayın 15'i #Ev p1"
             aria-label="Hızlı görev"
             spellCheck={false}
             // disabled değil: odak kutuda kalsın, hata sonrası hemen düzeltilebilsin.
@@ -148,9 +153,14 @@ export function HizliYakala() {
             </span>
           ) : durum.tur === "gonderiliyor" ? (
             <span className={s.soluk}>Todoist'e gönderiliyor…</span>
+          ) : onizleme?.ceviri ? (
+            <span className={s.vurgu}>
+              <CalendarClock size={14} /> {tarihMetniTurkce(onizleme.ceviri)}
+              <span className={s.soluk}> · „{onizleme.tarih}" tarih olarak alınacak</span>
+            </span>
           ) : (
             <span className={s.soluk}>
-              <b>#</b>proje · <b>@</b>etiket · <b>p1</b>–p4 · tarih doğal dille · Enter ekler · Esc kapatır
+              <b>#</b>proje · <b>@</b>etiket · <b>p1</b>–p4 · yarın 18:00, her salı · Enter ekler · Esc kapatır
             </span>
           )}
         </div>

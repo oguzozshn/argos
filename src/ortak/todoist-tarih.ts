@@ -168,6 +168,18 @@ function gunCevir(m: string): string | null {
   return null;
 }
 
+/** Türkçe tarih ya da tekrar ifadesinin İngilizcesi; tanınmazsa null. */
+export function turkceTarihCevir(metin: string): string | null {
+  const { govde, saat } = saatAyir(kucult(metin));
+  const zamanli = (x: string) => (saat ? (x ? `${x} at ${saat}` : `today at ${saat}`) : x);
+
+  const tekrar = tekrarCevir(govde);
+  if (tekrar) return zamanli(tekrar);
+  const gun = gunCevir(govde);
+  if (gun !== null && (gun || saat)) return zamanli(gun);
+  return null;
+}
+
 /**
  * Kullanıcının yazdığı tarih metnini Todoist'in anlayacağı İngilizceye çevirir.
  * Tanınmayan metin olduğu gibi döner; `dil` her durumda İngilizcedir.
@@ -176,15 +188,47 @@ export function todoistTarihMetni(metin: string): { metin: string; dil: "en" } {
   const ham = metin.trim();
   // Zaten tarih + saat ya da İngilizce yazılmışsa dokunma.
   if (/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(ham)) return { metin: ham, dil: "en" };
+  return { metin: turkceTarihCevir(ham) ?? ham, dil: "en" };
+}
 
-  const { govde, saat } = saatAyir(kucult(ham));
-  const zamanli = (x: string) => (saat ? (x ? `${x} at ${saat}` : `today at ${saat}`) : x);
+/* --- hızlı ekleme satırı -------------------------------------------------- */
 
-  const tekrar = tekrarCevir(govde);
-  if (tekrar) return { metin: zamanli(tekrar), dil: "en" };
-  const gun = gunCevir(govde);
-  if (gun !== null && (gun || saat)) return { metin: zamanli(gun), dil: "en" };
-  return { metin: ham, dil: "en" };
+/** Todoist'in kendi işaretleri: proje, etiket, bölüm, öncelik. Tarih sayılmaz. */
+const isaretMi = (s: string): boolean => /^[#@/+]/.test(s) || /^p[1-4]$/i.test(s);
+
+/** Bir tarih ifadesi en çok bu kadar sözcük: "her pazartesi ve perşembe saat 18.30". */
+const EN_UZUN = 7;
+
+/**
+ * Hızlı ekleme satırında ("fatura öde yarın 18:00 #Ev p1") Türkçe tarih
+ * parçasını bulup yerinde İngilizcesiyle değiştirir; Todoist Quick Add
+ * Türkçe tarih tanımadığından gerisini (proje, etiket, öncelik) kendisi çözer.
+ *
+ * Tarih çoğunlukla sona yazılır: en sağdaki, sonra en uzun eşleşme seçilir.
+ * Tek sözcüklük parça kısa kısaltmaysa ("car", "per") tarih sayılmaz — görev
+ * metnindeki sıradan bir sözcük tarihe dönmesin.
+ */
+export function hizliMetniCevir(metin: string): { metin: string; tarih: string | null; ceviri: string | null } {
+  const sozcukler = metin.trim().split(/\s+/).filter(Boolean);
+  for (let son = sozcukler.length; son > 0; son--) {
+    for (let bas = Math.max(0, son - EN_UZUN); bas < son; bas++) {
+      const parca = sozcukler.slice(bas, son);
+      if (parca.some(isaretMi)) continue;
+      if (parca.length === 1 && parca[0]!.length < 4 && !/\d/.test(parca[0]!)) continue;
+      // Görevin kendisinden bir sözcük kalmalı: "Pazar" tek başına görev adıdır.
+      const kalan = [...sozcukler.slice(0, bas), ...sozcukler.slice(son)].filter((x) => !isaretMi(x));
+      if (kalan.length === 0) continue;
+      const tarih = parca.join(" ");
+      const ceviri = turkceTarihCevir(tarih);
+      if (!ceviri) continue;
+      return {
+        metin: [...sozcukler.slice(0, bas), ceviri, ...sozcukler.slice(son)].join(" "),
+        tarih,
+        ceviri,
+      };
+    }
+  }
+  return { metin: metin.trim(), tarih: null, ceviri: null };
 }
 
 /* --- takvimden seçilen tekrar ------------------------------------------- */
@@ -265,6 +309,17 @@ export function tarihMetniTurkce(metin: string | null): string | null {
   else if (m === "every last day") tr = "her ayın son günü";
   else if (m === "today") tr = "bugün";
   else if (m === "tomorrow") tr = "yarın";
+  else if (m === "next week") tr = "haftaya";
+  else if (m === "next month") tr = "gelecek ay";
+  else if (GUN_EN.includes(m)) tr = GUN_TR[GUN_EN.indexOf(m)]!;
+  else if (/^next \w+day$/.test(m) && GUN_EN.includes(m.slice(5))) tr = `haftaya ${GUN_TR[GUN_EN.indexOf(m.slice(5))]}`;
+  else if (/^in \d+ (day|week|month)s?$/.test(m)) {
+    const [, n, b] = m.match(/^in (\d+) (day|week|month)/)!;
+    tr = `${n} ${BIRIM_TR[b!]} sonra`;
+  } else if (/^\w{3} \d{1,2}( \d{4})?$/.test(m) && AY_EN.includes(m.slice(0, 3))) {
+    const [a, g, y] = m.split(" ");
+    tr = `${Number(g)} ${AY_TR_KISA[AY_EN.indexOf(a!)]}${y ? ` ${y}` : ""}`;
+  }
   else if (/^every (day|week|month|year)$/.test(m)) tr = `her ${BIRIM_TR[m.slice(6)]}`;
   else {
     const n = m.match(/^every (\d+) (day|week|month|year)s$/);

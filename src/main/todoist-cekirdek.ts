@@ -1,7 +1,7 @@
 // Uzantı açıkça yazılı: bu dosya düz Node ile de koşuyor (araclar/todoist-testi.mts)
 // ve Node'un ESM çözümleyicisi uzantısız yolu bulmuyor.
 import { PLAN_PROJESI, type TodoistGorev, type TodoistProje } from "../ortak/tipler.ts";
-import { tarihMetniTurkce, todoistTarihMetni } from "../ortak/todoist-tarih.ts";
+import { hizliMetniCevir, tarihMetniTurkce, todoistTarihMetni } from "../ortak/todoist-tarih.ts";
 
 /**
  * Todoist istemcisinin çekirdeği. Electron'a bağlı DEĞİLDİR ve anahtarı
@@ -186,11 +186,13 @@ export async function ekle(token: string, g: YeniGorev): Promise<TodoistGorev> {
 
 /**
  * Doğal dil hızlı ekleme (Todoist Quick Add): proje (#), etiket (@), öncelik
- * (p1–p4) ve tarih metinden sunucuda çözülür. Dil hesabın dil ayarından gelir.
+ * (p1–p4) ve tarih metinden sunucuda çözülür. Türkçe tarih önce İngilizceye çevrilir.
  */
 export async function hizliEkle(token: string, metin: string): Promise<TodoistGorev> {
   try {
-    return gorevCevir(await istek<HamGorev>(token, "/tasks/quick", "POST", { text: metin }));
+    // Quick Add Türkçe tarih tanımıyor: tarih parçası İngilizceye çevrilip gider.
+    const text = hizliMetniCevir(metin).metin;
+    return gorevCevir(await istek<HamGorev>(token, "/tasks/quick", "POST", { text }));
   } catch (e) {
     // Zaman aşımında sunucu görevi yine de eklemiş olabilir; "yeniden dene"
     // körü körüne ikinci bir kopya yaratır.

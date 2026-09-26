@@ -103,3 +103,8 @@
 .hata {
   color: var(--hata);
 }
+
+/* Yazılan metinde tarih yakalandığında önizleme. */
+.vurgu {
+  color: var(--vurgu);
+}

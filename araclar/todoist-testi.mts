@@ -132,8 +132,8 @@ async function sahteBolum(): Promise<void> {
   const hizli = await hizliEkle("T", "yarın 18:00 fatura öde #Ev p1");
   kontrol("hızlı ekleme POST /tasks/quick", sonIstek?.url.endsWith("/tasks/quick") && sonIstek.yontem === "POST");
   kontrol(
-    "hızlı eklemede satır ayrıştırılmadan text olarak gider",
-    sonIstek?.govde?.text === "yarın 18:00 fatura öde #Ev p1" && sonIstek.govde.content === undefined,
+    "hızlı eklemede satır tek text olarak gider, yalnız Türkçe tarih çevrilir",
+    sonIstek?.govde?.text === "tomorrow at 18:00 fatura öde #Ev p1" && sonIstek.govde.content === undefined,
   );
   kontrol(
     "hızlı ekleme cevabı göreve çevrilir",
