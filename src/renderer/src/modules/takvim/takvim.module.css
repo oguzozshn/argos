@@ -198,53 +198,168 @@
 
 .panelBas {
   display: flex;
-  align-items: flex-start;
-  gap: var(--b2);
+  align-items: center;
+  gap: var(--b3);
+  padding-bottom: var(--b3);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.panelGunNo {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.panelBasMetin {
+  flex: 1;
+  min-width: 0;
 }
 
 .panelBaslik {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--y2);
+  font-size: var(--y3);
+  line-height: 1.3;
 }
 
-.panelUst {
+.panelAlt {
   font-size: var(--y5);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
   color: var(--metin-soluk);
 }
 
-.panelSlot {
+.panelEylemler {
   display: flex;
-  align-items: center;
-  gap: var(--b2);
-  padding: 6px 0;
-  border-bottom: 1px solid var(--cizgi);
-  font-size: var(--y4);
-}
-
-.panelSlotSaat {
-  font-variant-numeric: tabular-nums;
+  gap: 2px;
   color: var(--metin-soluk);
-  width: 40px;
-  flex-shrink: 0;
 }
 
-.panelSlotAd {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* --- günün tek listesi --------------------------------------------------- */
 
-.panelDip {
+.gunListe {
   display: flex;
   flex-direction: column;
+}
+
+.gunSatir {
+  display: flex;
+  align-items: flex-start;
   gap: var(--b2);
-  padding-top: var(--b3);
-  border-top: 1px solid var(--cizgi);
+  /* Vurgu zemini yazının iki yanından taşsın, hizası bozulmasın. */
+  width: calc(100% + 12px);
+  box-sizing: border-box;
+  padding: 7px 6px;
+  margin: 0 -6px;
+  border: none;
+  border-radius: var(--r1);
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: inherit;
+  text-align: left;
+}
+
+.gunSatir:hover {
+  background: var(--zemin-alt);
+}
+
+.gunSlot {
+  cursor: pointer;
+}
+
+.gunSlotSecili,
+.gunSlotSecili:hover {
+  background: var(--vurgu-yumusak);
+}
+
+/* Bitmiş slot soluk durur; üstü çizilmez, okunur kalsın. */
+.gunSatirBitti {
+  opacity: 0.55;
+}
+
+.gunSatirSaat {
+  width: 38px;
+  flex-shrink: 0;
+  color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+
+.gunCubuk {
+  align-self: stretch;
+  width: 3px;
+  flex-shrink: 0;
+  border-radius: var(--r-tam);
+  background: var(--vurgu);
+}
+
+.gunCubukIyi {
+  background: var(--iyi);
+}
+
+.gunCubukHata {
+  background: var(--hata);
+}
+
+.gunCubukSoluk {
+  background: var(--cizgi-koyu);
+}
+
+.gunSatirMetin {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gunSatirAd {
+  flex: 1;
+  min-width: 0;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.gunSatirKonu {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.gunKutucuk {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: var(--r-tam);
+  border: 1.5px solid var(--cizgi-koyu);
+  background: none;
+  cursor: pointer;
+}
+
+.gunKutucuk:hover {
+  border-color: var(--iyi);
+  background: var(--iyi-yumusak);
+}
+
+.gunDurum {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--metin-soluk);
+}
+
+.gunDurumIyi {
+  color: var(--iyi);
+}
+
+.gunDurumHata {
+  color: var(--hata);
+}
+
+.gunAyrac {
+  height: 1px;
+  margin: var(--b2) 0;
+  background: var(--cizgi);
 }
 
 .rapor {
@@ -673,23 +788,6 @@
   margin-top: var(--b2);
 }
 
-.panelGorev {
-  display: flex;
-  align-items: center;
-  gap: var(--b2);
-  padding: 6px 0;
-  border-bottom: 1px solid var(--cizgi);
-  font-size: var(--y4);
-}
-
-.panelGorevAd {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* --- sürükleme ------------------------------------------------------------ */
 
 /* Tekrarlı görev sürüklenmez: tarihi yazmak tekrar düzenini siler. */
@@ -760,33 +858,57 @@
 
 /* --- görev ekleme --------------------------------------------------------- */
 
-/* Boş durumun devamı gibi okunmasın diye üstten ayrılıyor. */
+/* Listenin son satırı gibi durur; odaklanınca kutu belirir. */
 .gorevEkle {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--b2);
-  margin-top: var(--b3);
-  padding-top: var(--b3);
-  border-top: 1px solid var(--cizgi);
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border: 1px solid transparent;
+  border-radius: var(--r1);
+  color: var(--metin-soluk);
 }
 
-/* Metin alanı yeri alır; düğme kendi genişliğinde kalır. */
-.gorevEkle > *:first-child {
+.gorevEkle:hover {
+  background: var(--zemin-alt);
+}
+
+.gorevEkle:focus-within {
+  background: var(--kart);
+  border-color: var(--vurgu);
+  box-shadow: 0 0 0 3px var(--vurgu-yumusak);
+}
+
+.gorevEkleIkon {
+  flex-shrink: 0;
+}
+
+.gorevEkleGiris {
   flex: 1;
   min-width: 0;
+  padding: 5px 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
 }
 
-.gorevEkleNot {
-  flex: 0 0 100%;
-  font-size: var(--y5);
+.gorevEkleGiris::placeholder {
   color: var(--metin-soluk);
-  line-height: 1.4;
 }
 
-/* Saat yakalandığında ne olacağı okunur biçimde söylenir. */
-.gorevEkleNotSaat {
-  color: var(--vurgu);
+/* Yakalanan saat kutunun içinde çip olarak görünür. */
+.gorevEkleSaat {
+  flex-shrink: 0;
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: var(--r-tam);
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu-koyu);
 }
 
 /* Todoist'e ulaşılamadığında: plan görünmeye devam eder, görev yokluğu açıklanır. */
@@ -870,23 +992,6 @@
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--vurgu);
-}
-
-/* Gün panelinde slot satırı tıklanınca eksendeki gibi seçilir. */
-button.panelSlot {
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid var(--cizgi);
-  background: none;
-  font: inherit;
-  font-size: var(--y4);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.panelSlotSecili {
-  background: var(--vurgu-yumusak);
 }
 
 /* Gecikmiş şeridinin kapalı hâli: tek satırlık çip. */

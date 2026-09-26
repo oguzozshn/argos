@@ -1,6 +1,6 @@
-import { CalendarOff, ChevronLeft, ChevronRight, History, Plus, RefreshCw } from "lucide-react";
+import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, History, Plus, RefreshCw, X } from "lucide-react";
 import type { Uygulama } from "@ortak/bot";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
@@ -8,7 +8,7 @@ import { dakika, gununSlotlari, kuralSetiTamamla, type KuralSeti } from "@ortak/
 import { gunBosalt, gunTipi, slotEkle, slotuYerlestir, type BosaltRaporu } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Kisayollar } from "@/ui/Kisayollar";
-import { Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { SlotPaneli } from "@/ui/SlotPaneli";
 import {
   hedefOzellikleri,
@@ -1176,45 +1176,140 @@ function GunEkseni({
 
 /* --- gün paneli ---------------------------------------------------------- */
 
-/**
- * Günün görevleri ve yeni görev satırı. Görev Inbox'a gider: `Gelişim Planı`
- * slotların projesi, kişisel görev oraya yazılmaz.
- */
-function GorevBolumu({
-  iso,
-  gorevler,
-  onKapat,
-  onEkle,
-  surukle,
-}: {
-  iso: string;
-  gorevler: TodoistGorev[];
-  onKapat: (g: TodoistGorev) => Promise<void>;
-  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
-  surukle: Surukle;
-}) {
+/** Slot durumunun okunur adı; ham anahtar (`kacti`) arayüze çıkmaz. */
+const DURUM_ADI: Record<string, string> = {
+  planli: "Planlı",
+  yapildi: "Yapıldı",
+  kacti: "Kaçtı",
+  tasindi: "Taşındı",
+};
+
+/** Başlık: büyük gün numarası, altında gün adı, ay ve gün tipi. */
+function PanelBasi({ iso, tip, eylemler }: { iso: string; tip?: string; eylemler?: ReactNode }) {
+  const alt = [AY_TAM[Number(iso.slice(5, 7)) - 1], tip && tip !== "haftaSonu" ? TIP_TAM[tip] : null]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <>
-      <p className={s.panelBolum}>Görevler</p>
-      {gorevler.length === 0 && <p className={s.aciklama}>Bu güne görev yok.</p>}
-      {gorevler.map((g) => (
-        <div key={g.id} className={s.panelGorev} {...gorevKaynagi(g, surukle)}>
-          <button
-            type="button"
-            className={s.gorevKutucuk}
-            onClick={() => void onKapat(g)}
-            title="Tamamla"
-            aria-label={`${g.icerik} görevini tamamla`}
-          />
-          <span className={s.panelGorevAd}>{g.icerik}</span>
-          {gorevSaati(g) && <span className={s.aciklama}>{gorevSaati(g)}</span>}
-        </div>
-      ))}
-      <GorevEkle iso={iso} onEkle={onEkle} />
-    </>
+    <div className={s.panelBas}>
+      <span className={s.panelGunNo}>{Number(iso.slice(8, 10))}</span>
+      <div className={s.panelBasMetin}>
+        <h2 className={s.panelBaslik}>{GUN_ADLARI[haftaninGunu(iso)]}</h2>
+        <p className={s.panelAlt}>{alt}</p>
+      </div>
+      {eylemler && <div className={s.panelEylemler}>{eylemler}</div>}
+    </div>
   );
 }
 
+type GunOgesi =
+  | { tur: "gorev"; saat: string | null; gorev: TodoistGorev }
+  | { tur: "slot"; saat: string; slot: Slot };
+
+/**
+ * Günün tek listesi. Görev ile slot ayrı bölümde durunca "bugün ne var"
+ * sorusu iki yerden okunuyordu: gün boyu görevler üstte, saatliler (görev ya
+ * da slot) saat sırasıyla altta.
+ */
+function GunListesi({
+  gorevler,
+  slotlar,
+  seciliSlot,
+  onSlotSec,
+  onKapat,
+  surukle,
+}: {
+  gorevler: TodoistGorev[];
+  slotlar: Slot[];
+  seciliSlot?: string | null;
+  onSlotSec?: (id: string | null) => void;
+  onKapat: (g: TodoistGorev) => Promise<void>;
+  surukle: Surukle;
+}) {
+  const gunBoyu = gorevler.filter((g) => !gorevSaati(g));
+  const saatli: GunOgesi[] = [
+    ...gorevler
+      .filter((g) => gorevSaati(g))
+      .map((g): GunOgesi => ({ tur: "gorev", saat: gorevSaati(g), gorev: g })),
+    ...slotlar.map((x): GunOgesi => ({ tur: "slot", saat: x.saat, slot: x })),
+  ].sort((a, b) => (a.saat! < b.saat! ? -1 : a.saat! > b.saat! ? 1 : 0));
+
+  if (gunBoyu.length === 0 && saatli.length === 0) {
+    return <p className={s.aciklama}>Bu gün boş.</p>;
+  }
+
+  const gorevSatiri = (g: TodoistGorev, saat: string | null) => (
+    <div key={g.id} className={s.gunSatir} {...gorevKaynagi(g, surukle)}>
+      <span className={s.gunSatirSaat}>{saat}</span>
+      <button
+        type="button"
+        className={s.gunKutucuk}
+        onClick={() => void onKapat(g)}
+        title="Tamamla"
+        aria-label={`${g.icerik} görevini tamamla`}
+      />
+      <span className={s.gunSatirAd}>{g.icerik}</span>
+    </div>
+  );
+
+  const slotSatiri = (x: Slot) => {
+    const durum = DURUM_ADI[x.durum] ?? x.durum;
+    return (
+      <button
+        key={x.id}
+        type="button"
+        className={[
+          s.gunSatir,
+          s.gunSlot,
+          x.id === seciliSlot && s.gunSlotSecili,
+          x.durum !== "planli" && s.gunSatirBitti,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        onClick={() => onSlotSec?.(x.id === seciliSlot ? null : x.id)}
+        title={`${x.saat} · ${x.sureDk} dk · ${durum}`}
+      >
+        <span className={s.gunSatirSaat}>{x.saat}</span>
+        <span
+          className={[
+            s.gunCubuk,
+            x.durum === "yapildi" && s.gunCubukIyi,
+            x.durum === "kacti" && s.gunCubukHata,
+            x.durum === "tasindi" && s.gunCubukSoluk,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        />
+        <span className={s.gunSatirMetin}>
+          <span className={s.gunSatirAd}>{x.alan}</span>
+          {x.konu && <span className={s.gunSatirKonu}>{x.konu}</span>}
+        </span>
+        <span className={s.gunDurum} aria-label={durum}>
+          {x.durum === "yapildi" && <Check size={14} className={s.gunDurumIyi} />}
+          {x.durum === "kacti" && <X size={14} className={s.gunDurumHata} />}
+          {x.durum === "tasindi" && <ArrowRight size={14} />}
+        </span>
+      </button>
+    );
+  };
+
+  return (
+    <div className={s.gunListe}>
+      {gunBoyu.length > 0 && (
+        <>
+          <p className={s.panelBolum}>Gün boyu</p>
+          {gunBoyu.map((g) => gorevSatiri(g, null))}
+        </>
+      )}
+      {gunBoyu.length > 0 && saatli.length > 0 && <div className={s.gunAyrac} />}
+      {saatli.map((o) => (o.tur === "slot" ? slotSatiri(o.slot) : gorevSatiri(o.gorev, o.saat)))}
+    </div>
+  );
+}
+
+/**
+ * Listenin sonundaki ekleme satırı. Görev Inbox'a gider: `Gelişim Planı`
+ * slotların projesi, kişisel görev oraya yazılmaz.
+ */
 function GorevEkle({
   iso,
   onEkle,
@@ -1239,19 +1334,21 @@ function GorevEkle({
 
   return (
     <form className={s.gorevEkle} onSubmit={(e) => void gonder(e)}>
-      <Giris
-        placeholder="Yeni görev"
+      <Plus size={15} className={s.gorevEkleIkon} />
+      <input
+        className={s.gorevEkleGiris}
+        placeholder="Görev ekle — sona 18:00 yazılabilir"
         value={metin}
         onChange={(e) => setMetin(e.target.value)}
+        disabled={gonderiliyor}
         aria-label="Yeni görev"
       />
-      <Dugme type="submit" tur="dolu" disabled={!icerik || gonderiliyor}>
-        Ekle
-      </Dugme>
       {/* Ayrıştırmanın sonucu görünür olsun: sihir görünmezse güvenilmez. */}
-      <p className={saat ? `${s.gorevEkleNot} ${s.gorevEkleNotSaat}` : s.gorevEkleNot}>
-        {saat ? `${icerik} — ${saat}` : "Sona saat yazarsan (18:00) o saate konur, yazmazsan gün boyu."}
-      </p>
+      {saat && (
+        <span className={s.gorevEkleSaat} title={`${icerik} — ${saat}`}>
+          {saat}
+        </span>
+      )}
     </form>
   );
 }
@@ -1272,27 +1369,10 @@ function GunPaneliPlansiz({
 }) {
   return (
     <aside className={s.panel}>
-      <div className={s.panelBas}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p className={s.panelUst}>{GUN_ADLARI[haftaninGunu(iso)]}</p>
-          <h2 className={s.panelBaslik}>
-            {Number(iso.slice(8, 10))} {AY_TAM[Number(iso.slice(5, 7)) - 1]}
-          </h2>
-        </div>
-      </div>
-
-      <GorevBolumu
-        iso={iso}
-        gorevler={gorevler}
-        onKapat={onGorevKapat}
-        onEkle={onGorevEkle}
-        surukle={surukle}
-      />
-
-      <p className={s.panelBolum}>Plan</p>
-      <p className={s.aciklama}>
-        Bu haftanın planı henüz kurulmamış. Slot eklemek için önce hafta kurulur.
-      </p>
+      <PanelBasi iso={iso} />
+      <GunListesi gorevler={gorevler} slotlar={[]} onKapat={onGorevKapat} surukle={surukle} />
+      <GorevEkle iso={iso} onEkle={onGorevEkle} />
+      <p className={s.aciklama}>Bu haftanın planı kurulmamış; slot eklemek için önce hafta kurulur.</p>
     </aside>
   );
 }
@@ -1337,9 +1417,9 @@ function GunPaneliDosyali({
     );
   }
 
-  const gun = veri.gunler.find((g) => g.no === gunNo);
   const slotlar = gununSlotlari(veri, gunNo);
   const tip = gunTipi(gunNo, veri.ofisGunleri ?? []);
+  const bosaltilabilir = slotlar.some((x) => x.durum === "planli");
 
   const slotuEkle = () => {
     const { hafta, id } = slotEkle(veri, gunNo, kurallar);
@@ -1348,7 +1428,7 @@ function GunPaneliDosyali({
     onSlotSec(id);
   };
 
-  // Eksende seçilen slot bu dosyadaysa düzenleme paneli görevlerin üstünde açılır.
+  // Eksende seçilen slot bu dosyadaysa düzenleme paneli listenin üstünde açılır.
   const secilen = veri.slotlar.find((x) => x.id === seciliSlot) ?? null;
   const slotDegis = (y: Slot) => void yaz({ ...veri, slotlar: veri.slotlar.map((x) => (x.id === y.id ? y : x)) });
   const slotSil = (id: string) => {
@@ -1369,15 +1449,30 @@ function GunPaneliDosyali({
 
   return (
     <aside className={s.panel}>
-      <div className={s.panelBas}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p className={s.panelUst}>
-            {gun?.ad}
-            {tip !== "haftaSonu" && ` · ${TIP_TAM[tip]}`}
-          </p>
-          <h2 className={s.panelBaslik}>{gun?.tarih ?? iso}</h2>
-        </div>
-      </div>
+      <PanelBasi
+        iso={iso}
+        tip={tip}
+        eylemler={
+          <>
+            <Dugme
+              tur="sade"
+              ikon={<Plus size={16} />}
+              onClick={slotuEkle}
+              title="Slot ekle"
+              aria-label="Slot ekle"
+            />
+            {/* Seyrek iş: açıklaması ipucunda, panelde kalıcı yer tutmuyor. */}
+            <Dugme
+              tur="sade"
+              ikon={<CalendarOff size={16} />}
+              onClick={bosalt}
+              disabled={!bosaltilabilir}
+              title="Günü boşalt (buluşma) — planlı slotlar taşınır, sıkıştırılmaz. Hafta sonuna sığmayan düşer ve ⊘ olarak kalır."
+              aria-label="Günü boşalt"
+            />
+          </>
+        }
+      />
 
       {secilen && (
         <SlotPaneli
@@ -1391,37 +1486,6 @@ function GunPaneliDosyali({
         />
       )}
 
-      <GorevBolumu
-        iso={iso}
-        gorevler={gorevler}
-        onKapat={onGorevKapat}
-        onEkle={onGorevEkle}
-        surukle={surukle}
-      />
-
-      <p className={s.panelBolum}>Plan</p>
-      {slotlar.length === 0 ? (
-        <p className={s.aciklama}>Bu güne slot konmamış.</p>
-      ) : (
-        slotlar.map((x) => (
-          <button
-            key={x.id}
-            type="button"
-            className={x.id === seciliSlot ? `${s.panelSlot} ${s.panelSlotSecili}` : s.panelSlot}
-            onClick={() => onSlotSec(x.id === seciliSlot ? null : x.id)}
-          >
-            <span className={s.panelSlotSaat}>{x.saat}</span>
-            <span className={s.panelSlotAd}>
-              {x.alan}
-              {x.konu ? ` — ${x.konu}` : ""}
-            </span>
-            <Etiket tur={x.durum === "yapildi" ? "iyi" : x.durum === "kacti" ? "hata" : "sade"}>
-              {x.durum}
-            </Etiket>
-          </button>
-        ))
-      )}
-
       {rapor && (
         <div className={s.rapor}>
           {rapor.not ?? `${rapor.tasinan} slot taşındı, ${rapor.dusen} düştü.`}
@@ -1431,22 +1495,15 @@ function GunPaneliDosyali({
         </div>
       )}
 
-      <div className={s.panelDip}>
-        <Dugme ikon={<Plus size={15} />} onClick={slotuEkle}>
-          Slot ekle
-        </Dugme>
-        <Dugme
-          tur="cizgili"
-          ikon={<CalendarOff size={15} />}
-          onClick={bosalt}
-          disabled={slotlar.filter((x) => x.durum === "planli").length === 0}
-        >
-          Günü boşalt (buluşma)
-        </Dugme>
-        <p className={s.aciklama}>
-          Slot taşınır, sıkıştırılmaz. Hafta sonuna sığmayan düşer ve ⊘ olarak kalır.
-        </p>
-      </div>
+      <GunListesi
+        gorevler={gorevler}
+        slotlar={slotlar}
+        seciliSlot={seciliSlot}
+        onSlotSec={onSlotSec}
+        onKapat={onGorevKapat}
+        surukle={surukle}
+      />
+      <GorevEkle iso={iso} onEkle={onGorevEkle} />
     </aside>
   );
 }
