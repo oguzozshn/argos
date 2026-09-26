@@ -8,6 +8,7 @@ import {
   type BirakmaSaati,
 } from "@ortak/gorev-zaman";
 import type { TodoistGorev } from "@ortak/tipler";
+import { tekrarMetni, type TekrarTuru } from "@ortak/todoist-tarih";
 import { silVeBildir } from "@/ui/toast";
 import { kopru } from "./kanca";
 
@@ -40,7 +41,7 @@ export interface AralikDurumu {
   kapat: (g: TodoistGorev) => Promise<void>;
   /** Yeni görev — Inbox'a gider, tarihi verilen gün. */
   /** Eklendiyse true; hata `hata`da. Çağıran metni yalnızca başarıda temizlesin. */
-  ekle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
+  ekle: (iso: string, icerik: string, saat?: string | null, tekrar?: TekrarTuru | null) => Promise<boolean>;
   /**
    * Görevi başka güne/saate taşır. `saat` verilmezse görevin kendi saati
    * korunur; `{ tur: "ver" }` saat yazar, `{ tur: "sil" }` görevi gün boyu
@@ -167,7 +168,7 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
   );
 
   const ekle = useCallback(
-    async (iso: string, icerik: string, saat?: string | null): Promise<boolean> => {
+    async (iso: string, icerik: string, saat?: string | null, tekrar?: TekrarTuru | null): Promise<boolean> => {
       const k = kopru();
       const metin = icerik.trim();
       if (!k || !metin) return false;
@@ -181,7 +182,8 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
         const yeni = await k.todoist.ekle({
           icerik: metin,
           projeId: inbox.current,
-          tarihMetni: todoistTarihi(iso, saat ?? null),
+          // Tekrarlı görev seçilen günden başlar; ilk tekrarı o gün görünür.
+          tarihMetni: tekrar ? tekrarMetni(tekrar, iso, saat ?? null) : todoistTarihi(iso, saat ?? null),
         });
         setGorevler((x) => [...x, yeni]);
         setHata(null);

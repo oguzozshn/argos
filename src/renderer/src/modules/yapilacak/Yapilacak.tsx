@@ -198,10 +198,10 @@ function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }
         <div className={s.tarihKutusu}>
           <Giris
             value={yeniTarih}
-            placeholder="yarın 18:00"
+            placeholder="yarın 18:00 · her salı"
             onChange={(e) => setYeniTarih(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && gonder()}
-            title="Todoist doğal dili anlar: yarın, pazartesi, her salı…"
+            title="yarın 18:00 · cuma · 25.09 · her gün 07:00 · hafta içi · her salı ve perşembe · 2 haftada bir · her ayın 15'i"
           />
         </div>
         <Dugme tur="dolu" onClick={gonder} disabled={!yeni.trim()}>

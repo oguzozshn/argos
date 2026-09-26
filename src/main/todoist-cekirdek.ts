@@ -1,6 +1,7 @@
 // Uzantı açıkça yazılı: bu dosya düz Node ile de koşuyor (araclar/todoist-testi.mts)
-// ve Node'un ESM çözümleyicisi uzantısız yolu bulmuyor. Tip-dışı tek içe aktarım bu.
+// ve Node'un ESM çözümleyicisi uzantısız yolu bulmuyor.
 import { PLAN_PROJESI, type TodoistGorev, type TodoistProje } from "../ortak/tipler.ts";
+import { tarihMetniTurkce, todoistTarihMetni } from "../ortak/todoist-tarih.ts";
 
 /**
  * Todoist istemcisinin çekirdeği. Electron'a bağlı DEĞİLDİR ve anahtarı
@@ -99,7 +100,8 @@ export const gorevCevir = (t: HamGorev): TodoistGorev => ({
   aciklama: t.description ?? "",
   projeId: t.project_id,
   tarih: t.due?.date ?? null,
-  tarihMetni: t.due?.string ?? null,
+  // Todoist'e İngilizce gidiyor (Türkçe tarih dilini tanımıyor); ekranda Türkçe okunsun.
+  tarihMetni: tarihMetniTurkce(t.due?.string ?? null),
   tekrarli: t.due?.is_recurring === true,
   oncelik: t.priority ?? 1,
   etiketler: t.labels ?? [],
@@ -173,9 +175,10 @@ export interface YeniGorev {
 export async function ekle(token: string, g: YeniGorev): Promise<TodoistGorev> {
   const yuk: Record<string, unknown> = { content: g.icerik, project_id: g.projeId };
   if (g.tarihMetni?.trim()) {
-    // Doğal dil Todoist tarafında çözülür; dili söylemezsek İngilizce varsayar.
-    yuk.due_string = g.tarihMetni.trim();
-    yuk.due_lang = "tr";
+    // Todoist Türkçe tarih tanımıyor: "her salı 18:00" burada İngilizceye çevrilir.
+    const { metin, dil } = todoistTarihMetni(g.tarihMetni);
+    yuk.due_string = metin;
+    yuk.due_lang = dil;
   }
   if (g.oncelik) yuk.priority = g.oncelik;
   return gorevCevir(await istek<HamGorev>(token, "/tasks", "POST", yuk));
@@ -214,6 +217,7 @@ export async function tarihVer(
   id: string,
   tarihMetni: string | null,
 ): Promise<TodoistGorev> {
-  const yuk = tarihMetni ? { due_string: tarihMetni, due_lang: "tr" } : { due_string: "no date" };
+  const cevrilmis = tarihMetni ? todoistTarihMetni(tarihMetni) : null;
+  const yuk = cevrilmis ? { due_string: cevrilmis.metin, due_lang: cevrilmis.dil } : { due_string: "no date" };
   return gorevCevir(await istek<HamGorev>(token, `/tasks/${encodeURIComponent(id)}`, "POST", yuk));
 }

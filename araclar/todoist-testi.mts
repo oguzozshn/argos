@@ -90,8 +90,9 @@ async function sahteBolum(): Promise<void> {
   await ekle("T", { icerik: "deneme", projeId: "P1", tarihMetni: "yarın 18:00" });
   kontrol("ekle POST /tasks", sonIstek?.url.endsWith("/tasks") && sonIstek.yontem === "POST");
   kontrol("içerik ve proje gönderilir", sonIstek?.govde?.content === "deneme" && sonIstek.govde.project_id === "P1");
-  kontrol("tarih doğal dille gider", sonIstek?.govde?.due_string === "yarın 18:00");
-  kontrol("dil tr olarak bildirilir", sonIstek?.govde?.due_lang === "tr");
+  // Todoist Türkçe tarih tanımıyor: metin İngilizceye çevrilip öyle gider.
+  kontrol("Türkçe tarih İngilizceye çevrilip gider", sonIstek?.govde?.due_string === "tomorrow at 18:00");
+  kontrol("dil en olarak bildirilir", sonIstek?.govde?.due_lang === "en");
 
   await ekle("T", { icerik: "tarihsiz", projeId: "P1" });
   kontrol("tarih verilmezse due alanı hiç gitmez", sonIstek?.govde?.due_string === undefined);
@@ -103,7 +104,7 @@ async function sahteBolum(): Promise<void> {
   );
   kontrol(
     "tarihVer ham tarih değil due_string yollar",
-    sonIstek?.govde?.due_string === "gelecek pazartesi" && sonIstek.govde.due_date === undefined,
+    sonIstek?.govde?.due_string === "next monday" && sonIstek.govde.due_date === undefined,
     "ham tarih tekrarlı görevin düzenini siler",
   );
 

@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, History, Plus, RefreshCw, X } from "lucide-react";
+import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, History, Plus, RefreshCw, Repeat, X } from "lucide-react";
 import type { Uygulama } from "@ortak/bot";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
@@ -7,6 +7,7 @@ import { takvim } from "@ortak/ozet";
 import { dakika, gununSlotlari, kuralSetiTamamla, type KuralSeti } from "@ortak/kural";
 import { gunBosalt, gunTipi, slotEkle, slotuYerlestir, type BosaltRaporu } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
+import { tekrarAdi, type TekrarTuru } from "@ortak/todoist-tarih";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { SlotPaneli } from "@/ui/SlotPaneli";
@@ -1310,46 +1311,104 @@ function GunListesi({
  * Listenin sonundaki ekleme satırı. Görev Inbox'a gider: `Gelişim Planı`
  * slotların projesi, kişisel görev oraya yazılmaz.
  */
-function GorevEkle({
-  iso,
-  onEkle,
-}: {
-  iso: string;
-  onEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
-}) {
+type GorevEkleFn = (iso: string, icerik: string, saat?: string | null, tekrar?: TekrarTuru | null) => Promise<boolean>;
+
+const TEKRARLAR: TekrarTuru[] = ["gun", "haftaIci", "hafta", "ay", "yil"];
+
+function GorevEkle({ iso, onEkle }: { iso: string; onEkle: GorevEkleFn }) {
   const [metin, setMetin] = useState("");
+  const [tekrar, setTekrar] = useState<TekrarTuru | null>(null);
+  const [secici, setSecici] = useState(false);
   const [gonderiliyor, setGonderiliyor] = useState(false);
+  const girdi = useRef<HTMLInputElement>(null);
   // Saat metnin içinden çıkar: dar panelde ayrı bir saat kutusu hem yer yiyor
   // hem de tarayıcının kendi çizimiyle geliyordu.
   const { icerik, saat } = saatAyikla(metin);
+
+  // Başka güne geçilince seçili tekrar taşınmasın: "her Cumartesi" o günün adıydı.
+  useEffect(() => {
+    setTekrar(null);
+    setSecici(false);
+  }, [iso]);
 
   const gonder = async (e: FormEvent) => {
     e.preventDefault();
     if (!icerik || gonderiliyor) return;
     setGonderiliyor(true);
     // Eklenemediyse yazılan metin kaybolmasın; hata üstte gösteriliyor.
-    if (await onEkle(iso, icerik, saat)) setMetin("");
+    if (await onEkle(iso, icerik, saat, tekrar)) {
+      setMetin("");
+      setTekrar(null);
+    }
     setGonderiliyor(false);
+    girdi.current?.focus();
+  };
+
+  const sec = (x: TekrarTuru | null) => {
+    setTekrar(x);
+    setSecici(false);
+    girdi.current?.focus();
   };
 
   return (
-    <form className={s.gorevEkle} onSubmit={(e) => void gonder(e)}>
-      <Plus size={15} className={s.gorevEkleIkon} />
-      <input
-        className={s.gorevEkleGiris}
-        placeholder="Görev ekle — sona 18:00 yazılabilir"
-        value={metin}
-        onChange={(e) => setMetin(e.target.value)}
-        disabled={gonderiliyor}
-        aria-label="Yeni görev"
-      />
-      {/* Ayrıştırmanın sonucu görünür olsun: sihir görünmezse güvenilmez. */}
-      {saat && (
-        <span className={s.gorevEkleSaat} title={`${icerik} — ${saat}`}>
-          {saat}
-        </span>
+    <div className={s.gorevEkleSarmal}>
+      <form className={s.gorevEkle} onSubmit={(e) => void gonder(e)}>
+        <Plus size={15} className={s.gorevEkleIkon} />
+        <input
+          ref={girdi}
+          className={s.gorevEkleGiris}
+          placeholder="Görev ekle — sona 18:00 yazılabilir"
+          value={metin}
+          onChange={(e) => setMetin(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && setSecici(false)}
+          disabled={gonderiliyor}
+          aria-label="Yeni görev"
+        />
+        {/* Ayrıştırmanın sonucu görünür olsun: sihir görünmezse güvenilmez. */}
+        {saat && (
+          <span className={s.gorevEkleCip} title={`${icerik} — ${saat}`}>
+            {saat}
+          </span>
+        )}
+        <button
+          type="button"
+          className={tekrar ? `${s.tekrarDugme} ${s.tekrarDugmeAcik}` : s.tekrarDugme}
+          onClick={() => setSecici((x) => !x)}
+          title={tekrar ? tekrarAdi(tekrar, iso) : "Tekrarla"}
+          aria-label="Tekrar seç"
+          aria-expanded={secici}
+        >
+          <Repeat size={14} />
+        </button>
+      </form>
+      {tekrar && !secici && (
+        <p className={s.tekrarNot}>
+          {tekrarAdi(tekrar, iso)}
+          {saat ? ` · ${saat}` : ""} — bu günden başlar
+        </p>
       )}
-    </form>
+      {secici && (
+        <div className={s.tekrarListe} role="menu">
+          {TEKRARLAR.map((x) => (
+            <button
+              key={x}
+              type="button"
+              role="menuitemradio"
+              aria-checked={tekrar === x}
+              className={tekrar === x ? `${s.tekrarSecenek} ${s.tekrarSecenekSecili}` : s.tekrarSecenek}
+              onClick={() => sec(x)}
+            >
+              {tekrarAdi(x, iso)}
+              {tekrar === x && <Check size={13} />}
+            </button>
+          ))}
+          <button type="button" role="menuitemradio" aria-checked={!tekrar} className={s.tekrarSecenek} onClick={() => sec(null)}>
+            Tekrar yok
+            {!tekrar && <Check size={13} />}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1364,7 +1423,7 @@ function GunPaneliPlansiz({
   iso: string;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
-  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
+  onGorevEkle: GorevEkleFn;
   surukle: Surukle;
 }) {
   return (
@@ -1396,7 +1455,7 @@ function GunPaneliDosyali({
   kurallar: KuralSeti;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
-  onGorevEkle: (iso: string, icerik: string, saat?: string | null) => Promise<boolean>;
+  onGorevEkle: GorevEkleFn;
   surukle: Surukle;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;

@@ -858,6 +858,12 @@
 
 /* --- görev ekleme --------------------------------------------------------- */
 
+.gorevEkleSarmal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* Listenin son satırı gibi durur; odaklanınca kutu belirir. */
 .gorevEkle {
   display: flex;
@@ -901,13 +907,75 @@
 }
 
 /* Yakalanan saat kutunun içinde çip olarak görünür. */
-.gorevEkleSaat {
+.gorevEkleCip {
   flex-shrink: 0;
   font-size: var(--y5);
   font-variant-numeric: tabular-nums;
   padding: 1px 6px;
   border-radius: var(--r-tam);
   background: var(--vurgu-yumusak);
+  color: var(--vurgu-koyu);
+}
+
+.tekrarDugme {
+  display: flex;
+  flex-shrink: 0;
+  padding: 4px;
+  border: none;
+  border-radius: var(--r1);
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.tekrarDugme:hover {
+  color: var(--metin);
+  background: var(--zemin-alt);
+}
+
+.tekrarDugmeAcik,
+.tekrarDugmeAcik:hover {
+  color: var(--vurgu-koyu);
+  background: var(--vurgu-yumusak);
+}
+
+.tekrarNot {
+  font-size: var(--y5);
+  color: var(--vurgu);
+  padding-left: 23px;
+}
+
+.tekrarListe {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--kart);
+  box-shadow: var(--golge1);
+}
+
+.tekrarSecenek {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--b2);
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--r1);
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tekrarSecenek:hover {
+  background: var(--zemin-alt);
+}
+
+.tekrarSecenekSecili {
   color: var(--vurgu-koyu);
 }
 
