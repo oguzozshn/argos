@@ -33,7 +33,11 @@ esit("öbür gün", cevir("öbür gün"), "in 2 days");
 esit("3 gün sonra", cevir("3 gün sonra"), "in 3 days");
 esit("cuma", cevir("cuma"), "friday");
 esit("salıya", cevir("salıya"), "tuesday");
-esit("haftaya pazartesi", cevir("haftaya pazartesi"), "next monday");
+// Todoist'te denendi: Cumartesi 26 Eylül'de "next monday" 5 Ekim veriyordu.
+esit("Cumartesi: haftaya pazartesi iki gün sonra", todoistTarihMetni("haftaya pazartesi", "2026-09-26").metin, "sep 28 2026");
+esit("Pazartesi: haftaya salı sekiz gün sonra", todoistTarihMetni("haftaya salı", "2026-09-21").metin, "sep 29 2026");
+esit("Pazar: gelecek pazar yedi gün sonra", todoistTarihMetni("gelecek pazar", "2026-09-27").metin, "oct 4 2026");
+esit("ay/yıl devri", todoistTarihMetni("haftaya cuma", "2026-12-30").metin, "jan 8 2027");
 esit("25.09", cevir("25.09"), "sep 25");
 esit("25 eylül 2027", cevir("25 eylül 2027"), "sep 25 2027");
 esit("her gün", cevir("her gün"), "every day");

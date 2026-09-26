@@ -97,14 +97,14 @@ async function sahteBolum(): Promise<void> {
   await ekle("T", { icerik: "tarihsiz", projeId: "P1" });
   kontrol("tarih verilmezse due alanı hiç gitmez", sonIstek?.govde?.due_string === undefined);
 
-  await tarihVer("T", "42", "gelecek pazartesi");
+  await tarihVer("T", "42", "her pazartesi");
   kontrol(
     "tarihVer POST /tasks/{id}",
     sonIstek?.url.endsWith("/tasks/42") && sonIstek.yontem === "POST",
   );
   kontrol(
     "tarihVer ham tarih değil due_string yollar",
-    sonIstek?.govde?.due_string === "next monday" && sonIstek.govde.due_date === undefined,
+    sonIstek?.govde?.due_string === "every mon" && sonIstek.govde.due_date === undefined,
     "ham tarih tekrarlı görevin düzenini siler",
   );
 

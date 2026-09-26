@@ -11,7 +11,7 @@
  * yazan kullanıcı Todoist'in kendi dilini kullanabilsin.
  */
 
-import { haftaninGunu } from "./gun.ts";
+import { gunEkle, haftaninGunu } from "./gun.ts";
 
 const GUN_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const GUN_EN_KISA = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -127,7 +127,7 @@ function tekrarCevir(m: string): string | null {
 }
 
 /** Tekil gün ifadesi → Todoist'in İngilizce karşılığı. Tanınmazsa null. */
-function gunCevir(m: string): string | null {
+function gunCevir(m: string, bugun: string): string | null {
   if (m === "") return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(m)) return m;
   if (m === "bugün" || m === "bugun") return "today";
@@ -142,9 +142,15 @@ function gunCevir(m: string): string | null {
     if (n) return `in ${n} ${BIRIM_EN[sonra[2]!]}${n > 1 ? "s" : ""}`;
   }
 
-  // "haftaya salı", "gelecek cuma" → Todoist "next friday"
+  // "haftaya salı", "gelecek cuma"
   const gelecek = m.match(/^(?:haftaya|gelecek|önümüzdeki) (\S+)$/);
-  if (gelecek && GUN_SOZLUK[gelecek[1]!] !== undefined) return `next ${GUN_EN[GUN_SOZLUK[gelecek[1]!]!]}`;
+  if (gelecek && GUN_SOZLUK[gelecek[1]!] !== undefined) {
+    // Kesin tarih gider: Todoist'in "next monday"ı Cumartesi günü iki gün
+    // sonrasını değil dokuz gün sonrasını verir. Türkçede "haftaya pazartesi"
+    // gelecek takvim haftasının (Pazartesi başlar) pazartesisidir.
+    const iso = gunEkle(bugun, 7 - haftaninGunu(bugun) + GUN_SOZLUK[gelecek[1]!]!);
+    return `${AY_EN[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))} ${iso.slice(0, 4)}`;
+  }
 
   const gun = GUN_SOZLUK[m.replace(/(?:'?(?:ya|ye|a|e|da|de|ta|te|yı|yi|ı|i))$/, "")] ?? GUN_SOZLUK[m];
   if (gun !== undefined) return GUN_EN[gun]!;
@@ -169,13 +175,19 @@ function gunCevir(m: string): string | null {
 }
 
 /** Türkçe tarih ya da tekrar ifadesinin İngilizcesi; tanınmazsa null. */
-export function turkceTarihCevir(metin: string): string | null {
+/** Yerel gün; UTC kayması gece yarısından sonra günü kaydırmasın. */
+const yerelBugun = (): string => {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+export function turkceTarihCevir(metin: string, bugun: string = yerelBugun()): string | null {
   const { govde, saat } = saatAyir(kucult(metin));
   const zamanli = (x: string) => (saat ? (x ? `${x} at ${saat}` : `today at ${saat}`) : x);
 
   const tekrar = tekrarCevir(govde);
   if (tekrar) return zamanli(tekrar);
-  const gun = gunCevir(govde);
+  const gun = gunCevir(govde, bugun);
   if (gun !== null && (gun || saat)) return zamanli(gun);
   return null;
 }
@@ -184,11 +196,11 @@ export function turkceTarihCevir(metin: string): string | null {
  * Kullanıcının yazdığı tarih metnini Todoist'in anlayacağı İngilizceye çevirir.
  * Tanınmayan metin olduğu gibi döner; `dil` her durumda İngilizcedir.
  */
-export function todoistTarihMetni(metin: string): { metin: string; dil: "en" } {
+export function todoistTarihMetni(metin: string, bugun?: string): { metin: string; dil: "en" } {
   const ham = metin.trim();
   // Zaten tarih + saat ya da İngilizce yazılmışsa dokunma.
   if (/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(ham)) return { metin: ham, dil: "en" };
-  return { metin: turkceTarihCevir(ham) ?? ham, dil: "en" };
+  return { metin: turkceTarihCevir(ham, bugun) ?? ham, dil: "en" };
 }
 
 /* --- hızlı ekleme satırı -------------------------------------------------- */
@@ -208,7 +220,10 @@ const EN_UZUN = 7;
  * Tek sözcüklük parça kısa kısaltmaysa ("car", "per") tarih sayılmaz — görev
  * metnindeki sıradan bir sözcük tarihe dönmesin.
  */
-export function hizliMetniCevir(metin: string): { metin: string; tarih: string | null; ceviri: string | null } {
+export function hizliMetniCevir(
+  metin: string,
+  bugun?: string,
+): { metin: string; tarih: string | null; ceviri: string | null } {
   const sozcukler = metin.trim().split(/\s+/).filter(Boolean);
   for (let son = sozcukler.length; son > 0; son--) {
     for (let bas = Math.max(0, son - EN_UZUN); bas < son; bas++) {
@@ -219,7 +234,7 @@ export function hizliMetniCevir(metin: string): { metin: string; tarih: string |
       const kalan = [...sozcukler.slice(0, bas), ...sozcukler.slice(son)].filter((x) => !isaretMi(x));
       if (kalan.length === 0) continue;
       const tarih = parca.join(" ");
-      const ceviri = turkceTarihCevir(tarih);
+      const ceviri = turkceTarihCevir(tarih, bugun);
       if (!ceviri) continue;
       return {
         metin: [...sozcukler.slice(0, bas), ceviri, ...sozcukler.slice(son)].join(" "),
