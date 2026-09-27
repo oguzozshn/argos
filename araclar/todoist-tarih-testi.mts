@@ -39,6 +39,8 @@ esit("Pazartesi: haftaya salı sekiz gün sonra", todoistTarihMetni("haftaya sal
 esit("Pazar: gelecek pazar yedi gün sonra", todoistTarihMetni("gelecek pazar", "2026-09-27").metin, "oct 4 2026");
 esit("ay/yıl devri", todoistTarihMetni("haftaya cuma", "2026-12-30").metin, "jan 8 2027");
 esit("25.09", cevir("25.09"), "sep 25");
+esit("dotted time after a date", cevir("14 kasım 14.00"), "nov 14 at 14:00");
+esit("dotted time after yarın", cevir("yarın 9.30"), "tomorrow at 09:30");
 esit("25 eylül 2027", cevir("25 eylül 2027"), "sep 25 2027");
 esit("her gün", cevir("her gün"), "every day");
 esit("hergün 07:00", cevir("hergün 07:00"), "every day at 07:00");

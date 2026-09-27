@@ -50,6 +50,15 @@ eq("17 ekim 14:00", d("17 ekim 14:00"), "2026-10-17T14:00");
 eq("15 ocak 2027", d("15 ocak 2027"), "2027-01-15");
 eq("ISO date", d("2026-12-01"), "2026-12-01");
 
+console.log("\nDotted time (14.00)");
+eq("14 kasım 14.00", d("14 kasım 14.00"), "2026-11-14T14:00");
+eq("yarın 9.30", d("yarın 9.30"), "2026-09-28T09:30");
+eq("cuma 14.30'da", d("cuma 14.30'da"), "2026-10-02T14:30");
+eq("her salı 18.00", d("her salı 18.00"), "2026-09-29T18:00");
+eq("25.10 alone is still a date", d("25.10"), "2026-10-25");
+eq("typo 14.000 is not understood", p("14 kasım 14.000"), null);
+eq("25.00 after a date is not a time (hour > 23)", p("14 kasım 25.00"), null);
+
 console.log("\nRecurring");
 eq("her gün", p("her gün"), { date: "2026-09-27", time: null, rule: { kind: "daily", interval: 1 } });
 eq("her gün 07:00", d("her gün 07:00"), "2026-09-27T07:00");
