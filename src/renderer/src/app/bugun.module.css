@@ -12,3 +12,13 @@
   break-inside: avoid;
   margin-bottom: var(--b5);
 }
+
+/* Izgaranın üstündeki tam genişlik kartlar. Göstereceği yoksa kart null
+   döner; boş kalan sarmal aralık bırakmasın. */
+.ust {
+  margin-bottom: var(--b5);
+}
+
+.ust:empty {
+  display: none;
+}

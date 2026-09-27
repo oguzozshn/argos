@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PLAN_PROJESI, type TodoistGorev, type TodoistProje } from "@ortak/tipler";
+import { tariheGoreSirala } from "@ortak/geri-sayim";
+import {
+  ONEMLI_ETIKETI,
+  PLAN_PROJESI,
+  onemliMi,
+  type TodoistGorev,
+  type TodoistProje,
+} from "@ortak/tipler";
 import { silVeBildir } from "@/ui/toast";
 import { kopru } from "@/veri/kanca";
 
@@ -145,7 +152,68 @@ export function useGorevler(projeId: string | null) {
     }
   }, []);
 
-  return { gorevler, yukleniyor, hata, tazele, kapat, ekle, tarihVer };
+  /**
+   * Önemli işaretini çevirir. İyimser: yıldız hemen değişir, Todoist hata
+   * verirse eski hâline döner. Sunucunun döndürdüğü görev son sözü söyler.
+   */
+  const onemliDegistir = useCallback(async (g: TodoistGorev) => {
+    const k = kopru();
+    if (!k) return;
+    const yeni = !onemliMi(g);
+    const iyimser: TodoistGorev = {
+      ...g,
+      etiketler: yeni
+        ? [...g.etiketler, ONEMLI_ETIKETI]
+        : g.etiketler.filter((e) => e.toLocaleLowerCase("tr") !== ONEMLI_ETIKETI),
+    };
+    setGorevler((x) => x.map((y) => (y.id === g.id ? iyimser : y)));
+    try {
+      const guncel = await k.todoist.onemliYap(g.id, yeni);
+      setGorevler((x) => x.map((y) => (y.id === g.id ? guncel : y)));
+      setHata(null);
+    } catch (e) {
+      setGorevler((x) => x.map((y) => (y.id === g.id ? g : y)));
+      setHata(mesaj(e));
+    }
+  }, []);
+
+  return { gorevler, yukleniyor, hata, tazele, kapat, ekle, tarihVer, onemliDegistir };
+}
+
+/* --- önemli tarihler --------------------------------------------------- */
+
+/**
+ * Bugün ekranının geri sayım kartı: `@önemli` etiketli açık görevler, en
+ * yakın tarih önce. null = henüz yüklenmedi; anahtar yoksa ya da hata varsa
+ * boş liste — kart o zaman hiç görünmez, panoyu hata mesajıyla doldurmaz.
+ */
+export function useOnemliler(bugun: string): TodoistGorev[] | null {
+  const [gorevler, setGorevler] = useState<TodoistGorev[] | null>(null);
+
+  useEffect(() => {
+    const k = kopru();
+    if (!k) {
+      setGorevler([]);
+      return;
+    }
+    let birakildi = false;
+    const yukle = () =>
+      void k.todoist
+        .durum()
+        .then((d) => (d.anahtarVar ? k.todoist.onemliler() : []))
+        .then((x) => !birakildi && setGorevler(tariheGoreSirala(x)))
+        .catch(() => !birakildi && setGorevler((x) => x ?? []));
+    yukle();
+    // İşaret değişti, görev kapandı ya da hızlı yakalamadan `@önemli` geldi.
+    const iptal = k.todoistDegisimDinle(yukle);
+    return () => {
+      birakildi = true;
+      iptal();
+    };
+    // Gün değişince de yeniden çekilir: telefondan eklenenler gece gelsin.
+  }, [bugun]);
+
+  return gorevler;
 }
 
 /* --- tarihe göre öbekleme ---------------------------------------------- */

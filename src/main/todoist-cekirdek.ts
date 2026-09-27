@@ -1,6 +1,12 @@
 // Uzantı açıkça yazılı: bu dosya düz Node ile de koşuyor (araclar/todoist-testi.mts)
 // ve Node'un ESM çözümleyicisi uzantısız yolu bulmuyor.
-import { PLAN_PROJESI, type TodoistGorev, type TodoistProje } from "../ortak/tipler.ts";
+import {
+  ONEMLI_ETIKETI,
+  PLAN_PROJESI,
+  onemliMi,
+  type TodoistGorev,
+  type TodoistProje,
+} from "../ortak/tipler.ts";
 import { hizliMetniCevir, tarihMetniTurkce, todoistTarihMetni } from "../ortak/todoist-tarih.ts";
 
 /**
@@ -163,6 +169,37 @@ export async function tarihAraligi(
       }`,
   );
   return ham.map(gorevCevir).filter((g) => g.projeId !== PLAN_PROJESI);
+}
+
+/**
+ * Önemli etiketli açık görevler — Bugün ekranının geri sayım kartı için.
+ * Tarihsizler de gelir: kart onları "tarih yok" diye sona koyar.
+ */
+export async function onemliler(token: string): Promise<TodoistGorev[]> {
+  const ham = await tumSayfalar<HamGorev>(
+    token,
+    (i) =>
+      `/tasks/filter?query=${encodeURIComponent(`@${ONEMLI_ETIKETI}`)}&limit=200${
+        i ? `&cursor=${encodeURIComponent(i)}` : ""
+      }`,
+  );
+  // Süzgeç zaten etikete göre; ikinci kontrol büyük/küçük harf farkı ve
+  // olası geniş eşleşmeye karşı.
+  return ham.map(gorevCevir).filter((g) => g.projeId !== PLAN_PROJESI && onemliMi(g));
+}
+
+/**
+ * Önemli etiketini ekler ya da kaldırır. Görevin güncel etiketleri önce
+ * sunucudan okunur: arayüzdeki liste eskimiş olabilir, başka bir etiketi
+ * ezmesin. Yalnız `labels` gider — tarih alanına dokunmak tekrar düzenini
+ * siler (CLAUDE.md).
+ */
+export async function onemliYap(token: string, id: string, onemli: boolean): Promise<TodoistGorev> {
+  const yol = `/tasks/${encodeURIComponent(id)}`;
+  const mevcut = (await istek<HamGorev>(token, yol)).labels ?? [];
+  const digerleri = mevcut.filter((e) => e.toLocaleLowerCase("tr") !== ONEMLI_ETIKETI);
+  const labels = onemli ? [...digerleri, ONEMLI_ETIKETI] : digerleri;
+  return gorevCevir(await istek<HamGorev>(token, yol, "POST", { labels }));
 }
 
 export interface YeniGorev {

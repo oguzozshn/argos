@@ -96,6 +96,13 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdGorevler, (_o, projeId: string) => td.gorevler(projeId));
   ipcMain.handle(KANAL.tdBugun, () => td.bugunVeGecikmis());
   ipcMain.handle(KANAL.tdAralik, (_o, bas: string, son: string) => td.tarihAraligi(bas, son));
+  ipcMain.handle(KANAL.tdOnemliler, () => td.onemliler());
+  ipcMain.handle(KANAL.tdOnemliYap, async (_o, id: string, onemli: boolean) => {
+    const gorev = await td.onemliYap(id, onemli === true);
+    // Bugün kartı ve Yapılacaklar ayrı kancalardan okuyor; ikisi de tazelensin.
+    todoistDegistiBildir();
+    return gorev;
+  });
   ipcMain.handle(KANAL.tdEkle, (_o, g: Parameters<typeof td.ekle>[0]) => td.ekle(g));
   ipcMain.handle(KANAL.tdKapat, (_o, id: string) => td.kapat(id));
   ipcMain.handle(KANAL.tdAc, (_o, id: string) => td.ac(id));

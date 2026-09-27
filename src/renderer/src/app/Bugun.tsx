@@ -14,10 +14,12 @@ const gunAdi = new Intl.DateTimeFormat("tr-TR", {
  * Modüllerin buluştuğu tek ekran. Her modül kendi `Ozet` kartını verir;
  * bu ekran onları ızgaraya dizmekten başka bir şey yapmaz — koordinasyon
  * yüzeyi budur. Geniş ekranda iki sütun; bir kart tüm satırı isterse
- * kendi sınıfıyla `grid-column: 1 / -1` verir.
+ * kendi sınıfıyla `column-span: all` verir. `Ust` kartları ızgaranın
+ * dışında, en üstte durur.
  */
 export function Bugun() {
   const ozetler = moduller.filter((m) => m.Ozet);
+  const ustler = moduller.filter((m) => m.Ust);
 
   return (
     <>
@@ -25,6 +27,17 @@ export function Bugun() {
         ustyazi={gunAdi.format(new Date())}
         baslik="Bugün"
       />
+
+      {ustler.map((m) => {
+        const Ust = m.Ust!;
+        return (
+          <div key={`${m.id}-ust`} className={s.ust}>
+            <HataSiniri ad={m.ad}>
+              <Ust />
+            </HataSiniri>
+          </div>
+        );
+      })}
 
       {ozetler.length === 0 ? (
         <BosDurum
