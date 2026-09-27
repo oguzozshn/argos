@@ -105,6 +105,9 @@ async function sahteBolum(): Promise<void> {
 
   await ekle("T", { icerik: "tarihsiz", projeId: "P1" });
   kontrol("tarih verilmezse due alanı hiç gitmez", sonIstek?.govde?.due_string === undefined);
+  kontrol("no description or labels unless given", sonIstek?.govde?.description === undefined && sonIstek?.govde?.labels === undefined);
+  await ekle("T", { icerik: "x", projeId: "P1", description: " not ", labels: ["önemli"] });
+  kontrol("description (trimmed) and labels are sent", sonIstek?.govde?.description === "not" && JSON.stringify(sonIstek?.govde?.labels) === '["önemli"]');
 
   await tarihVer("T", "42", "her pazartesi");
   kontrol(
@@ -278,6 +281,7 @@ async function sahteBolum(): Promise<void> {
   });
   kontrol("tekrarlı görev işaretlenir", g.tekrarli === true);
   kontrol("tarih metni korunur", g.tarihMetni === "her pazartesi");
+  kontrol("raw due string is kept for rescheduling", g.dueString === "her pazartesi");
   kontrol("öncelik geçer", g.oncelik === 4);
 
   const b = gorevCevir({ id: "2", content: "boş", project_id: "P" });

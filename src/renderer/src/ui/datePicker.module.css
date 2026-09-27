@@ -1,0 +1,289 @@
+.picker {
+  width: 300px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.inputWrap {
+  padding: 10px;
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--zemin);
+  font-size: var(--y4);
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--vurgu);
+}
+
+.preview {
+  padding: 6px 2px 0;
+  font-size: var(--y5);
+  color: var(--iyi);
+}
+
+.previewBad {
+  color: var(--metin-soluk);
+}
+
+.current {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 2px 0;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.quick {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.quickItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  text-align: left;
+  cursor: pointer;
+}
+
+.quickItem:hover,
+.quickItem:focus-visible {
+  background: var(--kart-hover);
+  outline: none;
+}
+
+.quickIcon {
+  display: flex;
+}
+
+.quickHint {
+  margin-left: auto;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.month {
+  padding: 10px 12px 8px;
+}
+
+.monthHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: var(--y4);
+  font-weight: var(--sik-kalin);
+}
+
+.monthNav {
+  display: flex;
+  gap: 2px;
+}
+
+.monthNav button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.monthNav button:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.weekday {
+  padding: 2px 0 4px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.day {
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  font-variant-numeric: tabular-nums;
+  color: var(--metin);
+  cursor: pointer;
+}
+
+.day:hover {
+  background: var(--kart-hover);
+}
+
+.past {
+  color: var(--metin-soluk);
+}
+
+.otherMonth {
+  opacity: 0.45;
+}
+
+.today {
+  color: var(--hata);
+  font-weight: 700;
+}
+
+.selected,
+.selected:hover {
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+  font-weight: var(--sik-kalin);
+}
+
+.foot {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--cizgi);
+}
+
+.footButton {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.footButton:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.footActive {
+  border-color: transparent;
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.timeInput {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: 7px;
+  background: var(--zemin);
+  font-variant-numeric: tabular-nums;
+}
+
+.apply,
+.clear {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  font: inherit;
+  font-size: var(--y4);
+  font-weight: var(--sik-kalin);
+  cursor: pointer;
+}
+
+.apply {
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}
+
+.clear {
+  background: none;
+  color: var(--metin-soluk);
+}
+
+.clear:hover {
+  color: var(--hata);
+}
+
+.repeat {
+  padding: 6px;
+  border-top: 1px solid var(--cizgi);
+}
+
+.repeatItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  text-align: left;
+  cursor: pointer;
+}
+
+.repeatItem svg {
+  color: var(--metin-soluk);
+}
+
+.repeatItem:hover {
+  background: var(--kart-hover);
+}
+
+.repeatActive,
+.repeatActive:hover {
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+}
+
+.repeatActive svg {
+  color: var(--vurgu);
+}
+
+.repeatHint {
+  padding: 6px 8px 4px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  line-height: 1.45;
+}

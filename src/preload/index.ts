@@ -40,7 +40,14 @@ const argos: ArgosApi = {
     moveTask: (id: string, projectId: string) => ipcRenderer.invoke(KANAL.tdMoveTask, id, projectId),
     setProjectFavorite: (id: string, favorite: boolean) =>
       ipcRenderer.invoke(KANAL.tdProjectFavorite, id, favorite),
-    ekle: (g: { icerik: string; projeId: string; tarihMetni?: string; oncelik?: number }) =>
+    ekle: (g: {
+      icerik: string;
+      projeId: string;
+      tarihMetni?: string;
+      oncelik?: number;
+      description?: string;
+      labels?: string[];
+    }) =>
       ipcRenderer.invoke(KANAL.tdEkle, g),
     kapat: (id: string) => ipcRenderer.invoke(KANAL.tdKapat, id),
     ac: (id: string) => ipcRenderer.invoke(KANAL.tdAc, id),

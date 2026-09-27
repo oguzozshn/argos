@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { dueValue, parseDateText } from "@ortak/date-parse";
 import { todoistTarihi } from "@ortak/gorev-zaman";
 import {
   addList,
@@ -14,7 +13,6 @@ import {
   type LocalTask,
   type Priority,
 } from "@ortak/local-tasks";
-import { splitQuickAdd } from "@ortak/quick-add";
 import {
   fromLocal,
   fromTodoist,
@@ -25,7 +23,16 @@ import {
   type Task,
   type TaskList,
 } from "@ortak/task";
-import { ONEMLI_ETIKETI, PLAN_PROJESI, type TodoistGorev, type TodoistProje } from "@ortak/tipler";
+import {
+  ONEMLI_ETIKETI,
+  PLAN_PROJESI,
+  type TodoistGorev,
+  type TodoistProje,
+  type TodoistTaskPatch,
+} from "@ortak/tipler";
+import { rescheduleRecurring, todoistRecurrence } from "@ortak/todoist-schedule";
+import { turkceTarihCevir } from "@ortak/todoist-tarih";
+import type { Schedule } from "@/ui/DatePicker";
 import { bildir, deferWithUndo, silVeBildir } from "@/ui/toast";
 import { kopru, useBugun } from "@/veri/kanca";
 import { useLocalTasks } from "@/veri/local-tasks";
@@ -38,6 +45,27 @@ import { useLocalTasks } from "@/veri/local-tasks";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const fail = (text: string) => (e: unknown) => bildir({ metin: `${text} ${message(e)}`, tur: "hata" });
+
+export interface NewTaskInput {
+  title: string;
+  description?: string;
+  schedule: Schedule | null;
+  priority: Priority;
+  important: boolean;
+}
+
+/** Todoist keeps the due string as typed, which may be Turkish; the API needs English. */
+const englishDue = (s: string): string => (/^every\b/i.test(s.trim()) ? s : (turkceTarihCevir(s) ?? s));
+
+/** The due_string that stores a picker result on a Todoist task (null clears the date). */
+function todoistDueText(task: Task | null, sched: Schedule): string | null {
+  if (!sched.date) return null;
+  if (sched.repeat.kind === "rule") return todoistRecurrence(sched.repeat.rule, sched.date, sched.time);
+  if (sched.repeat.kind === "keep" && task?.recurring && task.todoistDueString) {
+    return rescheduleRecurring(englishDue(task.todoistDueString), sched.date, sched.time);
+  }
+  return todoistTarihi(sched.date, sched.time);
+}
 
 /** Todoist is re-read on focus at most this often, so phone edits show up. */
 const FOCUS_REFRESH_MS = 60_000;
@@ -143,6 +171,25 @@ export function useTaskBoard() {
       return next;
     });
 
+  /** Optimistic Todoist edit of text fields or priority; reverts on failure. */
+  const editTodoist = async (
+    task: Task,
+    patch: TodoistTaskPatch,
+    optimistic: (g: TodoistGorev) => TodoistGorev,
+    errorText: string,
+  ) => {
+    const k = kopru();
+    const before = todoistTask(task.id);
+    if (!k || !before) return;
+    patchTodoist(task.id, optimistic);
+    try {
+      putTodoist(await k.todoist.updateTask(task.id, patch));
+    } catch (e) {
+      putTodoist(before);
+      fail(errorText)(e);
+    }
+  };
+
   /* --- task actions ------------------------------------------------------------ */
 
   const complete = async (task: Task) => {
@@ -223,24 +270,63 @@ export function useTaskBoard() {
     });
   };
 
-  /** Moves the date, keeping the time of day. Null clears the date. */
-  const setDate = async (task: Task, iso: string | null) => {
-    const time = task.due && task.due.length > 10 ? task.due.slice(11, 16) : null;
-    const due = iso ? (time ? `${iso}T${time}` : iso) : null;
+  /**
+   * Applies a picker result. Argos tasks store date, time and rule directly.
+   * Todoist gets a due_string: a new rule is spelled out, "keep" on a
+   * recurring task restarts its existing rule from the new date, anything
+   * else is a plain date - so rescheduling never silently drops a rule.
+   */
+  const setSchedule = async (task: Task, sched: Schedule) => {
+    const due = sched.date ? (sched.time ? `${sched.date}T${sched.time}` : sched.date) : null;
     if (task.source === "local") {
-      await changeTasks((f) => updateTask(f, task.id, { due }));
+      const patch: Parameters<typeof updateTask>[2] = { due };
+      if (sched.repeat.kind === "none") patch.recurrence = null;
+      if (sched.repeat.kind === "rule") patch.recurrence = sched.repeat.rule;
+      await changeTasks((f) => updateTask(f, task.id, patch));
       return;
     }
     const k = kopru();
     const before = todoistTask(task.id);
     if (!k || !before) return;
-    patchTodoist(task.id, (g) => ({ ...g, tarih: due, tarihMetni: null }));
+    const text = todoistDueText(task, sched);
+    patchTodoist(task.id, (g) => ({
+      ...g,
+      tarih: due,
+      tekrarli: sched.repeat.kind === "rule" || (sched.repeat.kind === "keep" && g.tekrarli && !!due),
+    }));
     try {
-      putTodoist(await k.todoist.tarihVer(task.id, iso ? todoistTarihi(iso, time) : null));
+      putTodoist(await k.todoist.tarihVer(task.id, text));
     } catch (e) {
       putTodoist(before);
       fail("Tarih değiştirilemedi.")(e);
     }
+  };
+
+  /** Moves the date, keeping the time of day and any repeat rule. Null clears the date. */
+  const setDate = (task: Task, iso: string | null) =>
+    setSchedule(task, {
+      date: iso,
+      time: iso && task.due && task.due.length > 10 ? task.due.slice(11, 16) : null,
+      repeat: iso ? { kind: "keep" } : { kind: "none" },
+    });
+
+  const rename = async (task: Task, title: string) => {
+    const clean = title.trim();
+    if (!clean || clean === task.title) return;
+    if (task.source === "local") {
+      await changeTasks((f) => updateTask(f, task.id, { title: clean }));
+      return;
+    }
+    await editTodoist(task, { title: clean }, (g) => ({ ...g, icerik: clean }), "Başlık değiştirilemedi.");
+  };
+
+  const setDescription = async (task: Task, description: string) => {
+    if (description === task.description) return;
+    if (task.source === "local") {
+      await changeTasks((f) => updateTask(f, task.id, { description }));
+      return;
+    }
+    await editTodoist(task, { description }, (g) => ({ ...g, aciklama: description }), "Açıklama kaydedilemedi.");
   };
 
   const setPriority = async (task: Task, priority: Priority) => {
@@ -248,16 +334,7 @@ export function useTaskBoard() {
       await changeTasks((f) => updateTask(f, task.id, { priority }));
       return;
     }
-    const k = kopru();
-    const before = todoistTask(task.id);
-    if (!k || !before) return;
-    patchTodoist(task.id, (g) => ({ ...g, oncelik: priorityToTodoist(priority) }));
-    try {
-      putTodoist(await k.todoist.updateTask(task.id, { priority }));
-    } catch (e) {
-      putTodoist(before);
-      fail("Öncelik değiştirilemedi.")(e);
-    }
+    await editTodoist(task, { priority }, (g) => ({ ...g, oncelik: priorityToTodoist(priority) }), "Öncelik değiştirilemedi.");
   };
 
   const toggleImportant = async (task: Task) => {
@@ -304,22 +381,23 @@ export function useTaskBoard() {
     }
   };
 
-  /** Adds a task from a one-line entry ("fatura öde yarın 18:00 p1 @önemli"). Resolves true on success. */
-  const add = async (list: TaskList, line: string): Promise<boolean> => {
-    const q = splitQuickAdd(line, today);
-    if (!q.title) return false;
+  /** Creates a task in a list of either source. Resolves true on success. */
+  const createTask = async (list: TaskList, input: NewTaskInput): Promise<boolean> => {
+    const title = input.title.trim();
+    if (!title) return false;
+    const sched = input.schedule;
     if (list.source === "local") {
-      const parsed = q.dateText ? parseDateText(q.dateText, today) : null;
       return changeTasks((f) =>
         addTask(
           f,
           {
             listId: list.id,
-            title: q.title,
-            due: parsed ? dueValue(parsed) : null,
-            recurrence: parsed?.rule ?? null,
-            priority: q.priority ?? 4,
-            important: q.important,
+            title,
+            description: input.description,
+            due: sched?.date ? (sched.time ? `${sched.date}T${sched.time}` : sched.date) : null,
+            recurrence: sched?.repeat.kind === "rule" ? sched.repeat.rule : null,
+            priority: input.priority,
+            important: input.important,
           },
           newLocalId("t"),
           new Date().toISOString(),
@@ -330,13 +408,14 @@ export function useTaskBoard() {
     if (!k) return false;
     try {
       const created = await k.todoist.ekle({
-        icerik: q.title,
+        icerik: title,
         projeId: list.id,
-        tarihMetni: q.dateText ?? undefined,
-        oncelik: q.priority ? priorityToTodoist(q.priority) : undefined,
+        tarihMetni: sched ? (todoistDueText(null, sched) ?? undefined) : undefined,
+        oncelik: input.priority < 4 ? priorityToTodoist(input.priority) : undefined,
+        description: input.description,
+        labels: input.important ? [ONEMLI_ETIKETI] : undefined,
       });
       setTodoTasks((all) => [...all, created]);
-      if (q.important) putTodoist(await k.todoist.onemliYap(created.id, true));
       return true;
     } catch (e) {
       fail("Görev eklenemedi.")(e);
@@ -411,10 +490,13 @@ export function useTaskBoard() {
     complete,
     remove,
     setDate,
+    setSchedule,
+    rename,
+    setDescription,
     setPriority,
     toggleImportant,
     move,
-    add,
+    createTask,
     toggleFavorite,
     createList,
     renameList,
