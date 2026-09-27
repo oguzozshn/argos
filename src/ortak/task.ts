@@ -1,7 +1,7 @@
 // Explicit .ts extension: this file also runs under plain Node (araclar/local-tasks-test.mts).
 import type { LocalList, LocalTask, Priority, Reminder } from "./local-tasks.ts";
 import { describeRule, type RecurrenceRule } from "./recurrence.ts";
-import { onemliMi, type TodoistGorev, type TodoistProje } from "./tipler.ts";
+import { ONEMLI_ETIKETI, onemliMi, type TodoistGorev, type TodoistProje } from "./tipler.ts";
 
 /**
  * One task shape for every screen, whether it lives in Todoist or in Argos.
@@ -145,3 +145,24 @@ export const TODOIST_COLORS: Record<string, string> = {
 
 export const todoistColor = (name: string | undefined): string =>
   (name && TODOIST_COLORS[name]) || TODOIST_COLORS.charcoal!;
+
+/**
+ * An Argos task in the Todoist shape, for the older screens (Takvim, Hafta,
+ * Bugün cards) that render `TodoistGorev`. `source: "local"` lets their
+ * actions route back to the local store.
+ */
+export function localAsTodoist(t: LocalTask): TodoistGorev {
+  return {
+    id: t.id,
+    icerik: t.title,
+    aciklama: t.description,
+    projeId: t.listId,
+    tarih: t.due,
+    tarihMetni: t.recurrence ? describeRule(t.recurrence) : null,
+    tekrarli: t.recurrence !== null,
+    oncelik: priorityToTodoist(t.priority),
+    etiketler: t.important ? [ONEMLI_ETIKETI] : [],
+    altGorev: false,
+    source: "local",
+  };
+}

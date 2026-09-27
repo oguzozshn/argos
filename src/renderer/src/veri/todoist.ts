@@ -7,10 +7,13 @@ import {
   todoistTarihi,
   type BirakmaSaati,
 } from "@ortak/gorev-zaman";
+import { tasksInRange, updateTask } from "@ortak/local-tasks";
+import { localAsTodoist } from "@ortak/task";
 import type { TodoistGorev } from "@ortak/tipler";
 import { tekrarMetni, type TekrarTuru } from "@ortak/todoist-tarih";
 import { silVeBildir } from "@/ui/toast";
-import { kopru } from "./kanca";
+import { kopru, useBugun } from "./kanca";
+import { completeLocalWithUndo, useLocalTasks } from "./local-tasks";
 
 /**
  * Takvimin görev kaynağı. Yapılacaklar modülünün kendi kancaları var; bu
@@ -50,6 +53,14 @@ export interface AralikDurumu {
 
 export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
   const [gorevler, setGorevler] = useState<TodoistGorev[]>([]);
+  // Argos-local tasks join the calendar in the Todoist shape (source: "local").
+  const local = useLocalTasks();
+  const today = useBugun();
+  const localInRange = useMemo(
+    () => tasksInRange({ version: 1, tasks: local.tasks }, basIso, sonIso).map(localAsTodoist),
+    [local.tasks, basIso, sonIso],
+  );
+  const all = useMemo(() => [...gorevler, ...localInRange], [gorevler, localInRange]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [anahtarYok, setAnahtarYok] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
@@ -91,7 +102,7 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
 
   const gunlere = useMemo(() => {
     const m = new Map<string, TodoistGorev[]>();
-    for (const g of gorevler) {
+    for (const g of all) {
       if (!g.tarih) continue;
       const gun = g.tarih.slice(0, 10);
       const liste = m.get(gun);
@@ -110,10 +121,14 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
       });
     }
     return m;
-  }, [gorevler]);
+  }, [all]);
 
   const kapat = useCallback(
     async (g: TodoistGorev) => {
+      if (g.source === "local") {
+        await completeLocalWithUndo(local, g.id, today);
+        return;
+      }
       const k = kopru();
       if (!k) return;
       const geriEkle = () => setGorevler((x) => [g, ...x.filter((y) => y.id !== g.id)]);
@@ -143,7 +158,7 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
         },
       });
     },
-    [],
+    [local, today],
   );
 
   const ekle = useCallback(
@@ -177,12 +192,18 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
 
   const tarihiDegistir = useCallback(
     async (g: TodoistGorev, iso: string, istek: BirakmaSaati = { tur: "koru" }) => {
-      const k = kopru();
-      if (!k) return;
       // Gün de saat de aynıysa istek atmaya gerek yok. Eskiden yalnız gün
       // karşılaştırılıyordu, o yüzden aynı gün içinde saat değiştirilemiyordu.
       if (tasimaGereksiz(g.tarih, iso, istek)) return;
       const saat = hedefSaat(g.tarih, istek);
+      // An Argos task keeps its repeat rule; only the date (and time) moves.
+      if (g.source === "local") {
+        const ok = await local.changeTasks((f) => updateTask(f, g.id, { due: saat ? `${iso}T${saat}` : iso }));
+        if (!ok) setHata("Argos görevi taşınamadı.");
+        return;
+      }
+      const k = kopru();
+      if (!k) return;
 
       const koy = (x: TodoistGorev) => (liste: TodoistGorev[]) =>
         liste.some((y) => y.id === x.id) ? liste.map((y) => (y.id === x.id ? x : y)) : [...liste, x];
@@ -201,11 +222,11 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
         setGorevler(listedeydi ? koy(g) : at(g.id));
       }
     },
-    [gorevler],
+    [gorevler, local],
   );
 
   return {
-    gorevler,
+    gorevler: all,
     gunlere,
     yukleniyor,
     anahtarYok,

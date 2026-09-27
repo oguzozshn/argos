@@ -19,6 +19,7 @@ import {
   hatirlatmaMesaji,
   kapatCevabi,
   kapatCoz,
+  localTasksForDay,
   planTaze,
   yaklasanSlotlar,
   komutCoz,
@@ -197,12 +198,13 @@ async function sonucAl(istek: Request, env: Env): Promise<Response> {
     const ad =
       k.tur === "slot"
         ? `${tarihBasligi(k.tarih)} ${k.saat} ${k.konu}`
-        : k.tur === "durum"
+        : k.tur === "durum" || k.tur === "task"
           ? k.ad
           : k.metin;
     let mesaj: string | null = null;
-    if (s.durum === "reddedildi") mesaj = `⚠️ Eklenemedi: ${kacis(ad)}\n${kacis(s.sebep)}`;
-    else if (s.not) mesaj = `✅ Plana işlendi: ${kacis(ad)}\nℹ️ ${kacis(s.not)}`;
+    if (s.durum === "reddedildi") {
+      mesaj = `⚠️ ${k.tur === "task" ? "Kapatılamadı" : "Eklenemedi"}: ${kacis(ad)}\n${kacis(s.sebep)}`;
+    } else if (s.not && k.tur !== "task") mesaj = `✅ Plana işlendi: ${kacis(ad)}\nℹ️ ${kacis(s.not)}`;
     if (mesaj && env.SAHIP_CHAT_ID) {
       await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID, mesaj).catch((e) => console.error("[bot] bildirim", e));
     }
@@ -297,6 +299,20 @@ async function mesaj(env: Env, updateId: number, chatId: number, metin: string):
       const sonuc = kapatCoz(k.metin, slotlar, gorevler);
       if (sonuc.tur !== "tek") {
         await yaz(kapatCevabi(sonuc, k.metin) + uyari);
+        return;
+      }
+      if (sonuc.hedef.tur === "gorev" && sonuc.hedef.local) {
+        // An Argos-local task lives in Argos's files; the Worker queues the close.
+        const kayit: KuyrukKaydi = {
+          id: `u${updateId}`,
+          tur: "task",
+          zaman: new Date().toISOString(),
+          gorevId: sonuc.hedef.id,
+          due: sonuc.hedef.local.due,
+          ad: sonuc.hedef.ad,
+        };
+        await env.ARGOS.put(KUYRUK + kayit.id, JSON.stringify(kayit));
+        await yaz(kuyrukOnayi(kayit, bugun));
         return;
       }
       if (sonuc.hedef.tur === "gorev") {
@@ -410,7 +426,8 @@ async function gunIcerik(env: Env, tarih: string, bugun: string): Promise<{ meti
     bekleyenler(env),
     gununGorevleri(env, tarih, bugun),
   ]);
-  return { metin: gunMesaji(tarih, bugun, anlik, gorevler, kuyruk), klavye: gunKlavyesi(tarih, bugun) };
+  const hepsi = "hata" in gorevler ? gorevler : [...gorevler, ...localTasksForDay(anlik, tarih, bugun, kuyruk)];
+  return { metin: gunMesaji(tarih, bugun, anlik, hepsi, kuyruk), klavye: gunKlavyesi(tarih, bugun) };
 }
 
 /**
@@ -433,7 +450,8 @@ async function acikIsler(
   );
   return {
     slotlar: (anlik?.gunler[tarih]?.slotlar ?? []).filter((s) => s.durum === "planli" && !isaretlenen.has(s.id)),
-    gorevler: "hata" in gorevler ? [] : gorevler,
+    // Argos-local tasks come from the snapshot, so they stay findable even when Todoist fails.
+    gorevler: [...("hata" in gorevler ? [] : gorevler), ...localTasksForDay(anlik, tarih, bugun, kuyruk)],
     gorevHatasi: "hata" in gorevler ? gorevler.hata : null,
   };
 }

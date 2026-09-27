@@ -82,6 +82,11 @@ export interface TodoistGorev {
   oncelik: number;
   etiketler: string[];
   altGorev: boolean;
+  /**
+   * "local" marks an Argos-local task shown in a Todoist-shaped screen
+   * (Takvim, Hafta, Bugün cards). Absent means a Todoist task.
+   */
+  source?: "local";
 }
 
 /** Editable fields of a Todoist task apart from its date, which goes through `tarihVer`. */

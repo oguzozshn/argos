@@ -1,9 +1,11 @@
 import { Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { localAsTodoist } from "@ortak/task";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Etiket, Kart, Satir } from "@/ui/bilesenler";
 import { silVeBildir } from "@/ui/toast";
-import { kopru } from "@/veri/kanca";
+import { kopru, useBugun } from "@/veri/kanca";
+import { completeLocalWithUndo, useLocalTasks } from "@/veri/local-tasks";
 import s from "./yapilacak.module.css";
 
 /**
@@ -11,7 +13,17 @@ import s from "./yapilacak.module.css";
  * Tek istek — Todoist'in kendi süzgeci kullanılıyor.
  */
 export function YapilacakOzet() {
-  const [gorevler, setGorevler] = useState<TodoistGorev[] | null>(null);
+  const [todoistGorevleri, setGorevler] = useState<TodoistGorev[] | null>(null);
+  const local = useLocalTasks();
+  const today = useBugun();
+  // Argos tasks due today or earlier sit next to the Todoist ones.
+  const gorevler = useMemo(() => {
+    if (!todoistGorevleri) return null;
+    const localDue = local.tasks
+      .filter((t) => !t.completedAt && t.due && t.due.slice(0, 10) <= today)
+      .map(localAsTodoist);
+    return [...todoistGorevleri, ...localDue];
+  }, [todoistGorevleri, local.tasks, today]);
   const [gecikmisAcik, setGecikmisAcik] = useState(false);
 
   useEffect(() => {
@@ -29,6 +41,10 @@ export function YapilacakOzet() {
   }, []);
 
   const kapat = (g: TodoistGorev) => {
+    if (g.source === "local") {
+      void completeLocalWithUndo(local, g.id, today);
+      return;
+    }
     const k = kopru();
     if (!k) return;
     const geriEkle = () => setGorevler((x) => [g, ...(x ?? []).filter((y) => y.id !== g.id)]);
