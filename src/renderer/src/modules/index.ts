@@ -67,6 +67,12 @@ export interface Modul {
   genis?: boolean;
   /** Bugün ekranında görünecek kart. Modül isterse vermez. */
   Ozet?: ComponentType;
+  /**
+   * Bugün ekranında ızgaranın üstünde, tam genişlikte duran kart. Her an
+   * görünmesi gereken şeyler için (önemli tarihlerin geri sayımı); modül
+   * sırasından bağımsız olarak en üstte durur. Göstereceği yoksa null döner.
+   */
+  Ust?: ComponentType;
   /** Komut paletine verdiği eylemler. Ekranlara gitme komutları kabukta kendiliğinden üretilir. */
   komutlar?: Komut[];
   /**

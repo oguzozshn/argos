@@ -7,9 +7,10 @@ import {
   KeyRound,
   RefreshCw,
   Repeat,
+  Star,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import type { TodoistGorev } from "@ortak/tipler";
+import { ONEMLI_ETIKETI, onemliMi, type TodoistGorev } from "@ortak/tipler";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { maddeGecisi } from "@/ui/hareket";
@@ -51,13 +52,18 @@ function GorevSatiri({
   gecikmis,
   onKapat,
   onTarih,
+  onOnemli,
 }: {
   gorev: TodoistGorev;
   gecikmis: boolean;
   onKapat: () => void;
   onTarih: (metin: string | null) => void;
+  onOnemli: () => void;
 }) {
   const [tarihAcik, setTarihAcik] = useState(false);
+  const onemli = onemliMi(gorev);
+  // Yıldız zaten söylüyor; alt satırda bir de "@önemli" yazmasın.
+  const etiketler = gorev.etiketler.filter((e) => e.toLocaleLowerCase("tr") !== ONEMLI_ETIKETI);
 
   return (
     <motion.div variants={maddeGecisi} initial="giris" animate="duruyor" exit="cikis" layout>
@@ -75,7 +81,7 @@ function GorevSatiri({
 
         <div className={s.govde}>
           <span className={s.icerik}>{gorev.icerik}</span>
-          {(gorev.tarihMetni || gorev.aciklama || gorev.etiketler.length > 0) && (
+          {(gorev.tarihMetni || gorev.aciklama || etiketler.length > 0) && (
             <span className={s.altSatir}>
               {gorev.tarihMetni && (
                 <span className={gecikmis ? `${s.tarih} ${s.tarihGecikmis}` : s.tarih}>
@@ -83,7 +89,7 @@ function GorevSatiri({
                   {gorev.tekrarli ? gorev.tarihMetni : gorev.tarih ? tarihYaz(gorev.tarih) : ""}
                 </span>
               )}
-              {gorev.etiketler.map((e) => (
+              {etiketler.map((e) => (
                 <span key={e}>@{e}</span>
               ))}
               {gorev.aciklama && <span className={s.aciklama}>{gorev.aciklama}</span>}
@@ -92,6 +98,19 @@ function GorevSatiri({
         </div>
 
         <div className={s.eylemler}>
+          <Dugme
+            tur="sade"
+            className={onemli ? s.onemliSabit : undefined}
+            ikon={<Star size={15} fill={onemli ? "currentColor" : "none"} />}
+            onClick={onOnemli}
+            title={
+              onemli
+                ? "Önemli — Bugün ekranında geri sayımla görünür. Kaldırmak için tıkla."
+                : "Önemli yap — Bugün ekranında geri sayımla görünür"
+            }
+            aria-label={onemli ? "Önemli işaretini kaldır" : "Önemli yap"}
+            aria-pressed={onemli}
+          />
           {/* Tekrarlı görevin tarihi buradan değişmez: due_string'i ezmek
               tekrar düzenini siler (CLAUDE.md). Tekrar metni satırda görünür. */}
           {!gorev.tekrarli && (
@@ -155,7 +174,7 @@ function GorevSatiri({
 }
 
 function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }) {
-  const { gorevler, yukleniyor, hata, tazele, kapat, ekle, tarihVer } =
+  const { gorevler, yukleniyor, hata, tazele, kapat, ekle, tarihVer, onemliDegistir } =
     useGorevler(projeId);
   const obekler = useObekler(gorevler);
   const [yeni, setYeni] = useState("");
@@ -235,6 +254,7 @@ function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }
                   gecikmis={o === "gecikmiş"}
                   onKapat={() => void kapat(g)}
                   onTarih={(metin) => void tarihVer(g.id, metin)}
+                  onOnemli={() => void onemliDegistir(g)}
                 />
               ))}
             </AnimatePresence>

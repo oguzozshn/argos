@@ -31,6 +31,8 @@ const argos: ArgosApi = {
     bugunVeGecikmis: () => ipcRenderer.invoke(KANAL.tdBugun),
     tarihAraligi: (basIso: string, sonIso: string) =>
       ipcRenderer.invoke(KANAL.tdAralik, basIso, sonIso),
+    onemliler: () => ipcRenderer.invoke(KANAL.tdOnemliler),
+    onemliYap: (id: string, onemli: boolean) => ipcRenderer.invoke(KANAL.tdOnemliYap, id, onemli),
     ekle: (g: { icerik: string; projeId: string; tarihMetni?: string; oncelik?: number }) =>
       ipcRenderer.invoke(KANAL.tdEkle, g),
     kapat: (id: string) => ipcRenderer.invoke(KANAL.tdKapat, id),

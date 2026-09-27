@@ -178,16 +178,22 @@
   max-width: 60ch;
 }
 
+/* Düğmeler tek tek gizlenir, kutu değil: önemli yıldızı hep görünür kalıp
+   üzerine gelince yerinden kaymasın. */
 .eylemler {
   display: flex;
   gap: 2px;
-  opacity: 0;
   flex-shrink: 0;
+}
+
+.eylemler > * {
+  opacity: 0;
   transition: opacity var(--sure-hizli) var(--egri);
 }
 
-.gorev:hover .eylemler,
-.gorev:focus-within .eylemler {
+.gorev:hover .eylemler > *,
+.gorev:focus-within .eylemler > *,
+.eylemler > .onemliSabit {
   opacity: 1;
 }
 
@@ -220,4 +226,99 @@
 
 .gecikmisAcik {
   border-color: var(--hata);
+}
+
+/* --- önemli tarihler (Bugün ekranının üstü) ----------------------------- */
+
+/*
+ * Döşemeler arası çizgi: her döşemenin solunda ve altında bir çizgi var,
+ * -1px kaydırılıp taşan kısım kesiliyor. Böylece ilk sütunun solunda ve son
+ * satırın altında çift çizgi olmuyor, eksik satırda boş hücre boyanmıyor.
+ * auto-fit: iki önemli tarih varsa ikisi satırı paylaşır, sağda boşluk kalmaz.
+ */
+.dosemeler {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  overflow: hidden;
+  border-radius: 0 0 var(--r3) var(--r3);
+}
+
+.doseme {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  margin: 0 0 -1px -1px;
+  padding: var(--b4) var(--b6) var(--b5);
+  border-left: 1px solid var(--cizgi);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.kalan {
+  font-size: 22px;
+  font-weight: var(--sik-kalin);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--metin);
+  white-space: nowrap;
+}
+
+.kalan_yakin {
+  color: var(--uyari);
+}
+
+.kalan_acil {
+  color: var(--hata);
+}
+
+.kalanYok {
+  color: var(--metin-soluk);
+  font-weight: var(--sik-normal);
+}
+
+.dosemeAd {
+  margin-top: var(--b1);
+  font-size: var(--y3);
+  font-weight: var(--sik-orta);
+  line-height: 1.35;
+  color: var(--metin);
+  /* Ad okunmalı: tek satırda "Motivation letter tes…" kalıyordu. İki satır. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.dosemeTarih {
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dahaDugme {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.dahaDugme:hover {
+  color: var(--metin);
+}
+
+/* --- önemli işareti (görev satırı) -------------------------------------- */
+
+/* İşaretli görevin yıldızı: dolu, renkli, hep görünür. İki sınıflı seçici
+   Dugme'nin `sade` rengini yükleme sırasından bağımsız olarak ezsin. */
+.gorev .onemliSabit,
+.gorev .onemliSabit:hover {
+  color: var(--uyari);
 }

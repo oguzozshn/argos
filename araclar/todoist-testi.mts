@@ -18,9 +18,12 @@ import {
   gorevler,
   hizliEkle,
   kapat,
+  onemliler,
+  onemliYap,
   projeler,
   tarihVer,
 } from "../src/main/todoist-cekirdek.ts";
+import { onemliMi } from "../src/ortak/tipler.ts";
 import { todoistTarihi } from "../src/ortak/gorev-zaman.ts";
 import { gizliYolu } from "./yol.mts";
 
@@ -149,6 +152,59 @@ async function sahteBolum(): Promise<void> {
   kontrol("hızlı eklemede zaman aşımı 'eklenmiş olabilir' der", zaman.includes("eklenmiş olabilir"), zaman);
   sahteFetchAc();
 
+  // Önemli işareti: önce güncel etiketler okunur, sonra yalnız `labels` gider.
+  const istekler: Yakalanan[] = [];
+  const etiketliFetch = (etiketler: string[]) => {
+    istekler.length = 0;
+    globalThis.fetch = (async (url: string | URL, ayar?: RequestInit) => {
+      istekler.push({
+        url: String(url),
+        yontem: ayar?.method ?? "GET",
+        govde: ayar?.body ? (JSON.parse(String(ayar.body)) as Record<string, unknown>) : null,
+      });
+      const donen = ayar?.body ? (JSON.parse(String(ayar.body)) as { labels: string[] }).labels : etiketler;
+      return new Response(JSON.stringify({ id: "42", content: "IELTS", project_id: "P", labels: donen }), { status: 200 });
+    }) as typeof fetch;
+  };
+  const gonderilen = () => istekler.at(-1)?.govde as { labels?: string[] } | null;
+
+  etiketliFetch(["okul"]);
+  const isaretli = await onemliYap("T", "42", true);
+  kontrol("önemli yap önce görevi okur", istekler[0]?.yontem === "GET" && istekler[0].url.endsWith("/tasks/42"));
+  kontrol(
+    "önemli yap diğer etiketleri korur",
+    JSON.stringify(gonderilen()?.labels) === JSON.stringify(["okul", "önemli"]),
+    JSON.stringify(gonderilen()),
+  );
+  kontrol(
+    "önemli yapta yalnız labels gider (tarih ezilmez)",
+    Object.keys(gonderilen() ?? {}).join() === "labels",
+    Object.keys(gonderilen() ?? {}).join(),
+  );
+  kontrol("dönen görev önemli sayılır", onemliMi(isaretli));
+
+  etiketliFetch(["önemli", "okul"]);
+  await onemliYap("T", "42", true);
+  kontrol("zaten önemliyse etiket ikilenmez", JSON.stringify(gonderilen()?.labels) === JSON.stringify(["okul", "önemli"]));
+
+  etiketliFetch(["Önemli", "okul"]);
+  const kaldirilan = await onemliYap("T", "42", false);
+  kontrol(
+    "kaldırma büyük harfli 'Önemli'yi de siler, diğerini bırakır",
+    JSON.stringify(gonderilen()?.labels) === JSON.stringify(["okul"]),
+    JSON.stringify(gonderilen()),
+  );
+  kontrol("kaldırılan görev önemli sayılmaz", !onemliMi(kaldirilan));
+
+  etiketliFetch([]);
+  await onemliler("T");
+  kontrol(
+    "önemliler etiket süzgeciyle sorar",
+    decodeURIComponent(istekler[0]?.url ?? "").includes("/tasks/filter?query=@önemli"),
+    istekler[0]?.url,
+  );
+  sahteFetchAc();
+
   await kapat("T", "a/b?c=1");
   kontrol("kimlik URL için kaçışlanır", sonIstek?.url.includes("a%2Fb%3Fc%3D1") === true);
 
@@ -209,6 +265,11 @@ async function canliBolum(token: string): Promise<void> {
     "plan projesinin slotları özete karışmaz",
     bugun.every((x) => x.projeId !== PLAN_PROJESI),
   );
+
+  // Etiket henüz hiç kullanılmamışsa boş liste döner; hata vermemesi yeter.
+  const onemli = await onemliler(token);
+  kontrol("@önemli süzgeci Türkçe karakterle çalışır", Array.isArray(onemli), `${onemli.length} görev`);
+  kontrol("gelenlerin hepsi önemli etiketli", onemli.every(onemliMi));
 }
 
 async function calis(): Promise<void> {

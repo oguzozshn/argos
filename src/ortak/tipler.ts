@@ -117,6 +117,10 @@ export interface ArgosApi {
     bugunVeGecikmis(): Promise<TodoistGorev[]>;
     /** Tarihi verilen aralıkta olan görevler — takvim için. */
     tarihAraligi(basIso: string, sonIso: string): Promise<TodoistGorev[]>;
+    /** `@önemli` etiketli açık görevler, tüm projelerden (plan projesi hariç). */
+    onemliler(): Promise<TodoistGorev[]>;
+    /** Önemli etiketini ekler/kaldırır; görevin diğer etiketlerine ve tarihine dokunmaz. */
+    onemliYap(id: string, onemli: boolean): Promise<TodoistGorev>;
     ekle(g: {
       icerik: string;
       projeId: string;
@@ -170,6 +174,8 @@ export const KANAL = {
   tdTarih: "todoist:tarih",
   tdBugun: "todoist:bugun",
   tdAralik: "todoist:aralik",
+  tdOnemliler: "todoist:onemliler",
+  tdOnemliYap: "todoist:onemli-yap",
   tdHizli: "todoist:hizli",
   tdDegisti: "todoist:degisti",
   yakalaGizle: "yakala:gizle",
@@ -188,6 +194,17 @@ export const KANAL = {
  * o proje Asistan modülünün işi (CLAUDE.md: kişisel görevler ayrı durur).
  */
 export const PLAN_PROJESI = "6CrfrPC6f3G6wCMG";
+
+/**
+ * Bugün ekranının en üstünde geri sayımla duran görevlerin Todoist etiketi
+ * (sınav, başvuru). Etiket olduğu için telefondan ve hızlı yakalamadan
+ * `@önemli` yazarak da verilir.
+ */
+export const ONEMLI_ETIKETI = "önemli";
+
+/** Todoist etiketleri büyük/küçük harf ayırmıyor; "Önemli" de sayılsın. */
+export const onemliMi = (g: { etiketler: string[] }): boolean =>
+  g.etiketler.some((e) => e.toLocaleLowerCase("tr") === ONEMLI_ETIKETI);
 
 /** Başlık çubuğu kaplamasının tema başına renkleri — token.css ile aynı değerler. */
 export const BASLIK_RENKLERI = {
