@@ -116,6 +116,7 @@ export const gorevCevir = (t: HamGorev): TodoistGorev => ({
   tarih: t.due?.date ?? null,
   // Todoist'e İngilizce gidiyor (Türkçe tarih dilini tanımıyor); ekranda Türkçe okunsun.
   tarihMetni: tarihMetniTurkce(t.due?.string ?? null),
+  dueString: t.due?.string ?? null,
   tekrarli: t.due?.is_recurring === true,
   oncelik: t.priority ?? 1,
   etiketler: t.labels ?? [],
@@ -255,6 +256,8 @@ export interface YeniGorev {
   projeId: string;
   tarihMetni?: string;
   oncelik?: number;
+  description?: string;
+  labels?: string[];
 }
 
 export async function ekle(token: string, g: YeniGorev): Promise<TodoistGorev> {
@@ -266,6 +269,8 @@ export async function ekle(token: string, g: YeniGorev): Promise<TodoistGorev> {
     yuk.due_lang = dil;
   }
   if (g.oncelik) yuk.priority = g.oncelik;
+  if (g.description?.trim()) yuk.description = g.description.trim();
+  if (g.labels?.length) yuk.labels = g.labels;
   return gorevCevir(await istek<HamGorev>(token, "/tasks", "POST", yuk));
 }
 

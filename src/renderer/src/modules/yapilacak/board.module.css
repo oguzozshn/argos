@@ -10,6 +10,10 @@
   align-items: start;
 }
 
+.boardWithPanel {
+  grid-template-columns: 250px minmax(0, 1fr) 380px;
+}
+
 .notice {
   display: flex;
   align-items: center;
@@ -292,48 +296,116 @@
   outline: none;
 }
 
-.composerFoot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px 10px 12px;
-  border-top: 1px solid var(--cizgi);
+.composerDescription {
+  width: 100%;
+  padding: 0 14px 8px;
+  border: 0;
+  background: none;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  resize: none;
+  outline: none;
 }
 
-.chips {
-  flex: 1;
-  min-width: 0;
+.composerChips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  padding: 0 12px 12px;
 }
 
-.chip {
+.chipButton {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
+  border: 1px solid var(--cizgi-koyu);
   border-radius: 7px;
-  background: var(--vurgu-yumusak);
-  color: var(--vurgu);
-  font-size: var(--y5);
-  font-weight: var(--sik-orta);
+  color: var(--metin-orta);
+  font-size: var(--y4);
+  overflow: hidden;
 }
 
-.chipDanger {
+.chipButton button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chipButton button:hover {
+  background: var(--kart-hover);
+}
+
+.chipOn {
+  border-color: transparent;
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+}
+
+.chipDangerOn {
+  border-color: transparent;
   background: var(--hata-yumusak);
   color: var(--hata);
 }
 
-.chipImportant {
+.chipImportantOn {
+  border-color: transparent;
   background: var(--uyari-yumusak);
   color: var(--uyari);
+}
+
+.chipOn button:hover,
+.chipDangerOn button:hover,
+.chipImportantOn button:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.chipButton .chipClear {
+  padding: 4px 6px 4px 2px;
+}
+
+.composerFoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 10px 8px;
+  border-top: 1px solid var(--cizgi);
+}
+
+.listPick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listPick:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
 }
 
 .hint {
   font-size: var(--y5);
   color: var(--metin-soluk);
-  padding: 3px 0;
+}
+
+.grow {
+  flex: 1;
 }
 
 /* --- task row ---------------------------------------------------------------------- */
@@ -355,6 +427,26 @@
 
 .row:last-child {
   border-bottom: 0;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.rowSelected,
+.rowSelected:hover {
+  background: var(--vurgu-yumusak);
+}
+
+.rowSelected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--vurgu);
 }
 
 .check {
@@ -471,15 +563,228 @@
   color: var(--metin);
 }
 
+/* --- task panel ---------------------------------------------------------------------- */
+
+.panel {
+  position: sticky;
+  top: var(--b4);
+  max-height: calc(100vh - var(--baslik-yukseklik) - var(--b7));
+  overflow-y: auto;
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r3);
+  box-shadow: var(--golge1);
+}
+
+.panelTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 10px 20px;
+  border-bottom: 1px solid var(--cizgi);
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+}
+
+.panelPath {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.panelTop button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.panelTop button:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.panelHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px 2px;
+}
+
+.panelHead .check {
+  margin-top: 4px;
+}
+
+.panelTitle,
+.panelDescription {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  user-select: text;
+}
+
+.panelTitle {
+  flex: 1;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  font-size: 17px;
+  font-weight: var(--sik-kalin);
+  line-height: 1.4;
+  color: var(--metin);
+}
+
+.panelDescription {
+  display: block;
+  width: calc(100% - 70px);
+  margin: 4px 20px 14px 50px;
+  padding: 2px 4px;
+  font-size: var(--y4);
+  line-height: 1.5;
+  color: var(--metin-orta);
+}
+
+.panelTitle:focus,
+.panelDescription:focus,
+.panelTitle:hover,
+.panelDescription:hover {
+  background: var(--kart-hover);
+}
+
+.panelDescription::placeholder {
+  color: var(--metin-soluk);
+}
+
+.props {
+  padding: 8px 0;
+  border-top: 1px solid var(--cizgi);
+}
+
+.prop {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  align-items: center;
+  padding: 2px 12px 2px 20px;
+}
+
+.propLabel {
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+}
+
+.propValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.propValue:hover:not(:disabled) {
+  background: var(--kart-hover);
+}
+
+.propValue:disabled {
+  cursor: default;
+}
+
+.propValue svg {
+  flex-shrink: 0;
+}
+
+.propEmpty {
+  color: var(--metin-soluk);
+}
+
+.propImportant {
+  color: var(--uyari);
+}
+
+.panelFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 10px 20px;
+  border-top: 1px solid var(--cizgi);
+}
+
+.panelSource {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--hata);
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  background: var(--hata-yumusak);
+}
+
 .moveMenu {
   max-height: 60vh;
   overflow-y: auto;
 }
 
 /* Narrow window: the list column goes above the tasks. */
+/* Mid-size window: the panel goes under the list instead of squeezing it. */
+@media (max-width: 1280px) {
+  .boardWithPanel {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+
+  .boardWithPanel .panel {
+    grid-column: 2;
+    position: static;
+    max-height: none;
+  }
+}
+
 @media (max-width: 860px) {
-  .board {
+  .board,
+  .boardWithPanel {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .boardWithPanel .panel {
+    grid-column: auto;
   }
 
   .sidebar {

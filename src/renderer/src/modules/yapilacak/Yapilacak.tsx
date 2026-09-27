@@ -1,14 +1,13 @@
-import { AlertTriangle, Calendar, Flag, KeyRound, Monitor, Plus, RefreshCw, Repeat, Star } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
-import { parseDateText } from "@ortak/date-parse";
-import { splitQuickAdd } from "@ortak/quick-add";
-import { describeRule } from "@ortak/recurrence";
+import { AlertTriangle, KeyRound, Monitor, Plus, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { TaskList } from "@ortak/task";
-import { dueLabel, groupByDate } from "@ortak/task-dates";
+import { groupByDate } from "@ortak/task-dates";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { kopru } from "@/veri/kanca";
+import { Composer } from "./Composer";
 import { ListSidebar } from "./ListSidebar";
+import { TaskPanel } from "./TaskPanel";
 import { TaskRow } from "./TaskRow";
 import { useTaskBoard, type TaskBoard } from "./useTaskBoard";
 import s from "./board.module.css";
@@ -31,9 +30,11 @@ function readStoredList(): string | null {
 export function Yapilacak() {
   const board = useTaskBoard();
   const [activeKey, setActiveKey] = useState<string | null>(readStoredList);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const select = (key: string) => {
     setActiveKey(key);
+    setSelectedKey(null);
     try {
       localStorage.setItem(STORAGE_KEY, key);
     } catch {
@@ -43,6 +44,8 @@ export function Yapilacak() {
 
   const active =
     board.lists.find((l) => l.key === activeKey) ?? board.lists.find((l) => l.inbox) ?? board.lists[0] ?? null;
+  // A completed, deleted or moved-away task closes the panel on its own.
+  const selected = board.tasks.find((t) => t.key === selectedKey) ?? null;
 
   return (
     <>
@@ -55,10 +58,16 @@ export function Yapilacak() {
           <Yuklenirken />
         </Kart>
       ) : (
-        <div className={s.board}>
+        <div className={selected ? `${s.board} ${s.boardWithPanel}` : s.board}>
           <ListSidebar board={board} activeKey={active?.key ?? null} onSelect={select} />
           {active ? (
-            <TaskListCard key={active.key} list={active} board={board} />
+            <TaskListCard
+              key={active.key}
+              list={active}
+              board={board}
+              selectedKey={selected?.key ?? null}
+              onSelect={(key) => setSelectedKey((k) => (k === key ? null : key))}
+            />
           ) : (
             <Kart>
               <BosDurum
@@ -67,6 +76,7 @@ export function Yapilacak() {
               />
             </Kart>
           )}
+          {selected && <TaskPanel key={selected.key} task={selected} board={board} onClose={() => setSelectedKey(null)} />}
         </div>
       )}
     </>
@@ -105,12 +115,30 @@ function TodoistNotice({ board }: { board: TaskBoard }) {
   return null;
 }
 
-function TaskListCard({ list, board }: { list: TaskList; board: TaskBoard }) {
+function TaskListCard({
+  list,
+  board,
+  selectedKey,
+  onSelect,
+}: {
+  list: TaskList;
+  board: TaskBoard;
+  selectedKey: string | null;
+  onSelect: (key: string | null) => void;
+}) {
+  const [composing, setComposing] = useState(false);
   const tasks = useMemo(
     () => board.tasks.filter((t) => t.source === list.source && t.listId === list.id),
     [board.tasks, list],
   );
   const groups = useMemo(() => groupByDate(tasks, board.today), [tasks, board.today]);
+  // Screen order, for ↑/↓ between tasks while the panel is open.
+  const order = useMemo(() => groups.flatMap((g) => g.tasks.map((t) => t.key)), [groups]);
+  const step = (n: number) => () => {
+    if (order.length === 0) return;
+    const i = selectedKey ? order.indexOf(selectedKey) : -1;
+    onSelect(order[Math.max(0, Math.min(order.length - 1, i + n))]!);
+  };
 
   return (
     <Kart
@@ -135,7 +163,25 @@ function TaskListCard({ list, board }: { list: TaskList; board: TaskBoard }) {
         )
       }
     >
-      <AddRow list={list} board={board} />
+      <Kisayollar
+        grup="Yapılacaklar"
+        liste={[
+          { tus: "n", aciklama: "Yeni görev", eylem: () => setComposing(true) },
+          { tus: "ArrowDown", aciklama: "Sonraki görev", eylem: step(1) },
+          { tus: "ArrowUp", aciklama: "Önceki görev", eylem: step(-1) },
+          { tus: "Escape", aciklama: "Görev panelini kapat", eylem: selectedKey ? () => onSelect(null) : null },
+        ]}
+      />
+      {composing ? (
+        <Composer list={list} board={board} onClose={() => setComposing(false)} />
+      ) : (
+        <button type="button" className={s.addRow} onClick={() => setComposing(true)}>
+          <span className={s.addPlus}>
+            <Plus size={14} />
+          </span>
+          Görev ekle
+        </button>
+      )}
       {tasks.length === 0 ? (
         <p className={s.empty}>Bu listede açık görev yok.</p>
       ) : (
@@ -145,121 +191,11 @@ function TaskListCard({ list, board }: { list: TaskList; board: TaskBoard }) {
               {group} <span>{items.length}</span>
             </h3>
             {items.map((t) => (
-              <TaskRow key={t.key} task={t} board={board} />
+              <TaskRow key={t.key} task={t} board={board} selected={t.key === selectedKey} onSelect={onSelect} />
             ))}
           </section>
         ))
       )}
     </Kart>
-  );
-}
-
-/**
- * One-line entry: "fatura öde yarın 18:00 p1 @önemli". What the line will
- * become shows as chips while typing; the full composer comes next stage.
- */
-function AddRow({ list, board }: { list: TaskList; board: TaskBoard }) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-
-  const parsed = useMemo(() => {
-    const q = splitQuickAdd(text, board.today);
-    const date = q.dateText ? parseDateText(q.dateText, board.today) : null;
-    return { ...q, date };
-  }, [text, board.today]);
-
-  const submit = async () => {
-    if (!parsed.title || busy) return;
-    setBusy(true);
-    const ok = await board.add(list, text);
-    setBusy(false);
-    if (ok) setText("");
-    input.current?.focus();
-  };
-
-  const shortcut = (
-    <Kisayollar
-      grup="Yapılacaklar"
-      liste={[{ tus: "n", aciklama: "Yeni görev yaz", eylem: () => (setOpen(true), input.current?.focus()) }]}
-    />
-  );
-
-  if (!open) {
-    return (
-      <>
-        {shortcut}
-        <button type="button" className={s.addRow} onClick={() => setOpen(true)}>
-          <span className={s.addPlus}>
-            <Plus size={14} />
-          </span>
-          Görev ekle
-        </button>
-      </>
-    );
-  }
-
-  const dateText = parsed.date
-    ? parsed.date.rule
-      ? `${describeRule(parsed.date.rule)} · ${dueLabel(parsed.date.date + (parsed.date.time ? `T${parsed.date.time}` : ""), board.today).label}`
-      : dueLabel(parsed.date.date + (parsed.date.time ? `T${parsed.date.time}` : ""), board.today).label
-    : parsed.dateText;
-
-  return (
-    <div className={s.composer}>
-      {shortcut}
-      <input
-        ref={input}
-        autoFocus
-        className={s.composerInput}
-        value={text}
-        placeholder="Görev adı — örn. fatura öde yarın 18:00 p1 @önemli"
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") void submit();
-          if (e.key === "Escape") {
-            setText("");
-            setOpen(false);
-          }
-        }}
-      />
-      <div className={s.composerFoot}>
-        <span className={s.chips}>
-          {dateText && (
-            <span className={s.chip}>
-              {parsed.date?.rule ? <Repeat size={12} /> : <Calendar size={12} />}
-              {dateText}
-            </span>
-          )}
-          {parsed.priority && parsed.priority < 4 && (
-            <span className={`${s.chip} ${parsed.priority === 1 ? s.chipDanger : ""}`}>
-              <Flag size={12} />P{parsed.priority}
-            </span>
-          )}
-          {parsed.important && (
-            <span className={`${s.chip} ${s.chipImportant}`}>
-              <Star size={12} fill="currentColor" />
-              Önemli
-            </span>
-          )}
-          {!dateText && !parsed.priority && !parsed.important && (
-            <span className={s.hint}>Tarih, p1–p4 ve @önemli satıra yazılabilir · Enter ekler · Esc kapatır</span>
-          )}
-        </span>
-        <Dugme
-          tur="sade"
-          onClick={() => {
-            setText("");
-            setOpen(false);
-          }}
-        >
-          İptal
-        </Dugme>
-        <Dugme tur="dolu" onClick={() => void submit()} disabled={!parsed.title || busy}>
-          Ekle
-        </Dugme>
-      </div>
-    </div>
   );
 }

@@ -22,11 +22,12 @@ import type { Priority } from "@ortak/local-tasks";
 import type { Task, TaskList } from "@ortak/task";
 import { dueLabel } from "@ortak/task-dates";
 import { ONEMLI_ETIKETI } from "@ortak/tipler";
+import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
 import type { TaskBoard } from "./useTaskBoard";
 import s from "./board.module.css";
 
-const PRIORITY_COLOR: Record<Priority, string | undefined> = {
+export const PRIORITY_COLOR: Record<Priority, string | undefined> = {
   1: "var(--hata)",
   2: "var(--uyari)",
   3: "var(--vurgu)",
@@ -35,8 +36,19 @@ const PRIORITY_COLOR: Record<Priority, string | undefined> = {
 
 const TONE_CLASS = { overdue: s.toneOverdue, today: s.toneToday, tomorrow: s.toneTomorrow, later: "" };
 
-export function TaskRow({ task, board }: { task: Task; board: TaskBoard }) {
+export function TaskRow({
+  task,
+  board,
+  selected,
+  onSelect,
+}: {
+  task: Task;
+  board: TaskBoard;
+  selected: boolean;
+  onSelect: (key: string) => void;
+}) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const due = task.due ? dueLabel(task.due, board.today) : null;
   const labels = task.labels.filter((l) => l.toLocaleLowerCase("tr") !== ONEMLI_ETIKETI);
   const color = PRIORITY_COLOR[task.priority];
@@ -49,12 +61,23 @@ export function TaskRow({ task, board }: { task: Task; board: TaskBoard }) {
       setMenu({ x: r.right - 250, y: r.bottom + 4 });
     } else setMenu({ x: e.clientX, y: e.clientY });
   };
+  const openPicker = (e: MouseEvent) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    setPicker({ x: r.right - 300, y: r.bottom + 4 });
+  };
+  const cls = [s.row, menu && s.rowMenuOpen, selected && s.rowSelected].filter(Boolean).join(" ");
 
   return (
     <div
-      className={menu ? `${s.row} ${s.rowMenuOpen}` : s.row}
+      className={cls}
       onContextMenu={(e) => openAt(e)}
+      onClick={(e) => {
+        // Buttons inside the row do their own thing.
+        if (!(e.target as HTMLElement).closest("button")) onSelect(task.key);
+      }}
       data-task={task.key}
+      aria-selected={selected}
     >
       <button
         type="button"
@@ -104,7 +127,7 @@ export function TaskRow({ task, board }: { task: Task; board: TaskBoard }) {
       )}
 
       <div className={s.actions}>
-        <button type="button" onClick={(e) => openAt(e, e.currentTarget)} title="Tarih" aria-label="Tarih">
+        <button type="button" onClick={openPicker} title="Tarih" aria-label="Tarih">
           <Calendar size={15} />
         </button>
         {!task.important && (
@@ -122,7 +145,30 @@ export function TaskRow({ task, board }: { task: Task; board: TaskBoard }) {
         </button>
       </div>
 
-      {menu && <TaskMenu task={task} board={board} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
+      {menu && (
+        <TaskMenu
+          task={task}
+          board={board}
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          onMoreDates={() => {
+            setPicker(menu);
+            setMenu(null);
+          }}
+        />
+      )}
+      {picker && (
+        <DatePicker
+          x={picker.x}
+          y={picker.y}
+          today={board.today}
+          value={{ ...splitDue(task.due), rule: task.rule, recurrenceText: task.recurrenceText }}
+          canClearTime={!(task.source === "todoist" && task.recurring)}
+          onChange={(sched) => void board.setSchedule(task, sched)}
+          onClose={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }
@@ -137,12 +183,14 @@ function TaskMenu({
   x,
   y,
   onClose,
+  onMoreDates,
 }: {
   task: Task;
   board: TaskBoard;
   x: number;
   y: number;
   onClose: () => void;
+  onMoreDates: () => void;
 }) {
   const [moving, setMoving] = useState(false);
   const today = board.today;
@@ -152,10 +200,6 @@ function TaskMenu({
     onClose();
   };
 
-  // Rescheduling a recurring Todoist task through due_string would erase its
-  // rule; the date picker (next stage) handles those.
-  const dateLocked = task.source === "todoist" && task.recurring;
-  const dateTitle = (label: string) => (dateLocked ? `${label} — tekrarlı Todoist görevinde tarih seçiciden değişir` : label);
 
   if (moving) {
     const targets: TaskList[] = board.lists.filter((l) => l.source === task.source && l.id !== task.listId);
@@ -186,29 +230,32 @@ function TaskMenu({
     <Popover x={x} y={y} onClose={onClose} label={task.title}>
       <MenuLabel>Tarih</MenuLabel>
       <MenuIconRow>
-        <MenuIconButton title={dateTitle("Bugün")} color="var(--iyi)" disabled={dateLocked} onSelect={run(() => board.setDate(task, today))}>
+        <MenuIconButton title="Bugün" color="var(--iyi)" onSelect={run(() => board.setDate(task, today))}>
           <Sun size={16} />
         </MenuIconButton>
-        <MenuIconButton title={dateTitle("Yarın")} color="var(--uyari)" disabled={dateLocked} onSelect={run(() => board.setDate(task, gunEkle(today, 1)))}>
+        <MenuIconButton title="Yarın" color="var(--uyari)" onSelect={run(() => board.setDate(task, gunEkle(today, 1)))}>
           <Sunrise size={16} />
         </MenuIconButton>
         <MenuIconButton
-          title={dateTitle("Hafta sonu")}
+          title="Hafta sonu"
           color="var(--vurgu)"
-          disabled={dateLocked}
+         
           onSelect={run(() => board.setDate(task, gunEkle(today, (5 - weekday + 7) % 7)))}
         >
           <Sofa size={16} />
         </MenuIconButton>
         <MenuIconButton
-          title={dateTitle("Gelecek hafta")}
-          disabled={dateLocked}
+          title="Gelecek hafta"
+         
           onSelect={run(() => board.setDate(task, gunEkle(today, 7 - weekday)))}
         >
           <CircleArrowRight size={16} />
         </MenuIconButton>
-        <MenuIconButton title={dateTitle("Tarih yok")} disabled={dateLocked || !task.due} onSelect={run(() => board.setDate(task, null))}>
+        <MenuIconButton title="Tarih yok" disabled={!task.due} onSelect={run(() => board.setDate(task, null))}>
           <CircleSlash size={16} />
+        </MenuIconButton>
+        <MenuIconButton title="Diğer tarihler, saat ve tekrar…" onSelect={onMoreDates}>
+          <Ellipsis size={16} />
         </MenuIconButton>
       </MenuIconRow>
 

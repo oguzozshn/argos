@@ -1,6 +1,6 @@
 // Explicit .ts extension: this file also runs under plain Node (araclar/local-tasks-test.mts).
 import type { LocalList, LocalTask, Priority, Reminder } from "./local-tasks.ts";
-import { describeRule } from "./recurrence.ts";
+import { describeRule, type RecurrenceRule } from "./recurrence.ts";
 import { onemliMi, type TodoistGorev, type TodoistProje } from "./tipler.ts";
 
 /**
@@ -23,11 +23,15 @@ export interface Task {
   recurring: boolean;
   /** Human text of the repeat rule, e.g. "Her pazartesi"; null when not recurring. */
   recurrenceText: string | null;
+  /** The structured rule of an Argos task; Todoist tasks only carry `recurrenceText`. */
+  rule: RecurrenceRule | null;
   priority: Priority;
   important: boolean;
   labels: string[];
   reminders: Reminder[];
   isSubtask: boolean;
+  /** Todoist's raw due string (recurring tasks keep their rule through it); null for local tasks. */
+  todoistDueString: string | null;
 }
 
 export interface TaskList {
@@ -58,11 +62,13 @@ export function fromTodoist(g: TodoistGorev, reminders: Reminder[] = []): Task {
     due: g.tarih,
     recurring: g.tekrarli,
     recurrenceText: g.tekrarli ? g.tarihMetni : null,
+    rule: null,
     priority: priorityFromTodoist(g.oncelik),
     important: onemliMi(g),
     labels: g.etiketler,
     reminders,
     isSubtask: g.altGorev,
+    todoistDueString: g.dueString ?? null,
   };
 }
 
@@ -77,11 +83,13 @@ export function fromLocal(t: LocalTask): Task {
     due: t.due,
     recurring: t.recurrence !== null,
     recurrenceText: t.recurrence ? describeRule(t.recurrence) : null,
+    rule: t.recurrence,
     priority: t.priority,
     important: t.important,
     labels: [],
     reminders: t.reminders,
     isSubtask: false,
+    todoistDueString: null,
   };
 }
 

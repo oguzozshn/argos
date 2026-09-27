@@ -72,6 +72,11 @@ export interface TodoistGorev {
   tarih: string | null;
   /** Todoist'in kendi yazdığı metin: "yarın 18:00", "her pazartesi". */
   tarihMetni: string | null;
+  /**
+   * Todoist's own due string as stored ("every mon at 18:00"). Needed to move
+   * a recurring task to a new date without losing its rule.
+   */
+  dueString?: string | null;
   tekrarli: boolean;
   /** Todoist'te 4 = p1 (en yüksek), 1 = p4. */
   oncelik: number;
@@ -148,6 +153,8 @@ export interface ArgosApi {
       projeId: string;
       tarihMetni?: string;
       oncelik?: number;
+      description?: string;
+      labels?: string[];
     }): Promise<TodoistGorev>;
     kapat(id: string): Promise<void>;
     ac(id: string): Promise<void>;
