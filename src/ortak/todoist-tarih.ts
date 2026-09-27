@@ -70,7 +70,10 @@ const kucult = (m: string): string =>
 function saatAyir(m: string): { govde: string; saat: string | null } {
   const r =
     m.match(/^(.*?)\s*(?:saat\s*)?(\d{1,2}):(\d{2})(?:'?(?:de|da|te|ta))?$/) ??
-    m.match(/^(.*?)\s*saat\s*(\d{1,2})(?:\.(\d{2}))?(?:'?(?:de|da|te|ta))?$/);
+    m.match(/^(.*?)\s*saat\s*(\d{1,2})(?:\.(\d{2}))?(?:'?(?:de|da|te|ta))?$/) ??
+    // "14 kasım 14.00", "yarın 9.30": the dotted Turkish time. Only after
+    // something else — "25.09" on its own is a date (day.month).
+    m.match(/^(.+?)\s+(\d{1,2})\.(\d{2})(?:'?(?:de|da|te|ta))?$/);
   if (!r) return { govde: m, saat: null };
   const s = Number(r[2]);
   const d = Number(r[3] ?? 0);
