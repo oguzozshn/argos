@@ -6,6 +6,7 @@ import {
   type Okuma,
   type Ortam,
   type TodoistDurum,
+  type TodoistTaskPatch,
   type Yazma,
 } from "../ortak/tipler";
 
@@ -33,6 +34,11 @@ const argos: ArgosApi = {
       ipcRenderer.invoke(KANAL.tdAralik, basIso, sonIso),
     onemliler: () => ipcRenderer.invoke(KANAL.tdOnemliler),
     onemliYap: (id: string, onemli: boolean) => ipcRenderer.invoke(KANAL.tdOnemliYap, id, onemli),
+    updateTask: (id: string, patch: TodoistTaskPatch) => ipcRenderer.invoke(KANAL.tdUpdateTask, id, patch),
+    deleteTask: (id: string) => ipcRenderer.invoke(KANAL.tdDeleteTask, id),
+    moveTask: (id: string, projectId: string) => ipcRenderer.invoke(KANAL.tdMoveTask, id, projectId),
+    setProjectFavorite: (id: string, favorite: boolean) =>
+      ipcRenderer.invoke(KANAL.tdProjectFavorite, id, favorite),
     ekle: (g: { icerik: string; projeId: string; tarihMetni?: string; oncelik?: number }) =>
       ipcRenderer.invoke(KANAL.tdEkle, g),
     kapat: (id: string) => ipcRenderer.invoke(KANAL.tdKapat, id),

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import type { TodoistDurum, TodoistGorev, TodoistProje } from "../ortak/tipler";
+import type { TodoistDurum, TodoistGorev, TodoistProje, TodoistTaskPatch } from "../ortak/tipler";
 import { ayar, ayarKaydet } from "./ayar";
 import { jsonCoz } from "./veri-cekirdek";
 import * as cekirdek from "./todoist-cekirdek";
@@ -61,6 +61,17 @@ export const onemliler = (): Promise<TodoistGorev[]> => cekirdek.onemliler(jeton
 
 export const onemliYap = (id: string, onemli: boolean): Promise<TodoistGorev> =>
   cekirdek.onemliYap(jeton(), id, onemli);
+
+export const updateTask = (id: string, patch: TodoistTaskPatch): Promise<TodoistGorev> =>
+  cekirdek.updateTask(jeton(), id, patch);
+
+export const deleteTask = (id: string): Promise<void> => cekirdek.deleteTask(jeton(), id);
+
+export const moveTask = (id: string, projectId: string): Promise<void> =>
+  cekirdek.moveTask(jeton(), id, projectId);
+
+export const setProjectFavorite = (id: string, favorite: boolean): Promise<TodoistProje> =>
+  cekirdek.setProjectFavorite(jeton(), id, favorite);
 
 export const ekle = (g: YeniGorev): Promise<TodoistGorev> => cekirdek.ekle(jeton(), g);
 

@@ -20,8 +20,13 @@ import {
   kapat,
   onemliler,
   onemliYap,
+  projeCevir,
   projeler,
   tarihVer,
+  updateTask,
+  deleteTask,
+  moveTask,
+  setProjectFavorite,
 } from "../src/main/todoist-cekirdek.ts";
 import { onemliMi } from "../src/ortak/tipler.ts";
 import { todoistTarihi } from "../src/ortak/gorev-zaman.ts";
@@ -203,6 +208,39 @@ async function sahteBolum(): Promise<void> {
     decodeURIComponent(istekler[0]?.url ?? "").includes("/tasks/filter?query=@önemli"),
     istekler[0]?.url,
   );
+  sahteFetchAc();
+
+  // Editing: only the fields asked for are sent, and never a date.
+  sahteFetchAc({ id: "42", content: "Yeni ad", project_id: "P", priority: 4 });
+  const edited = await updateTask("T", "42", { title: "  Yeni ad ", priority: 1 });
+  kontrol("updateTask POST /tasks/{id}", sonIstek?.url.endsWith("/tasks/42") && sonIstek.yontem === "POST");
+  kontrol(
+    "updateTask sends trimmed content and inverted priority only",
+    JSON.stringify(sonIstek?.govde) === JSON.stringify({ content: "Yeni ad", priority: 4 }),
+    JSON.stringify(sonIstek?.govde),
+  );
+  kontrol("updateTask returns the task", edited.icerik === "Yeni ad" && edited.oncelik === 4);
+  await updateTask("T", "42", { description: "" });
+  kontrol("empty description is sent (clears it)", JSON.stringify(sonIstek?.govde) === JSON.stringify({ description: "" }));
+
+  sahteFetchAc("");
+  await deleteTask("T", "42");
+  kontrol("deleteTask DELETE /tasks/{id}", sonIstek?.url.endsWith("/tasks/42") && sonIstek.yontem === "DELETE");
+  await moveTask("T", "42", "P9");
+  kontrol(
+    "moveTask POST /tasks/{id}/move with project_id",
+    sonIstek?.url.endsWith("/tasks/42/move") && sonIstek.govde?.project_id === "P9",
+  );
+
+  sahteFetchAc({ id: "P9", name: "Ağva", color: "lime_green", is_favorite: true, child_order: 3 });
+  const fav = await setProjectFavorite("T", "P9", true);
+  kontrol(
+    "setProjectFavorite POST /projects/{id} with is_favorite",
+    sonIstek?.url.endsWith("/projects/P9") && sonIstek.govde?.is_favorite === true,
+  );
+  kontrol("project colour, favorite and order are mapped", fav.color === "#7ecc49" && fav.favorite && fav.order === 3);
+  const plain = projeCevir({ id: "1", name: "X" });
+  kontrol("project without colour/favorite gets defaults", plain.color === "#808080" && !plain.favorite && plain.order === 0);
   sahteFetchAc();
 
   await kapat("T", "a/b?c=1");
