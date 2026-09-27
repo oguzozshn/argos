@@ -62,6 +62,8 @@ export const onemliler = (): Promise<TodoistGorev[]> => cekirdek.onemliler(jeton
 export const onemliYap = (id: string, onemli: boolean): Promise<TodoistGorev> =>
   cekirdek.onemliYap(jeton(), id, onemli);
 
+export const allTasks = (): Promise<TodoistGorev[]> => cekirdek.allTasks(jeton());
+
 export const updateTask = (id: string, patch: TodoistTaskPatch): Promise<TodoistGorev> =>
   cekirdek.updateTask(jeton(), id, patch);
 

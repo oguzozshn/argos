@@ -97,6 +97,7 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdBugun, () => td.bugunVeGecikmis());
   ipcMain.handle(KANAL.tdAralik, (_o, bas: string, son: string) => td.tarihAraligi(bas, son));
   ipcMain.handle(KANAL.tdOnemliler, () => td.onemliler());
+  ipcMain.handle(KANAL.tdAllTasks, () => td.allTasks());
   ipcMain.handle(KANAL.tdOnemliYap, async (_o, id: string, onemli: boolean) => {
     const gorev = await td.onemliYap(id, onemli === true);
     // Bugün kartı ve Yapılacaklar ayrı kancalardan okuyor; ikisi de tazelensin.

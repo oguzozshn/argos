@@ -25,6 +25,7 @@ import {
   tarihVer,
   updateTask,
   deleteTask,
+  allTasks,
   moveTask,
   setProjectFavorite,
 } from "../src/main/todoist-cekirdek.ts";
@@ -231,6 +232,11 @@ async function sahteBolum(): Promise<void> {
     "moveTask POST /tasks/{id}/move with project_id",
     sonIstek?.url.endsWith("/tasks/42/move") && sonIstek.govde?.project_id === "P9",
   );
+
+  sahteFetchAc({ results: [{ id: "1", content: "a", project_id: "P" }, { id: "2", content: "slot", project_id: PLAN_PROJESI }] });
+  const all = await allTasks("T");
+  kontrol("allTasks GETs /tasks without a project filter", sonIstek?.url.includes("/tasks?limit=200") && !sonIstek.url.includes("project_id"));
+  kontrol("allTasks leaves out the plan project", all.length === 1 && all[0]!.id === "1");
 
   sahteFetchAc({ id: "P9", name: "Ağva", color: "lime_green", is_favorite: true, child_order: 3 });
   const fav = await setProjectFavorite("T", "P9", true);

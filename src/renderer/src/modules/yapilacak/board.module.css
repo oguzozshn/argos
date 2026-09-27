@@ -1,0 +1,489 @@
+/*
+ * Yapılacaklar board: list column on the left, the selected list's tasks on
+ * the right. Mirrors the approved mockup (Aşama 0).
+ */
+
+.board {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: var(--b5);
+  align-items: start;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  flex-wrap: wrap;
+  margin-bottom: var(--b4);
+  padding: var(--b3) var(--b4);
+  border: 1px solid var(--uyari);
+  border-radius: var(--r2);
+  background: var(--uyari-yumusak);
+  color: var(--metin-orta);
+  font-size: var(--y4);
+}
+
+.notice > svg {
+  color: var(--uyari);
+  flex-shrink: 0;
+}
+
+.notice > span {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* --- list column ----------------------------------------------------------- */
+
+.sidebar {
+  position: sticky;
+  top: var(--b4);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  /* Twenty projects are taller than the window: the column scrolls on its
+     own, like Todoist's sidebar, instead of waiting for the task list. */
+  max-height: calc(100vh - var(--baslik-yukseklik) - var(--b7));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 10px 6px;
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+}
+
+.groupAdd {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.groupAdd:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--r1);
+  background: none;
+  font: inherit;
+  color: var(--metin-orta);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--sure-hizli) var(--egri),
+    color var(--sure-hizli) var(--egri);
+}
+
+.list:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.listActive,
+.listActive:hover {
+  background: var(--kart);
+  color: var(--metin);
+  font-weight: var(--sik-kalin);
+  box-shadow: var(--golge1);
+}
+
+.listIcon {
+  flex-shrink: 0;
+  color: var(--metin-soluk);
+}
+
+.listActive .listIcon {
+  color: var(--vurgu);
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  margin: 0 3px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.listName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.localMark {
+  display: flex;
+  color: var(--metin-soluk);
+}
+
+.count {
+  min-width: 14px;
+  font-size: var(--y5);
+  font-weight: var(--sik-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--metin-soluk);
+  text-align: right;
+}
+
+.nameInput {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 10px;
+}
+
+.nameInput input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--vurgu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  font-size: var(--y4);
+  outline: none;
+}
+
+.menuLabelIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.swatches {
+  display: flex;
+  gap: 6px;
+  padding: 2px 10px 6px;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatchActive {
+  border-color: var(--metin);
+}
+
+/* --- task card --------------------------------------------------------------- */
+
+.card {
+  min-width: 0;
+}
+
+.localChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r-tam);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+}
+
+.empty {
+  padding: var(--b6);
+  color: var(--metin-soluk);
+  font-size: var(--y4);
+}
+
+.groupHead {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 16px 24px 6px;
+  font-family: var(--aile);
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--metin-soluk);
+}
+
+.groupHead span {
+  font-weight: var(--sik-normal);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.groupOverdue {
+  color: var(--hata);
+}
+
+/* --- add row / composer ----------------------------------------------------------- */
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 24px;
+  border: 0;
+  border-bottom: 1px solid var(--cizgi);
+  background: none;
+  font: inherit;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.addPlus {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--vurgu);
+  transition:
+    background var(--sure-hizli) var(--egri),
+    color var(--sure-hizli) var(--egri);
+}
+
+.addRow:hover {
+  color: var(--vurgu);
+}
+
+.addRow:hover .addPlus {
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}
+
+.composer {
+  margin: 12px 16px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r2);
+  background: var(--kart);
+  box-shadow: var(--golge2);
+}
+
+.composerInput {
+  width: 100%;
+  padding: 12px 14px 8px;
+  border: 0;
+  background: none;
+  font-weight: var(--sik-orta);
+  outline: none;
+}
+
+.composerFoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 10px 12px;
+  border-top: 1px solid var(--cizgi);
+}
+
+.chips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+}
+
+.chipDanger {
+  background: var(--hata-yumusak);
+  color: var(--hata);
+}
+
+.chipImportant {
+  background: var(--uyari-yumusak);
+  color: var(--uyari);
+}
+
+.hint {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  padding: 3px 0;
+}
+
+/* --- task row ---------------------------------------------------------------------- */
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px 10px 24px;
+  border-bottom: 1px solid var(--cizgi);
+  transition: background var(--sure-hizli) var(--egri);
+}
+
+.row:hover,
+.rowMenuOpen {
+  background: var(--kart-hover);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.check {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--cizgi-koyu);
+  border-radius: 50%;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  transition: color var(--sure-hizli) var(--egri);
+}
+
+.check:hover {
+  color: var(--metin-soluk);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.title {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toneOverdue {
+  color: var(--hata);
+}
+
+.toneToday {
+  color: var(--iyi);
+}
+
+.toneTomorrow {
+  color: var(--uyari);
+}
+
+.description {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.star {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--uyari);
+  cursor: pointer;
+}
+
+.star:hover {
+  background: var(--cizgi);
+}
+
+.actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.row:hover .actions,
+.row:focus-within .actions,
+.rowMenuOpen .actions {
+  opacity: 1;
+}
+
+.actions button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background: var(--cizgi);
+  color: var(--metin);
+}
+
+.moveMenu {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* Narrow window: the list column goes above the tasks. */
+@media (max-width: 860px) {
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: static;
+    max-height: none;
+  }
+}

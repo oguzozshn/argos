@@ -34,6 +34,7 @@ const argos: ArgosApi = {
       ipcRenderer.invoke(KANAL.tdAralik, basIso, sonIso),
     onemliler: () => ipcRenderer.invoke(KANAL.tdOnemliler),
     onemliYap: (id: string, onemli: boolean) => ipcRenderer.invoke(KANAL.tdOnemliYap, id, onemli),
+    allTasks: () => ipcRenderer.invoke(KANAL.tdAllTasks),
     updateTask: (id: string, patch: TodoistTaskPatch) => ipcRenderer.invoke(KANAL.tdUpdateTask, id, patch),
     deleteTask: (id: string) => ipcRenderer.invoke(KANAL.tdDeleteTask, id),
     moveTask: (id: string, projectId: string) => ipcRenderer.invoke(KANAL.tdMoveTask, id, projectId),
