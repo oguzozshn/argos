@@ -144,6 +144,19 @@ export async function gorevler(token: string, projeId: string): Promise<TodoistG
 }
 
 /**
+ * Every open task in every project, in one paginated call. The task screen
+ * counts per project and switches lists without waiting for a request.
+ * The plan project is left out: its tasks belong to the Asistan module.
+ */
+export async function allTasks(token: string): Promise<TodoistGorev[]> {
+  const ham = await tumSayfalar<HamGorev>(
+    token,
+    (i) => `/tasks?limit=200${i ? `&cursor=${encodeURIComponent(i)}` : ""}`,
+  );
+  return ham.map(gorevCevir).filter((g) => g.projeId !== PLAN_PROJESI);
+}
+
+/**
  * Bugün ekranının kartı: bugün ve gecikmiş görevler, tüm projelerden, tek
  * süzgeçle. Plan projesi elenir — slot görevleri Asistan modülünün işi.
  */

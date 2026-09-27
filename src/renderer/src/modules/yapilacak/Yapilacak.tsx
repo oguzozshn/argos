@@ -1,354 +1,265 @@
-import { AnimatePresence, motion } from "motion/react";
-import {
-  AlertTriangle,
-  Calendar,
-  Check,
-  Inbox,
-  KeyRound,
-  RefreshCw,
-  Repeat,
-  Star,
-} from "lucide-react";
-import { useRef, useState } from "react";
-import { ONEMLI_ETIKETI, onemliMi, type TodoistGorev } from "@ortak/tipler";
+import { AlertTriangle, Calendar, Flag, KeyRound, Monitor, Plus, RefreshCw, Repeat, Star } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { parseDateText } from "@ortak/date-parse";
+import { splitQuickAdd } from "@ortak/quick-add";
+import { describeRule } from "@ortak/recurrence";
+import type { TaskList } from "@ortak/task";
+import { dueLabel, groupByDate } from "@ortak/task-dates";
 import { Kisayollar } from "@/ui/Kisayollar";
-import { BosDurum, Dugme, EkranBasi, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
-import { maddeGecisi } from "@/ui/hareket";
+import { BosDurum, Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { kopru } from "@/veri/kanca";
-import { OBEK_SIRASI, useGorevler, useObekler, useProjeler } from "./kanca";
-import s from "./yapilacak.module.css";
+import { ListSidebar } from "./ListSidebar";
+import { TaskRow } from "./TaskRow";
+import { useTaskBoard, type TaskBoard } from "./useTaskBoard";
+import s from "./board.module.css";
 
 /**
- * Todoist'in kendisi. Bu modül yeni bir görev veritabanı kurmaz — kişisel
- * görevler zaten Todoist'te ve telefon yüzeyi de orası. İkinci bir liste
- * ikinci bir gerçek demek olurdu.
+ * Yapılacaklar: Todoist projects and Argos-local lists side by side. The
+ * sidebar picks a list; the card shows its open tasks grouped by date.
  */
 
-const tarihBicimi = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" });
-const saatBicimi = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
+const STORAGE_KEY = "argos.yapilacak.liste";
 
-function tarihYaz(iso: string): string {
-  const t = new Date(iso);
-  if (Number.isNaN(t.getTime())) return iso;
-  const gunluk = tarihBicimi.format(t);
-  return iso.length > 10 ? `${gunluk} ${saatBicimi.format(t)}` : gunluk;
+function readStoredList(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
 }
 
-/** Todoist'te 4 = p1. Renk yalnızca p1–p3'te var; p4 sessiz. */
-const ONCELIK_RENGI: Record<number, string | undefined> = {
-  4: "var(--hata)",
-  3: "var(--uyari)",
-  2: "var(--vurgu)",
-};
+export function Yapilacak() {
+  const board = useTaskBoard();
+  const [activeKey, setActiveKey] = useState<string | null>(readStoredList);
 
-const HIZLI_TARIH = [
-  { ad: "bugün", metin: "bugün" },
-  { ad: "yarın", metin: "yarın" },
-  { ad: "gelecek hafta", metin: "gelecek pazartesi" },
-];
+  const select = (key: string) => {
+    setActiveKey(key);
+    try {
+      localStorage.setItem(STORAGE_KEY, key);
+    } catch {
+      // A remembered list is a convenience; without storage the Inbox opens.
+    }
+  };
 
-function GorevSatiri({
-  gorev,
-  gecikmis,
-  onKapat,
-  onTarih,
-  onOnemli,
-}: {
-  gorev: TodoistGorev;
-  gecikmis: boolean;
-  onKapat: () => void;
-  onTarih: (metin: string | null) => void;
-  onOnemli: () => void;
-}) {
-  const [tarihAcik, setTarihAcik] = useState(false);
-  const onemli = onemliMi(gorev);
-  // Yıldız zaten söylüyor; alt satırda bir de "@önemli" yazmasın.
-  const etiketler = gorev.etiketler.filter((e) => e.toLocaleLowerCase("tr") !== ONEMLI_ETIKETI);
+  const active =
+    board.lists.find((l) => l.key === activeKey) ?? board.lists.find((l) => l.inbox) ?? board.lists[0] ?? null;
 
   return (
-    <motion.div variants={maddeGecisi} initial="giris" animate="duruyor" exit="cikis" layout>
-      <div className={s.gorev}>
-        <button
-          type="button"
-          className={s.kutucuk}
-          style={{ borderColor: ONCELIK_RENGI[gorev.oncelik] }}
-          onClick={onKapat}
-          aria-label={`"${gorev.icerik}" görevini tamamla`}
-          title="Tamamla"
-        >
-          <Check size={12} strokeWidth={3} />
-        </button>
+    <>
+      <EkranBasi baslik="Yapılacaklar" />
+      <TodoistNotice board={board} />
+      {board.localError && <div className={s.notice}>Argos listeleri okunamadı: {board.localError}</div>}
 
-        <div className={s.govde}>
-          <span className={s.icerik}>{gorev.icerik}</span>
-          {(gorev.tarihMetni || gorev.aciklama || etiketler.length > 0) && (
-            <span className={s.altSatir}>
-              {gorev.tarihMetni && (
-                <span className={gecikmis ? `${s.tarih} ${s.tarihGecikmis}` : s.tarih}>
-                  {gorev.tekrarli ? <Repeat size={12} /> : <Calendar size={12} />}
-                  {gorev.tekrarli ? gorev.tarihMetni : gorev.tarih ? tarihYaz(gorev.tarih) : ""}
-                </span>
-              )}
-              {etiketler.map((e) => (
-                <span key={e}>@{e}</span>
-              ))}
-              {gorev.aciklama && <span className={s.aciklama}>{gorev.aciklama}</span>}
-            </span>
+      {board.loading && board.lists.length === 0 ? (
+        <Kart>
+          <Yuklenirken />
+        </Kart>
+      ) : (
+        <div className={s.board}>
+          <ListSidebar board={board} activeKey={active?.key ?? null} onSelect={select} />
+          {active ? (
+            <TaskListCard key={active.key} list={active} board={board} />
+          ) : (
+            <Kart>
+              <BosDurum
+                baslik="Henüz liste yok"
+                metin="Soldaki Projelerim başlığının yanındaki + ile bir Argos listesi aç."
+              />
+            </Kart>
           )}
         </div>
-
-        <div className={s.eylemler}>
-          <Dugme
-            tur="sade"
-            className={onemli ? s.onemliSabit : undefined}
-            ikon={<Star size={15} fill={onemli ? "currentColor" : "none"} />}
-            onClick={onOnemli}
-            title={
-              onemli
-                ? "Önemli — Bugün ekranında geri sayımla görünür. Kaldırmak için tıkla."
-                : "Önemli yap — Bugün ekranında geri sayımla görünür"
-            }
-            aria-label={onemli ? "Önemli işaretini kaldır" : "Önemli yap"}
-            aria-pressed={onemli}
-          />
-          {/* Tekrarlı görevin tarihi buradan değişmez: due_string'i ezmek
-              tekrar düzenini siler (CLAUDE.md). Tekrar metni satırda görünür. */}
-          {!gorev.tekrarli && (
-            <Dugme
-              tur="sade"
-              ikon={<Calendar size={15} />}
-              onClick={() => setTarihAcik((x) => !x)}
-              title="Tarihi değiştir"
-              aria-label="Tarihi değiştir"
-            />
-          )}
-        </div>
-      </div>
-
-      <AnimatePresence initial={false}>
-        {tarihAcik && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
-            style={{ overflow: "hidden" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                padding: "10px 20px 14px 46px",
-                borderBottom: "1px solid var(--cizgi)",
-                flexWrap: "wrap",
-              }}
-            >
-              {HIZLI_TARIH.map((h) => (
-                <Dugme
-                  key={h.ad}
-                  onClick={() => {
-                    onTarih(h.metin);
-                    setTarihAcik(false);
-                  }}
-                >
-                  {h.ad}
-                </Dugme>
-              ))}
-              {gorev.tarih && (
-                <Dugme
-                  tur="sade"
-                  onClick={() => {
-                    onTarih(null);
-                    setTarihAcik(false);
-                  }}
-                >
-                  tarihi kaldır
-                </Dugme>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      )}
+    </>
   );
 }
 
-function GorevListesi({ projeId, projeAd }: { projeId: string; projeAd: string }) {
-  const { gorevler, yukleniyor, hata, tazele, kapat, ekle, tarihVer, onemliDegistir } =
-    useGorevler(projeId);
-  const obekler = useObekler(gorevler);
-  const [yeni, setYeni] = useState("");
-  const girdi = useRef<HTMLInputElement>(null);
-  const [yeniTarih, setYeniTarih] = useState("");
-
-  const gonder = () => {
-    const icerik = yeni.trim();
-    if (!icerik) return;
-    void ekle(icerik, yeniTarih.trim() || undefined);
-    setYeni("");
-    setYeniTarih("");
+/** Missing key or an unreachable Todoist: said once, above the board; Argos lists keep working. */
+function TodoistNotice({ board }: { board: TaskBoard }) {
+  const chooseKey = async () => {
+    const k = kopru();
+    if (k && (await k.gizliSec())) void board.reload();
   };
+  if (board.status === "noKey") {
+    return (
+      <div className={s.notice}>
+        <KeyRound size={15} />
+        <span>
+          Todoist anahtarı bulunamadı — Todoist projeleri gösterilmiyor. Aranan yer: {board.keyPath || "gizli.json"}
+        </span>
+        <Dugme onClick={() => void chooseKey()}>Dosya seç</Dugme>
+      </div>
+    );
+  }
+  if (board.status === "error") {
+    return (
+      <div className={s.notice}>
+        <AlertTriangle size={15} />
+        <span>Todoist'e ulaşılamadı: {board.error}</span>
+        <Dugme onClick={() => void board.reload()}>Yeniden dene</Dugme>
+        <Dugme tur="sade" onClick={() => void chooseKey()}>
+          Anahtar dosyasını değiştir
+        </Dugme>
+      </div>
+    );
+  }
+  return null;
+}
+
+function TaskListCard({ list, board }: { list: TaskList; board: TaskBoard }) {
+  const tasks = useMemo(
+    () => board.tasks.filter((t) => t.source === list.source && t.listId === list.id),
+    [board.tasks, list],
+  );
+  const groups = useMemo(() => groupByDate(tasks, board.today), [tasks, board.today]);
 
   return (
     <Kart
       dolgulu={false}
-      baslik={projeAd}
-      not={`${gorevler.length} açık görev`}
+      className={s.card}
+      baslik={list.name}
+      not={`${tasks.length} açık görev`}
       bas={
-        <Dugme
-          tur="sade"
-          ikon={<RefreshCw size={15} />}
-          onClick={() => void tazele()}
-          title="Yenile"
-          aria-label="Yenile"
-          style={{ marginLeft: "auto" }}
-        />
+        list.source === "local" ? (
+          <span className={s.localChip}>
+            <Monitor size={12} />
+            Argos listesi · telefonda görünmez
+          </span>
+        ) : (
+          <Dugme
+            tur="sade"
+            ikon={<RefreshCw size={15} />}
+            onClick={() => void board.reload()}
+            title="Todoist'ten yenile"
+            aria-label="Yenile"
+          />
+        )
       }
     >
-      <div className={s.ekleme}>
-        <Kisayollar grup="Yapılacaklar" liste={[{ tus: "n", aciklama: "Yeni görev yaz", eylem: () => girdi.current?.focus() }]} />
-        <Giris
-          ref={girdi}
-          value={yeni}
-          placeholder={`${projeAd} listesine ekle…`}
-          onChange={(e) => setYeni(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && gonder()}
-        />
-        <div className={s.tarihKutusu}>
-          <Giris
-            value={yeniTarih}
-            placeholder="yarın 18:00 · her salı"
-            onChange={(e) => setYeniTarih(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && gonder()}
-            title="yarın 18:00 · cuma · 25.09 · her gün 07:00 · hafta içi · her salı ve perşembe · 2 haftada bir · her ayın 15'i"
-          />
-        </div>
-        <Dugme tur="dolu" onClick={gonder} disabled={!yeni.trim()}>
-          Ekle
-        </Dugme>
-      </div>
-
-      {hata && (
-        <div className={s.hataSerit}>
-          <AlertTriangle size={15} />
-          <span>{hata}</span>
-        </div>
-      )}
-
-
-      {yukleniyor ? (
-        <Yuklenirken />
-      ) : gorevler.length === 0 ? (
-        <BosDurum baslik="Açık görev yok" metin="Yukarıdaki kutudan yenisini ekle." />
+      <AddRow list={list} board={board} />
+      {tasks.length === 0 ? (
+        <p className={s.empty}>Bu listede açık görev yok.</p>
       ) : (
-        OBEK_SIRASI.filter((o) => obekler.get(o)?.length).map((o) => (
-          <div key={o}>
-            <p className={o === "gecikmiş" ? `${s.obekBasi} ${s.obekGecikmis}` : s.obekBasi}>
-              {o} <span className={s.obekSayi}>{obekler.get(o)!.length}</span>
-            </p>
-            <AnimatePresence initial={false}>
-              {obekler.get(o)!.map((g) => (
-                <GorevSatiri
-                  key={g.id}
-                  gorev={g}
-                  gecikmis={o === "gecikmiş"}
-                  onKapat={() => void kapat(g)}
-                  onTarih={(metin) => void tarihVer(g.id, metin)}
-                  onOnemli={() => void onemliDegistir(g)}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
+        groups.map(({ group, tasks: items }) => (
+          <section key={group}>
+            <h3 className={group === "Gecikmiş" ? `${s.groupHead} ${s.groupOverdue}` : s.groupHead}>
+              {group} <span>{items.length}</span>
+            </h3>
+            {items.map((t) => (
+              <TaskRow key={t.key} task={t} board={board} />
+            ))}
+          </section>
         ))
       )}
     </Kart>
   );
 }
 
-export function Yapilacak() {
-  const { projeler, anahtarVar, gizliYolu, hata, yukleniyor, yenile } = useProjeler();
+/**
+ * One-line entry: "fatura öde yarın 18:00 p1 @önemli". What the line will
+ * become shows as chips while typing; the full composer comes next stage.
+ */
+function AddRow({ list, board }: { list: TaskList; board: TaskBoard }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
 
-  // Anahtar yolunu elle JSON düzenleyerek kurmak tek yol olmasın.
-  const gizliSec = async () => {
-    const k = kopru();
-    if (!k) return;
-    try {
-      setSecimHatasi(null);
-      if (await k.gizliSec()) yenile();
-    } catch (e) {
-      setSecimHatasi(`Seçim kaydedilemedi: ${e instanceof Error ? e.message : String(e)}`);
-    }
+  const parsed = useMemo(() => {
+    const q = splitQuickAdd(text, board.today);
+    const date = q.dateText ? parseDateText(q.dateText, board.today) : null;
+    return { ...q, date };
+  }, [text, board.today]);
+
+  const submit = async () => {
+    if (!parsed.title || busy) return;
+    setBusy(true);
+    const ok = await board.add(list, text);
+    setBusy(false);
+    if (ok) setText("");
+    input.current?.focus();
   };
-  const [secimHatasi, setSecimHatasi] = useState<string | null>(null);
-  const [secili, setSecili] = useState<string | null>(null);
 
-  const aktif = projeler.find((p) => p.id === secili) ?? projeler[0] ?? null;
+  const shortcut = (
+    <Kisayollar
+      grup="Yapılacaklar"
+      liste={[{ tus: "n", aciklama: "Yeni görev yaz", eylem: () => (setOpen(true), input.current?.focus()) }]}
+    />
+  );
+
+  if (!open) {
+    return (
+      <>
+        {shortcut}
+        <button type="button" className={s.addRow} onClick={() => setOpen(true)}>
+          <span className={s.addPlus}>
+            <Plus size={14} />
+          </span>
+          Görev ekle
+        </button>
+      </>
+    );
+  }
+
+  const dateText = parsed.date
+    ? parsed.date.rule
+      ? `${describeRule(parsed.date.rule)} · ${dueLabel(parsed.date.date + (parsed.date.time ? `T${parsed.date.time}` : ""), board.today).label}`
+      : dueLabel(parsed.date.date + (parsed.date.time ? `T${parsed.date.time}` : ""), board.today).label
+    : parsed.dateText;
 
   return (
-    <>
-      <EkranBasi
-        baslik="Yapılacaklar"
-        altyazi="Todoist'in kendisi — ayrı bir liste tutulmuyor, aynı görevler."
+    <div className={s.composer}>
+      {shortcut}
+      <input
+        ref={input}
+        autoFocus
+        className={s.composerInput}
+        value={text}
+        placeholder="Görev adı — örn. fatura öde yarın 18:00 p1 @önemli"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void submit();
+          if (e.key === "Escape") {
+            setText("");
+            setOpen(false);
+          }
+        }}
       />
-
-      {secimHatasi && <div className={s.hataSerit}>{secimHatasi}</div>}
-
-      {yukleniyor ? (
-        <Kart>
-          <Yuklenirken />
-        </Kart>
-      ) : anahtarVar === false ? (
-        <Kart>
-          <BosDurum
-            ikon={<KeyRound size={34} strokeWidth={1.4} />}
-            baslik="Todoist anahtarı bulunamadı"
-            metin={`Anahtar şurada aranıyor: ${gizliYolu} — içinde {"todoistToken": "…"} olmalı.`}
-            eylem={
-              <Dugme tur="dolu" onClick={() => void gizliSec()}>
-                Dosya seç
-              </Dugme>
-            }
-          />
-        </Kart>
-      ) : hata ? (
-        <Kart>
-          <BosDurum
-            ikon={<AlertTriangle size={34} strokeWidth={1.4} />}
-            baslik="Todoist'e ulaşılamadı"
-            metin={hata}
-            eylem={
-              // Yanlış dosya seçildiyse (401) geri dönüş yolu burada kalmasın.
-              <Dugme onClick={() => void gizliSec()}>Anahtar dosyasını değiştir</Dugme>
-            }
-          />
-        </Kart>
-      ) : !aktif ? (
-        <Kart>
-          <BosDurum ikon={<Inbox size={34} strokeWidth={1.4} />} baslik="Proje yok" />
-        </Kart>
-      ) : (
-        <div className={s.duzen}>
-          <div className={s.projeler}>
-            {projeler.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={p.id === aktif.id ? `${s.projeBag} ${s.projeEtkin}` : s.projeBag}
-                onClick={() => setSecili(p.id)}
-              >
-                {p.inbox && <Inbox size={15} />}
-                <span className={s.projeAd}>{p.ad}</span>
-              </button>
-            ))}
-            <p className={s.projeNot}>
-              Gelişim Planı projesi burada görünmez — slotlar ve alışkanlıklar Asistan modülünün
-              işi.
-            </p>
-          </div>
-
-          <GorevListesi key={aktif.id} projeId={aktif.id} projeAd={aktif.ad} />
-        </div>
-      )}
-    </>
+      <div className={s.composerFoot}>
+        <span className={s.chips}>
+          {dateText && (
+            <span className={s.chip}>
+              {parsed.date?.rule ? <Repeat size={12} /> : <Calendar size={12} />}
+              {dateText}
+            </span>
+          )}
+          {parsed.priority && parsed.priority < 4 && (
+            <span className={`${s.chip} ${parsed.priority === 1 ? s.chipDanger : ""}`}>
+              <Flag size={12} />P{parsed.priority}
+            </span>
+          )}
+          {parsed.important && (
+            <span className={`${s.chip} ${s.chipImportant}`}>
+              <Star size={12} fill="currentColor" />
+              Önemli
+            </span>
+          )}
+          {!dateText && !parsed.priority && !parsed.important && (
+            <span className={s.hint}>Tarih, p1–p4 ve @önemli satıra yazılabilir · Enter ekler · Esc kapatır</span>
+          )}
+        </span>
+        <Dugme
+          tur="sade"
+          onClick={() => {
+            setText("");
+            setOpen(false);
+          }}
+        >
+          İptal
+        </Dugme>
+        <Dugme tur="dolu" onClick={() => void submit()} disabled={!parsed.title || busy}>
+          Ekle
+        </Dugme>
+      </div>
+    </div>
   );
 }

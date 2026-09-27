@@ -1,0 +1,127 @@
+.popover {
+  position: fixed;
+  z-index: 60;
+  min-width: 240px;
+  padding: 6px;
+  background: var(--kart);
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r2);
+  box-shadow: var(--golge3);
+  animation: appear var(--sure-hizli) var(--egri);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.label {
+  padding: 6px 10px 3px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--cizgi);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover:not(:disabled),
+.item:focus-visible {
+  background: var(--kart-hover);
+  outline: none;
+}
+
+.item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.icon {
+  display: flex;
+  color: var(--metin-soluk);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  display: flex;
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}
+
+.danger,
+.danger .icon {
+  color: var(--hata);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--hata-yumusak);
+}
+
+.active,
+.active .icon {
+  color: var(--vurgu);
+}
+
+.item.active {
+  background: var(--vurgu-yumusak);
+}
+
+.iconRow {
+  display: flex;
+  gap: 4px;
+  padding: 2px 4px 6px;
+}
+
+.iconButton {
+  flex: 1;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--metin-orta);
+  cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled),
+.iconButton:focus-visible {
+  background: var(--kart-hover);
+  outline: none;
+}
+
+.iconButton.active {
+  background: var(--vurgu-yumusak);
+}
+
+.iconButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

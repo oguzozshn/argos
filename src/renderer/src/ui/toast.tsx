@@ -27,6 +27,12 @@ export interface Bildirim {
   tur?: "bilgi" | "hata";
   /** Ekranda kalma süresi (ms). İmleç üstündeyken sayılmaz. */
   sure?: number;
+  /**
+   * Called once when this toast leaves the screen for any reason: timed out,
+   * dismissed, undone, or replaced by a newer toast. After that, undo is no
+   * longer possible — deferred actions commit here (see `deferWithUndo`).
+   */
+  onClose?: () => void;
 }
 
 interface Etkin extends Bildirim {
@@ -47,12 +53,17 @@ const useToast = create<ToastDeposu>()((set, get) => ({
   // yapılmış durumda; yalnızca geri alma fırsatı kapanır (Gmail gibi).
   goster: (b) => {
     const no = ++sayac;
+    const onceki = get().etkin;
     set({ etkin: { ...b, no } });
+    onceki?.onClose?.();
     return no;
   },
   kapat: (no) => {
     const e = get().etkin;
-    if (e && (no === undefined || e.no === no)) set({ etkin: null });
+    if (e && (no === undefined || e.no === no)) {
+      set({ etkin: null });
+      e.onClose?.();
+    }
   },
 }));
 
@@ -90,6 +101,48 @@ export function silVeBildir(b: {
     if (!ok && useToast.getState().etkin?.no === no) {
       bildir({ metin: b.hataMetni ?? "Silinemedi.", tur: "hata" });
     }
+  });
+}
+
+/**
+ * Undo for actions that cannot be reversed once done (deleting a Todoist task
+ * has no restore). The screen changes at once via `apply`; the real action
+ * runs only when the toast closes without an undo. If the app quits first,
+ * nothing is committed — the task simply stays, which is the safe side.
+ */
+export function deferWithUndo(b: {
+  metin: string;
+  /** Immediate, visible part (remove the row). */
+  apply: () => void;
+  /** The irreversible part; runs when undo is no longer offered. */
+  commit: () => Promise<boolean | void> | boolean | void;
+  /** Puts the screen back; called on undo and when `commit` fails. */
+  revert: () => void;
+  hataMetni?: string;
+}): void {
+  let undone = false;
+  b.apply();
+  bildir({
+    metin: b.metin,
+    geriAl: () => {
+      undone = true;
+      b.revert();
+      return true;
+    },
+    onClose: () => {
+      if (undone) return;
+      void Promise.resolve()
+        .then(b.commit)
+        .then(
+          (r) => r !== false,
+          () => false,
+        )
+        .then((ok) => {
+          if (ok) return;
+          b.revert();
+          bildir({ metin: b.hataMetni ?? "İşlem yapılamadı.", tur: "hata" });
+        });
+    },
   });
 }
 

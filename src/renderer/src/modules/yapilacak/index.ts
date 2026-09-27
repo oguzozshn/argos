@@ -10,6 +10,7 @@ export const yapilacakModulu: Modul = {
   ad: "Yapılacaklar",
   ikon: ListChecks,
   rotalar: [{ yol: "", ad: "Görevler", Ekran: Yapilacak }],
+  genis: true,
   Ozet: YapilacakOzet,
   Ust: OnemliTarihler,
   komutlar: yapilacakKomutlari,

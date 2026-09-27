@@ -134,6 +134,8 @@ export interface ArgosApi {
     onemliler(): Promise<TodoistGorev[]>;
     /** Önemli etiketini ekler/kaldırır; görevin diğer etiketlerine ve tarihine dokunmaz. */
     onemliYap(id: string, onemli: boolean): Promise<TodoistGorev>;
+    /** Every open task in every project except the plan project. */
+    allTasks(): Promise<TodoistGorev[]>;
     /** Edits title, description or priority (1 = P1 … 4 = P4). Never touches the date. */
     updateTask(id: string, patch: TodoistTaskPatch): Promise<TodoistGorev>;
     /** Permanently deletes a task. */
@@ -196,6 +198,7 @@ export const KANAL = {
   tdAralik: "todoist:aralik",
   tdOnemliler: "todoist:onemliler",
   tdOnemliYap: "todoist:onemli-yap",
+  tdAllTasks: "todoist:all-tasks",
   tdUpdateTask: "todoist:update-task",
   tdDeleteTask: "todoist:delete-task",
   tdMoveTask: "todoist:move-task",
