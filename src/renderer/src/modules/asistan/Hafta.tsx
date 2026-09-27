@@ -126,7 +126,7 @@ function HaftaIcerik({
   const gunListesi = veri?.gunler ?? [];
   const ilkGun = gunListesi[0]?.isoTarih ?? bugun;
   const sonGun = gunListesi[gunListesi.length - 1]?.isoTarih ?? bugun;
-  const td = useTodoistAralik(gunEkle(ilkGun, -1), gunEkle(sonGun, 1), bugun);
+  const td = useTodoistAralik(gunEkle(ilkGun, -1), gunEkle(sonGun, 1));
 
   const birakildi = useCallback(
     (yuk: Yuk, anahtar: string) => {

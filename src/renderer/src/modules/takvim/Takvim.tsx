@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, History, Plus, RefreshCw, Repeat, X } from "lucide-react";
+import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, Plus, RefreshCw, Repeat, X } from "lucide-react";
 import type { Uygulama } from "@ortak/bot";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
@@ -411,7 +411,7 @@ export function Takvim() {
   }, [gorunum, secili]);
 
   // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
-  const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1), bugun);
+  const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1));
 
   // Anahtar hedefe göre değişiyor: "gün", "günTsaat" ya da "gün#gunboyu".
   // Ay hücresi günü değiştirir ve saati korur; eksen saat verir; gün boyu
@@ -671,15 +671,6 @@ export function Takvim() {
         </p>
       )}
 
-      {td.gecikmisler.length > 0 && (
-        <GecikmisSerit
-          gorevler={td.gecikmisler}
-          onKapat={td.kapat}
-          onBugune={(g) => void td.tarihiDegistir(g, bugun)}
-          surukle={surukle}
-        />
-      )}
-
       <div className={`${s.duzen} ${s.duzenPanelli}`}>
         <Kart dolgulu={false}>
           {gorunum === "ay" && (
@@ -761,59 +752,6 @@ export function Takvim() {
         )}
       </div>
     </>
-  );
-}
-
-/**
- * Gecikmiş görevler. Aralık sorgusundan bağımsız gelir: eylülü görüntülerken
- * ağustostan kalan görev de burada durur, yoksa hiç görünmezdi.
- *
- * Kapalı başlar: açıkken takvimin üstünü kaplıyordu. Açılınca her görev
- * tamamlanır, bugüne alınır ya da bir güne sürüklenir.
- */
-function GecikmisSerit({
-  gorevler,
-  onKapat,
-  onBugune,
-  surukle,
-}: {
-  gorevler: TodoistGorev[];
-  onKapat: (g: TodoistGorev) => Promise<void>;
-  onBugune: (g: TodoistGorev) => void;
-  surukle: Surukle;
-}) {
-  const [acik, setAcik] = useState(false);
-  if (!acik) {
-    return (
-      <button type="button" className={s.gecikmisKapali} onClick={() => setAcik(true)} aria-expanded={false}>
-        <History size={14} strokeWidth={2} />
-        {gorevler.length} gecikmiş görev ▾
-      </button>
-    );
-  }
-  return (
-    <div className={s.gecikmis}>
-      <button type="button" className={s.gecikmisBas} onClick={() => setAcik(false)} aria-expanded>
-        <History size={15} strokeWidth={2} />
-        {gorevler.length} gecikmiş ▴
-      </button>
-      <div className={s.gecikmisListe}>
-        {gorevler.map((g) => (
-          <span key={g.id} className={s.gecikmisOge}>
-            <GorevCipi gorev={g} onKapat={() => void onKapat(g)} surukle={surukle} />
-            <button
-              type="button"
-              className={s.gecikmisBugune}
-              onClick={() => onBugune(g)}
-              title={`${g.icerik} — bugüne al`}
-              disabled={g.tekrarli}
-            >
-              bugüne
-            </button>
-          </span>
-        ))}
-      </div>
-    </div>
   );
 }
 

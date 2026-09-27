@@ -31,8 +31,6 @@ export interface AralikDurumu {
   gorevler: TodoistGorev[];
   /** Tarihe göre öbeklenmiş — takvim hücreleri bunu okuyor. */
   gunlere: Map<string, TodoistGorev[]>;
-  /** Tarihi bugünden önce olan, hâlâ açık görevler. Aralıktan bağımsız gelir. */
-  gecikmisler: TodoistGorev[];
   yukleniyor: boolean;
   /** Anahtar yoksa hata değil: takvim planı göstermeye devam eder. */
   anahtarYok: boolean;
@@ -50,9 +48,8 @@ export interface AralikDurumu {
   tarihiDegistir: (g: TodoistGorev, iso: string, saat?: BirakmaSaati) => Promise<void>;
 }
 
-export function useTodoistAralik(basIso: string, sonIso: string, bugun: string): AralikDurumu {
+export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
   const [gorevler, setGorevler] = useState<TodoistGorev[]>([]);
-  const [gecikmisler, setGecikmisler] = useState<TodoistGorev[]>([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [anahtarYok, setAnahtarYok] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
@@ -71,26 +68,18 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
       setAnahtarYok(!d.anahtarVar);
       if (!d.anahtarVar) {
         setGorevler([]);
-        setGecikmisler([]);
         return;
       }
-      // İki sorgu: görünen aralık, bir de aralıktan bağımsız gecikmişler.
-      const [aralik, bugunVe] = await Promise.all([
-        k.todoist.tarihAraligi(basIso, sonIso),
-        k.todoist.bugunVeGecikmis(),
-      ]);
-      setGorevler(aralik);
-      setGecikmisler(bugunVe.filter((g) => (g.tarih ?? "").slice(0, 10) < bugun));
+      setGorevler(await k.todoist.tarihAraligi(basIso, sonIso));
       setHata(null);
     } catch (e) {
       // Ağ hatası takvimi düşürmez; plan tarafı görünmeye devam eder.
       setHata(mesaj(e));
       setGorevler([]);
-      setGecikmisler([]);
     } finally {
       setYukleniyor(false);
     }
-  }, [basIso, sonIso, bugun]);
+  }, [basIso, sonIso]);
 
   useEffect(() => {
     setYukleniyor(true);
@@ -123,22 +112,12 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
     return m;
   }, [gorevler]);
 
-  /** Her iki listeden birden çıkarır/geri koyar — gecikmiş görev ikisinde de olabilir. */
-  const cikar = useCallback((id: string) => {
-    setGorevler((x) => x.filter((y) => y.id !== id));
-    setGecikmisler((x) => x.filter((y) => y.id !== id));
-  }, []);
-
   const kapat = useCallback(
     async (g: TodoistGorev) => {
       const k = kopru();
       if (!k) return;
-      const gecikmisMiydi = (g.tarih ?? "").slice(0, 10) < bugun;
-      const geriEkle = () => {
-        setGorevler((x) => [g, ...x.filter((y) => y.id !== g.id)]);
-        if (gecikmisMiydi) setGecikmisler((x) => [g, ...x.filter((y) => y.id !== g.id)]);
-      };
-      cikar(g.id);
+      const geriEkle = () => setGorevler((x) => [g, ...x.filter((y) => y.id !== g.id)]);
+      setGorevler((x) => x.filter((y) => y.id !== g.id));
       silVeBildir({
         metin: `"${g.icerik}" tamamlandı.`,
         hataMetni: "Görev tamamlanamadı.",
@@ -164,7 +143,7 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
         },
       });
     },
-    [bugun, cikar],
+    [],
   );
 
   const ekle = useCallback(
@@ -205,8 +184,6 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
       if (tasimaGereksiz(g.tarih, iso, istek)) return;
       const saat = hedefSaat(g.tarih, istek);
 
-      // Gecikmiş görev görünen aralığın dışından gelebilir; o zaman listede
-      // yok, eklenmesi gerekir. Yerine koymak yetmiyor.
       const koy = (x: TodoistGorev) => (liste: TodoistGorev[]) =>
         liste.some((y) => y.id === x.id) ? liste.map((y) => (y.id === x.id ? x : y)) : [...liste, x];
       const at = (id: string) => (liste: TodoistGorev[]) => liste.filter((y) => y.id !== id);
@@ -214,7 +191,6 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
 
       // İyimser: görev hemen yeni güne geçer, istek düşerse eski hâli geri gelir.
       setGorevler(koy({ ...g, tarih: iyimserTarih(iso, saat) }));
-      if (iso >= bugun) setGecikmisler(at(g.id));
 
       try {
         const guncel = await k.todoist.tarihVer(g.id, todoistTarihi(iso, saat));
@@ -223,16 +199,14 @@ export function useTodoistAralik(basIso: string, sonIso: string, bugun: string):
       } catch (e) {
         setHata(mesaj(e));
         setGorevler(listedeydi ? koy(g) : at(g.id));
-        if ((g.tarih ?? "").slice(0, 10) < bugun) setGecikmisler(koy(g));
       }
     },
-    [bugun, gorevler],
+    [gorevler],
   );
 
   return {
     gorevler,
     gunlere,
-    gecikmisler,
     yukleniyor,
     anahtarYok,
     hata,
