@@ -1,10 +1,12 @@
-import { Calendar, Check, Flag, Monitor, Repeat, Star, Trash2, X } from "lucide-react";
+import { Bell, Calendar, Check, Flag, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { Priority } from "@ortak/local-tasks";
 import type { Task, TaskList } from "@ortak/task";
+import { describeReminder } from "@ortak/reminders";
 import { dueLabel } from "@ortak/task-dates";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, Popover } from "@/ui/Popover";
+import { ReminderMenu } from "./ReminderMenu";
 import { PRIORITY_COLOR } from "./TaskRow";
 import type { TaskBoard } from "./useTaskBoard";
 import s from "./board.module.css";
@@ -17,7 +19,7 @@ import s from "./board.module.css";
 export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoard; onClose: () => void }) {
   const list = board.lists.find((l) => l.source === task.source && l.id === task.listId);
   const [picker, setPicker] = useState<{ x: number; y: number; repeat: boolean } | null>(null);
-  const [menu, setMenu] = useState<{ kind: "list" | "priority"; x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ kind: "list" | "priority" | "reminder"; x: number; y: number } | null>(null);
 
   const below = (e: MouseEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -116,6 +118,29 @@ export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoa
             {task.priority < 4 ? `P${task.priority}` : "Öncelik yok"}
           </button>
         </Prop>
+        <Prop label="Hatırlatıcı">
+          <div className={s.reminderChips}>
+            {task.reminders.map((rem) => (
+              <button
+                key={rem.id}
+                type="button"
+                className={s.reminderChip}
+                onClick={(e) => setMenu({ kind: "reminder", ...below(e) })}
+              >
+                <Bell size={12} />
+                {describeReminder(rem, board.today)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={task.reminders.length ? s.reminderAdd : `${s.propValue} ${s.propEmpty}`}
+              onClick={(e) => setMenu({ kind: "reminder", ...below(e) })}
+            >
+              {task.reminders.length ? <Plus size={13} /> : <Bell size={14} />}
+              {task.reminders.length ? "" : "Hatırlatıcı ekle"}
+            </button>
+          </div>
+        </Prop>
         <Prop label="Önemli">
           <button
             type="button"
@@ -182,6 +207,19 @@ export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoa
             {task.source === "local" ? "Argos görevi yalnız Argos listelerine taşınır" : "Todoist görevi yalnız Todoist projelerine taşınır"}
           </MenuLabel>
         </Popover>
+      )}
+
+      {menu?.kind === "reminder" && (
+        <ReminderMenu
+          x={menu.x}
+          y={menu.y}
+          today={board.today}
+          due={task.due}
+          reminders={task.reminders}
+          onAdd={(rem) => void board.addReminder(task, rem)}
+          onRemove={(id) => void board.removeReminder(task, id)}
+          onClose={() => setMenu(null)}
+        />
       )}
 
       {menu?.kind === "priority" && (

@@ -18,8 +18,10 @@ import {
   gunMesaji,
   hatirlatmaMesaji,
   kapatCevabi,
+  dueTaskReminders,
   kapatCoz,
   localTasksForDay,
+  taskReminderMessage,
   planTaze,
   yaklasanSlotlar,
   komutCoz,
@@ -112,7 +114,6 @@ export default {
 async function hatirlat(env: Env, bugun: string): Promise<void> {
   const simdi = Date.now();
   const [anlik, kuyruk] = await Promise.all([env.ARGOS.get<Anlik>(ANLIK, "json"), bekleyenler(env)]);
-  if (!planTaze(anlik, simdi)) return;
 
   const t = new Intl.DateTimeFormat("tr-TR", {
     timeZone: "Europe/Istanbul",
@@ -120,8 +121,13 @@ async function hatirlat(env: Env, bugun: string): Promise<void> {
     minute: "2-digit",
     hour12: false,
   }).formatToParts(new Date(simdi));
-  const sa = Number(t.find((x) => x.type === "hour")?.value ?? "0");
+  // Some engines print midnight as "24".
+  const sa = Number(t.find((x) => x.type === "hour")?.value ?? "0") % 24;
   const dk = Number(t.find((x) => x.type === "minute")?.value ?? "0");
+
+  // Task reminders were set on purpose, so they go out even when the plan copy is stale.
+  await taskReminders(env, anlik, `${bugun}T${String(sa).padStart(2, "0")}:${String(dk).padStart(2, "0")}`, bugun);
+  if (!planTaze(anlik, simdi)) return;
 
   const isaretlenen = new Set(
     kuyruk.flatMap((k) => (k.tur === "durum" && k.tarih === bugun ? [k.slotId] : [])),
@@ -134,6 +140,24 @@ async function hatirlat(env: Env, bugun: string): Promise<void> {
     await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID!, hatirlatmaMesaji(y), [
       [
         { text: "☑ Yapıldı", callback_data: `slot:${bugun}:${y.slot.id}` },
+        { text: "📅 Bugün", callback_data: `gun:${bugun}` },
+      ],
+    ]);
+  }
+}
+
+/**
+ * Sends the task reminders whose moment has come. Each (task, reminder,
+ * moment) goes out once: the KV mark outlives the late-send window.
+ */
+async function taskReminders(env: Env, anlik: Anlik | null, now: string, bugun: string): Promise<void> {
+  for (const h of dueTaskReminders(anlik, now)) {
+    const mark = `${HATIRLATILDI}task:${h.key}`;
+    if (await env.ARGOS.get(mark)) continue;
+    await env.ARGOS.put(mark, "1", { expirationTtl: 2 * 86400 });
+    await gonder(env.TELEGRAM_TOKEN, env.SAHIP_CHAT_ID!, taskReminderMessage(h), [
+      [
+        { text: "☑ Tamamlandı", callback_data: `${h.source === "local" ? "yerel" : "gorev"}:${bugun}:${h.taskId}` },
         { text: "📅 Bugün", callback_data: `gun:${bugun}` },
       ],
     ]);
@@ -385,6 +409,21 @@ async function dugme(
     } catch (e) {
       cevap = `Kapatılamadı: ${e instanceof Error ? e.message : String(e)}`;
     }
+  } else if (tur === "yerel" && deger) {
+    // An Argos-local task from a reminder: closed through the queue, like /kapat.
+    const anlik = await env.ARGOS.get<Anlik>(ANLIK, "json");
+    const g = anlik?.yerelGorevler?.find((x) => x.id === deger);
+    const h = anlik?.hatirlatmalar?.find((x) => x.taskId === deger);
+    const kayit: KuyrukKaydi = {
+      id: `u${updateId}`,
+      tur: "task",
+      zaman: new Date().toISOString(),
+      gorevId: deger,
+      due: g?.tarih ?? h?.due ?? null,
+      ad: g?.icerik ?? h?.title ?? deger,
+    };
+    await env.ARGOS.put(KUYRUK + kayit.id, JSON.stringify(kayit));
+    cevap = "⏳ Tamamlandı — Argos açılınca işlenecek";
   } else if (tur === "slot" && deger) {
     const anlik = await env.ARGOS.get<Anlik>(ANLIK, "json");
     const slot = anlik?.gunler[tarih]?.slotlar.find((x) => x.id === deger);

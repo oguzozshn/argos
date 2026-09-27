@@ -758,6 +758,123 @@
   background: var(--hata-yumusak);
 }
 
+/* --- reminders ---------------------------------------------------------------------- */
+
+.reminderChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  min-width: 0;
+}
+
+.reminderChip,
+.reminderAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 7px;
+  font: inherit;
+  font-size: var(--y5);
+  cursor: pointer;
+}
+
+.reminderChip {
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+}
+
+.reminderAdd {
+  padding: 4px 6px;
+  background: none;
+  color: var(--metin-soluk);
+  border: 1px dashed var(--cizgi-koyu);
+}
+
+.reminderAdd:hover {
+  color: var(--metin);
+}
+
+.reminderMenu {
+  width: 290px;
+}
+
+.reminderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: var(--y4);
+  color: var(--vurgu);
+}
+
+.reminderText {
+  color: var(--metin);
+}
+
+.reminderWhen {
+  flex: 1;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  text-align: right;
+}
+
+.reminderRow button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.reminderRow button:hover {
+  background: var(--hata-yumusak);
+  color: var(--hata);
+}
+
+.reminderFixed {
+  display: flex;
+  gap: 6px;
+  padding: 2px 10px 6px;
+}
+
+.reminderFixed input {
+  min-width: 0;
+  flex: 1;
+  padding: 5px 6px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: 7px;
+  background: var(--zemin);
+  font-size: var(--y5);
+}
+
+.reminderFixed button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+  font: inherit;
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  cursor: pointer;
+}
+
+.reminderFixed button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .moveMenu {
   max-height: 60vh;
   overflow-y: auto;

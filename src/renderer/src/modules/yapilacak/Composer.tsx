@@ -1,7 +1,7 @@
-import { Calendar, ChevronDown, Flag, Monitor, Repeat, Star, X } from "lucide-react";
+import { Bell, Calendar, ChevronDown, Flag, Monitor, Repeat, Star, X } from "lucide-react";
 import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { dueValue, parseDateText } from "@ortak/date-parse";
-import type { Priority } from "@ortak/local-tasks";
+import { newLocalId, type Priority, type Reminder } from "@ortak/local-tasks";
 import { splitQuickAdd } from "@ortak/quick-add";
 import { describeRule } from "@ortak/recurrence";
 import type { TaskList } from "@ortak/task";
@@ -9,6 +9,7 @@ import { dueLabel } from "@ortak/task-dates";
 import { Dugme } from "@/ui/bilesenler";
 import { DatePicker, type Schedule } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, Popover } from "@/ui/Popover";
+import { ReminderMenu } from "./ReminderMenu";
 import { PRIORITY_COLOR } from "./TaskRow";
 import type { TaskBoard } from "./useTaskBoard";
 import s from "./board.module.css";
@@ -34,7 +35,8 @@ export function Composer({
   const [pickedPriority, setPickedPriority] = useState<Priority | null>(null);
   const [importantOverride, setImportantOverride] = useState<boolean | null>(null);
   const [targetKey, setTargetKey] = useState(list.key);
-  const [popup, setPopup] = useState<{ kind: "date" | "priority" | "list"; x: number; y: number } | null>(null);
+  const [popup, setPopup] = useState<{ kind: "date" | "priority" | "list" | "reminder"; x: number; y: number } | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [busy, setBusy] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -72,6 +74,7 @@ export function Composer({
     setPickedSchedule(null);
     setPickedPriority(null);
     setImportantOverride(null);
+    setReminders([]);
   };
 
   const submit = async () => {
@@ -83,6 +86,7 @@ export function Composer({
       schedule,
       priority,
       important,
+      reminders,
     });
     setBusy(false);
     if (ok) reset();
@@ -146,6 +150,12 @@ export function Composer({
             {priority < 4 ? `P${priority}` : "Öncelik"}
           </button>
         </span>
+        <span className={reminders.length ? `${s.chipButton} ${s.chipOn}` : s.chipButton}>
+          <button type="button" onClick={(e) => setPopup({ kind: "reminder", ...below(e) })}>
+            <Bell size={13} />
+            {reminders.length ? `${reminders.length} hatırlatıcı` : "Hatırlatıcı"}
+          </button>
+        </span>
         <span className={important ? `${s.chipButton} ${s.chipImportantOn}` : s.chipButton}>
           <button type="button" onClick={() => setImportantOverride(!important)}>
             <Star size={13} fill={important ? "currentColor" : "none"} />
@@ -189,6 +199,22 @@ export function Composer({
               repeat: sched.repeat.kind === "keep" ? (rule ? { kind: "rule", rule } : { kind: "none" }) : sched.repeat,
             })
           }
+          onClose={() => {
+            setPopup(null);
+            titleRef.current?.focus();
+          }}
+        />
+      )}
+
+      {popup?.kind === "reminder" && (
+        <ReminderMenu
+          x={popup.x}
+          y={popup.y}
+          today={board.today}
+          due={schedule?.date ? dueValue({ date: schedule.date, time: schedule.time }) : null}
+          reminders={reminders}
+          onAdd={(rem) => setReminders((list) => [...list, { ...rem, id: newLocalId("r") }])}
+          onRemove={(id) => setReminders((list) => list.filter((x) => x.id !== id))}
           onClose={() => {
             setPopup(null);
             titleRef.current?.focus();

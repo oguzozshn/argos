@@ -30,6 +30,9 @@ export type Reminder =
   /** A fixed local moment: "YYYY-MM-DDTHH:MM". */
   | { id: string; kind: "absolute"; at: string };
 
+/** A reminder before it gets its id. */
+export type NewReminder = { kind: "relative"; minutesBefore: number } | { kind: "absolute"; at: string };
+
 /** Priority as people say it: 1 = P1 (highest) … 4 = P4 (none). */
 export type Priority = 1 | 2 | 3 | 4;
 
