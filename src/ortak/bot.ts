@@ -17,6 +17,8 @@ import { metinPuani, sadelestir } from "./komut-ara.ts";
 import { dakika, yeniSlotId } from "./kural.ts";
 import { aliskanlikBekleniyor } from "./plan-islem.ts";
 import { DURUM_ISARETI, hatirlaBugun, yeniHatirlaId, type Hafta, type HatirlaMaddesi, type Slot } from "./plan.ts";
+import { completeTask, type LocalTask, type TasksFile } from "./local-tasks.ts";
+import { localAsTodoist } from "./task.ts";
 import type { TodoistGorev } from "./tipler.ts";
 
 /* --- görünüm (Argos → Worker) ------------------------------------------- */
@@ -42,6 +44,12 @@ export interface Anlik {
   /** ISO zaman damgası: mesajdaki "plan son güncelleme" satırı. */
   guncellendi: string;
   gunler: Record<string, AnlikGun>;
+  /**
+   * Open Argos-local tasks with a date up to the snapshot's last day, overdue
+   * ones included, in the Todoist shape (source: "local"). The Worker cannot
+   * read the data folder, so it gets them here. Absent in older snapshots.
+   */
+  yerelGorevler?: TodoistGorev[];
 }
 
 export const ANLIK_GUN_SAYISI = 14;
@@ -97,6 +105,33 @@ export function gunuBul<T extends { veri: Hafta }>(
   return null;
 }
 
+/** Argos-local tasks for the snapshot: open, dated, and due before `bugun + gunSayisi`. */
+export function localTasksSnapshot(tasks: LocalTask[], bugun: string, gunSayisi = ANLIK_GUN_SAYISI): TodoistGorev[] {
+  const last = gunEkle(bugun, gunSayisi - 1);
+  return tasks
+    .filter((t) => !t.completedAt && t.due && t.due.slice(0, 10) <= last)
+    .map(localAsTodoist);
+}
+
+/**
+ * The local tasks shown for one day: overdue ones too when it is today, as
+ * with Todoist. Tasks already closed from Telegram (waiting in the queue)
+ * are left out so they are not offered twice.
+ */
+export function localTasksForDay(
+  anlik: Anlik | null,
+  tarih: string,
+  bugun: string,
+  bekleyenler: KuyrukKaydi[] = [],
+): TodoistGorev[] {
+  const closing = new Set(bekleyenler.flatMap((k) => (k.tur === "task" ? [k.gorevId] : [])));
+  return (anlik?.yerelGorevler ?? []).filter((g) => {
+    if (closing.has(g.id) || !g.tarih) return false;
+    const d = g.tarih.slice(0, 10);
+    return tarih === bugun ? d <= bugun : d === tarih;
+  });
+}
+
 /* --- kuyruk (Worker → Argos) -------------------------------------------- */
 
 export type KuyrukKaydi =
@@ -122,6 +157,16 @@ export type KuyrukKaydi =
       /** Şimdilik yalnız "yapildi"; Telegram'dan başka durum verilmiyor. */
       durum: string;
       /** Bildirimde okunaklı olsun diye slotun adı. */
+      ad: string;
+    }
+  | {
+      /** An Argos-local task closed from Telegram (`/kapat`). */
+      id: string;
+      tur: "task";
+      zaman: string;
+      gorevId: string;
+      /** The task's due date when it was closed; guards a recurring task against advancing twice. */
+      due: string | null;
       ad: string;
     };
 
@@ -217,6 +262,26 @@ export function durumKaydiniUygula(
     tur: "eklendi",
     veri: { ...v, slotlar: v.slotlar.map((x) => (x.id === k.slotId ? { ...x, durum: k.durum } : x)) },
   };
+}
+
+/**
+ * Completes an Argos-local task closed from Telegram. A record that arrives
+ * again (Argos wrote the file but quit before acknowledging) must not
+ * complete it twice: a done task, or a recurring one whose date already
+ * moved past the recorded one, counts as already applied.
+ */
+export function applyLocalTaskClose(
+  file: TasksFile,
+  k: Extract<KuyrukKaydi, { tur: "task" }>,
+  bugun: string,
+  simdi: string,
+): Uygulama<TasksFile> {
+  const task = file.tasks.find((t) => t.id === k.gorevId);
+  if (!task) return { tur: "reddet", sebep: `"${k.ad}" Argos'ta bulunamadı` };
+  if (task.completedAt) return { tur: "zatenVar" };
+  if (task.recurrence && k.due && task.due !== k.due) return { tur: "zatenVar" };
+  const r = completeTask(file, task.id, simdi, bugun);
+  return { tur: "eklendi", veri: r.file, ...(r.nextDue ? { not: `sıradaki: ${r.nextDue.slice(0, 10)}` } : {}) };
 }
 
 /** Büyük/küçük harf ve Türkçe karakter farkı gözetmeden; tek bir ön ek eşleşmesi de kabul. */
@@ -449,6 +514,8 @@ export interface KapatHedefi {
   id: string;
   /** Kullanıcıya gösterilecek ad; slotta saat de var. */
   ad: string;
+  /** Set for an Argos-local task: it is closed through the queue, with its due date. */
+  local?: { due: string | null };
 }
 
 export type KapatSonucu =
@@ -477,7 +544,12 @@ export function kapatCoz(sorgu: string, slotlar: AnlikSlot[], gorevler: TodoistG
       puan: Math.max(metinPuani(q, s.konu || s.alan), metinPuani(q, s.saat)),
     })),
     ...gorevler.map((g) => ({
-      hedef: { tur: "gorev" as const, id: g.id, ad: g.icerik },
+      hedef: {
+        tur: "gorev" as const,
+        id: g.id,
+        ad: g.icerik,
+        ...(g.source === "local" ? { local: { due: g.tarih } } : {}),
+      },
       puan: metinPuani(q, g.icerik),
     })),
   ]
@@ -593,7 +665,7 @@ export function gunMesaji(
     );
   }
 
-  satirlar.push("", "<b>📋 Todoist</b>");
+  satirlar.push("", "<b>📋 Görevler</b>");
   if ("hata" in gorevler) {
     satirlar.push(`Görevler alınamadı: ${kacis(gorevler.hata)}`);
   } else if (gorevler.length === 0) {
@@ -677,6 +749,7 @@ export function planTaze(anlik: Anlik | null, simdi: number): boolean {
 export function kuyrukOnayi(k: KuyrukKaydi, bugun: string): string {
   if (k.tur === "durum") return `⏳ ${kacis(k.ad)} işaretlendi — Argos açılınca plana işlenecek.`;
   if (k.tur === "not") return `⏳ Not kaydedildi, Argos açılınca Hatırla'ya işlenecek:\n${kacis(k.metin)}`;
+  if (k.tur === "task") return `⏳ ${kacis(k.ad)} tamamlandı — Argos açılınca işlenecek.`;
   const gun = k.tarih === bugun ? "bugün" : k.tarih === gunEkle(bugun, 1) ? "yarın" : tarihBasligi(k.tarih);
   return `⏳ Kaydedildi: ${gun} ${k.saat} ${kacis(k.konu)} · ${sureMetni(k.sureDk)}${
     k.alan ? ` #${kacis(k.alan)}` : ""

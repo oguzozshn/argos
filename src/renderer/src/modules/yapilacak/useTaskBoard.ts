@@ -3,14 +3,11 @@ import { todoistTarihi } from "@ortak/gorev-zaman";
 import {
   addList,
   addTask,
-  completeTask,
   deleteList,
   deleteTask,
   newLocalId,
-  restoreTask,
   updateList,
   updateTask,
-  type LocalTask,
   type Priority,
 } from "@ortak/local-tasks";
 import {
@@ -35,7 +32,7 @@ import { turkceTarihCevir } from "@ortak/todoist-tarih";
 import type { Schedule } from "@/ui/DatePicker";
 import { bildir, deferWithUndo, silVeBildir } from "@/ui/toast";
 import { kopru, useBugun } from "@/veri/kanca";
-import { useLocalTasks } from "@/veri/local-tasks";
+import { completeLocalWithUndo, useLocalTasks } from "@/veri/local-tasks";
 
 /**
  * Everything the task screen needs: Todoist projects and tasks, Argos-local
@@ -161,7 +158,6 @@ export function useTaskBoard() {
   const patchTodoist = (id: string, f: (g: TodoistGorev) => TodoistGorev) =>
     setTodoTasks((all) => all.map((g) => (g.id === id ? f(g) : g)));
   const putTodoist = (g: TodoistGorev) => setTodoTasks((all) => all.map((x) => (x.id === g.id ? g : x)));
-  const localTask = (id: string): LocalTask | undefined => local.tasks.find((t) => t.id === id);
   const todoistTask = (id: string): TodoistGorev | undefined => todoTasks.find((t) => t.id === id);
   const hide = (key: string, on: boolean) =>
     setHidden((h) => {
@@ -195,18 +191,7 @@ export function useTaskBoard() {
   const complete = async (task: Task) => {
     const k = kopru();
     if (task.source === "local") {
-      const before = localTask(task.id);
-      if (!before) return;
-      let nextDue: string | null = null;
-      await changeTasks((f) => {
-        const r = completeTask(f, task.id, new Date().toISOString(), today);
-        nextDue = r.nextDue;
-        return r.file;
-      });
-      bildir({
-        metin: nextDue ? `"${task.title}" tamamlandı · sıradaki tarihine kaydı.` : `"${task.title}" tamamlandı.`,
-        geriAl: () => changeTasks((f) => restoreTask(f, before)),
-      });
+      await completeLocalWithUndo(local, task.id, today);
       return;
     }
     if (!k) return;

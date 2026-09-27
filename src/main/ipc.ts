@@ -4,7 +4,9 @@ import { BASLIK_RENKLERI, KANAL } from "../ortak/tipler";
 import * as td from "./todoist";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { tepsiOdak, todoistDegistiBildir, yakalamaHatasi, yakalamadanMi, yakalamayiGizle } from "./tepsi";
-import { klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
+import { dataDir, klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
+import { quickAddLocal } from "./local-quick-add";
+import { bugunIso } from "../ortak/plan";
 import { bildirimGoster } from "./bildirim";
 import { yedekKlasorunuAc } from "./yedek";
 
@@ -125,7 +127,12 @@ export function ipcKur(): void {
   // penceresi için: palet hatayı kendi içinde gösteriyor.
   ipcMain.handle(KANAL.tdHizli, async (olay, metin: string) => {
     try {
-      const gorev = await td.hizliEkle(String(metin ?? "").trim());
+      const satir = String(metin ?? "").trim();
+      // "#ListName" of an Argos list sends the task there; the task screens
+      // pick the file change up themselves.
+      const yerel = await quickAddLocal(dataDir(), satir, bugunIso(), new Date().toISOString());
+      if (yerel) return yerel;
+      const gorev = await td.hizliEkle(satir);
       todoistDegistiBildir();
       return gorev;
     } catch (e) {

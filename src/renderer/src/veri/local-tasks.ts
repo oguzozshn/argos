@@ -2,13 +2,16 @@ import { useCallback, useMemo } from "react";
 import {
   LISTS_PATH,
   TASKS_PATH,
+  completeTask,
   normalizeLists,
   normalizeTasks,
+  restoreTask,
   type ListsFile,
   type LocalList,
   type LocalTask,
   type TasksFile,
 } from "@ortak/local-tasks";
+import { bildir } from "@/ui/toast";
 import { useDosya } from "./kanca";
 
 /**
@@ -57,4 +60,31 @@ export function useLocalTasks(): LocalTasksState {
     changeLists,
     changeTasks,
   };
+}
+
+/**
+ * Completes an Argos task and offers undo. A recurring one moves to its next
+ * date instead of disappearing; undo puts back exactly what was there.
+ */
+export async function completeLocalWithUndo(
+  state: Pick<LocalTasksState, "tasks" | "changeTasks">,
+  id: string,
+  today: string,
+): Promise<void> {
+  const before = state.tasks.find((t) => t.id === id);
+  if (!before) return;
+  let moved = false;
+  const ok = await state.changeTasks((f) => {
+    const r = completeTask(f, id, new Date().toISOString(), today);
+    moved = r.nextDue !== null;
+    return r.file;
+  });
+  if (!ok) {
+    bildir({ metin: "Görev tamamlanamadı.", tur: "hata" });
+    return;
+  }
+  bildir({
+    metin: moved ? `"${before.title}" tamamlandı · sıradaki tarihine kaydı.` : `"${before.title}" tamamlandı.`,
+    geriAl: () => state.changeTasks((f) => restoreTask(f, before)),
+  });
 }

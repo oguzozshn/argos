@@ -1,7 +1,9 @@
 // Uzantılar açık: bu dosya düz Node ile de koşuyor (araclar/bot-argos-testi.mts).
 import {
   anlikKur,
+  applyLocalTaskClose,
   durumKaydiniUygula,
+  localTasksSnapshot,
   gunuBul,
   notKaydiniUygula,
   slotKaydiniUygula,
@@ -11,6 +13,7 @@ import {
   type KuyrukSonucu,
   type Uygulama,
 } from "../ortak/bot.ts";
+import { TASKS_PATH, normalizeTasks, type TasksFile } from "../ortak/local-tasks.ts";
 import type { Kurallar } from "../ortak/ozet.ts";
 import type { Hafta } from "../ortak/plan.ts";
 import { listele, oku, yaz } from "./veri-cekirdek.ts";
@@ -76,17 +79,21 @@ async function sessizOku<T>(kok: string, yol: string): Promise<T | null> {
 }
 
 export async function anlikUret(kok: string, bugun: string, simdi: string): Promise<Anlik> {
-  const [haftalar, kurallar, hatirla] = await Promise.all([
+  const [haftalar, kurallar, hatirla, gorevler] = await Promise.all([
     haftalariOku(kok),
     sessizOku<Kurallar>(kok, "kurallar.json"),
     sessizOku<HatirlaDosyasi>(kok, "hatirla.json"),
+    sessizOku<TasksFile>(kok, TASKS_PATH),
   ]);
-  return anlikKur(
-    haftalar,
-    bugun,
-    hatirla ? { maddeler: hatirla.maddeler ?? [], gunlukAdet: kurallar?.hatirla?.gunlukAdet ?? 3 } : null,
-    simdi,
-  );
+  return {
+    ...anlikKur(
+      haftalar,
+      bugun,
+      hatirla ? { maddeler: hatirla.maddeler ?? [], gunlukAdet: kurallar?.hatirla?.gunlukAdet ?? 3 } : null,
+      simdi,
+    ),
+    yerelGorevler: localTasksSnapshot(normalizeTasks(gorevler).tasks, bugun),
+  };
 }
 
 export async function anlikGonder(kok: string, a: BotAyari, bugun: string, simdi: string): Promise<void> {
@@ -103,7 +110,7 @@ export interface IslemSonucu {
 
 function kayitAdi(k: KuyrukKaydi): string {
   if (k.tur === "slot") return `${k.tarih.slice(8, 10)}.${k.tarih.slice(5, 7)} ${k.saat} ${k.konu}`;
-  if (k.tur === "durum") return `${k.ad} ☑`;
+  if (k.tur === "durum" || k.tur === "task") return `${k.ad} ☑`;
   return `Hatırla: ${k.metin}`;
 }
 
@@ -163,6 +170,10 @@ export async function kuyruguIsle(kok: string, a: BotAyari, bugun: string): Prom
         }
         u = await uygulaVeYaz<Hafta>(kok, `${hedef.kod}.json`, (v) =>
           v ? durumKaydiniUygula(v, k) : { tur: "reddet", sebep: `${hedef.kod}.json okunamadı` },
+        );
+      } else if (k.tur === "task") {
+        u = await uygulaVeYaz<TasksFile>(kok, TASKS_PATH, (d) =>
+          applyLocalTaskClose(normalizeTasks(d), k, bugun, new Date().toISOString()),
         );
       } else {
         u = await uygulaVeYaz<HatirlaDosyasi>(kok, "hatirla.json", (d) => notKaydiniUygula(d, k, bugun));

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { tariheGoreSirala } from "@ortak/geri-sayim";
+import { localAsTodoist } from "@ortak/task";
 import type { TodoistGorev } from "@ortak/tipler";
 import { kopru } from "@/veri/kanca";
+import { useLocalTasks } from "@/veri/local-tasks";
 
 /** Data hook of the important-dates card. The task screen's data lives in useTaskBoard.ts. */
 
@@ -14,6 +16,7 @@ import { kopru } from "@/veri/kanca";
  */
 export function useOnemliler(bugun: string): TodoistGorev[] | null {
   const [gorevler, setGorevler] = useState<TodoistGorev[] | null>(null);
+  const local = useLocalTasks();
 
   useEffect(() => {
     const k = kopru();
@@ -38,5 +41,15 @@ export function useOnemliler(bugun: string): TodoistGorev[] | null {
     // Gün değişince de yeniden çekilir: telefondan eklenenler gece gelsin.
   }, [bugun]);
 
-  return gorevler;
+  // Important Argos tasks count down on the same card.
+  return useMemo(
+    () =>
+      gorevler === null
+        ? null
+        : tariheGoreSirala([
+            ...gorevler,
+            ...local.tasks.filter((t) => !t.completedAt && t.important).map(localAsTodoist),
+          ]),
+    [gorevler, local.tasks],
+  );
 }
