@@ -134,7 +134,10 @@ export function botBaslat(pencere: () => BrowserWindow | null): void {
   powerMonitor.on("unlock-screen", uyaninca);
 
   degisimeAbone((yol) => {
-    if (/^W\d{1,2}\.json$/.test(yol) || yol === "kurallar.json" || yol === "hatirla.json") gecikmeliGonder();
+    // Argos tasks and their reminders travel in the snapshot too.
+    if (/^W\d{1,2}\.json$/.test(yol) || yol === "kurallar.json" || yol === "hatirla.json" || yol.startsWith("tasks/")) {
+      gecikmeliGonder();
+    }
   });
 }
 

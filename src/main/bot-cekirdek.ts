@@ -1,5 +1,6 @@
 // Uzantılar açık: bu dosya düz Node ile de koşuyor (araclar/bot-argos-testi.mts).
 import {
+  ANLIK_GUN_SAYISI,
   anlikKur,
   applyLocalTaskClose,
   durumKaydiniUygula,
@@ -13,7 +14,9 @@ import {
   type KuyrukSonucu,
   type Uygulama,
 } from "../ortak/bot.ts";
+import { gunEkle } from "../ortak/gun.ts";
 import { TASKS_PATH, normalizeTasks, type TasksFile } from "../ortak/local-tasks.ts";
+import { REMINDERS_PATH, addMinutes, normalizeReminders, upcomingReminders, type RemindersFile } from "../ortak/reminders.ts";
 import type { Kurallar } from "../ortak/ozet.ts";
 import type { Hafta } from "../ortak/plan.ts";
 import { listele, oku, yaz } from "./veri-cekirdek.ts";
@@ -79,12 +82,16 @@ async function sessizOku<T>(kok: string, yol: string): Promise<T | null> {
 }
 
 export async function anlikUret(kok: string, bugun: string, simdi: string): Promise<Anlik> {
-  const [haftalar, kurallar, hatirla, gorevler] = await Promise.all([
+  const [haftalar, kurallar, hatirla, gorevler, hatirlaticilar] = await Promise.all([
     haftalariOku(kok),
     sessizOku<Kurallar>(kok, "kurallar.json"),
     sessizOku<HatirlaDosyasi>(kok, "hatirla.json"),
     sessizOku<TasksFile>(kok, TASKS_PATH),
+    sessizOku<RemindersFile>(kok, REMINDERS_PATH),
   ]);
+  const yerel = normalizeTasks(gorevler).tasks;
+  // From a little before now, so a reminder due while the snapshot travels is not lost.
+  const now = localMoment(new Date(simdi));
   return {
     ...anlikKur(
       haftalar,
@@ -92,8 +99,20 @@ export async function anlikUret(kok: string, bugun: string, simdi: string): Prom
       hatirla ? { maddeler: hatirla.maddeler ?? [], gunlukAdet: kurallar?.hatirla?.gunlukAdet ?? 3 } : null,
       simdi,
     ),
-    yerelGorevler: localTasksSnapshot(normalizeTasks(gorevler).tasks, bugun),
+    yerelGorevler: localTasksSnapshot(yerel, bugun),
+    hatirlatmalar: upcomingReminders(
+      yerel,
+      normalizeReminders(hatirlaticilar),
+      addMinutes(now, -20),
+      `${gunEkle(bugun, ANLIK_GUN_SAYISI)}T00:00`,
+    ),
   };
+}
+
+/** This machine's wall clock as "YYYY-MM-DDTHH:MM" (Argos runs in Istanbul time). */
+function localMoment(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 export async function anlikGonder(kok: string, a: BotAyari, bugun: string, simdi: string): Promise<void> {

@@ -18,6 +18,7 @@ import { dakika, yeniSlotId } from "./kural.ts";
 import { aliskanlikBekleniyor } from "./plan-islem.ts";
 import { DURUM_ISARETI, hatirlaBugun, yeniHatirlaId, type Hafta, type HatirlaMaddesi, type Slot } from "./plan.ts";
 import { completeTask, type LocalTask, type TasksFile } from "./local-tasks.ts";
+import { addMinutes, type ReminderItem } from "./reminders.ts";
 import { localAsTodoist } from "./task.ts";
 import type { TodoistGorev } from "./tipler.ts";
 
@@ -50,6 +51,11 @@ export interface Anlik {
    * read the data folder, so it gets them here. Absent in older snapshots.
    */
   yerelGorevler?: TodoistGorev[];
+  /**
+   * Task reminders (Argos and Todoist tasks) resolved to local moments for
+   * the snapshot's days. The Worker sends each one when its moment comes.
+   */
+  hatirlatmalar?: ReminderItem[];
 }
 
 export const ANLIK_GUN_SAYISI = 14;
@@ -743,6 +749,26 @@ export function planTaze(anlik: Anlik | null, simdi: number): boolean {
   if (!anlik) return false;
   const t = Date.parse(anlik.guncellendi);
   return Number.isFinite(t) && simdi - t <= HATIRLATMA_TAZELIK_SAAT * 3600 * 1000;
+}
+
+/* --- task reminders ---------------------------------------------------------- */
+
+/**
+ * Task reminders the Worker's five-minute round should send now: moment
+ * reached, but not older than `lateMinutes` (a round can run late; a
+ * reminder from hours ago is noise). Unlike slot reminders there is no
+ * freshness check — the user set these on purpose.
+ */
+export function dueTaskReminders(anlik: Anlik | null, now: string, lateMinutes = 20): ReminderItem[] {
+  const earliest = addMinutes(now, -lateMinutes);
+  return (anlik?.hatirlatmalar ?? []).filter((h) => h.at <= now && h.at > earliest);
+}
+
+/** Telegram text of a task reminder (HTML mode). */
+export function taskReminderMessage(h: ReminderItem): string {
+  const time = h.due && h.due.length > 10 ? h.due.slice(11, 16) : null;
+  const day = h.due ? tarihBasligi(h.due.slice(0, 10)) : null;
+  return `⏰ <b>${kacis(h.title)}</b>${day ? `\n📅 ${day}${time ? ` · ${time}` : ""}` : ""}`;
 }
 
 /** Kuyruğa alınan eklemenin onay mesajı. */

@@ -9,7 +9,10 @@ import {
   updateList,
   updateTask,
   type Priority,
+  type NewReminder,
+  type Reminder,
 } from "@ortak/local-tasks";
+import { setTodoistReminders, syncTodoistReminders } from "@ortak/reminders";
 import {
   fromLocal,
   fromTodoist,
@@ -33,6 +36,7 @@ import type { Schedule } from "@/ui/DatePicker";
 import { bildir, deferWithUndo, silVeBildir } from "@/ui/toast";
 import { kopru, useBugun } from "@/veri/kanca";
 import { completeLocalWithUndo, useLocalTasks } from "@/veri/local-tasks";
+import { useTodoistReminders } from "@/veri/reminders";
 
 /**
  * Everything the task screen needs: Todoist projects and tasks, Argos-local
@@ -49,6 +53,7 @@ export interface NewTaskInput {
   schedule: Schedule | null;
   priority: Priority;
   important: boolean;
+  reminders?: Reminder[];
 }
 
 /** Todoist keeps the due string as typed, which may be Turkish; the API needs English. */
@@ -73,6 +78,7 @@ export function useTaskBoard() {
   const today = useBugun();
   const local = useLocalTasks();
   const { changeLists, changeTasks } = local;
+  const reminders = useTodoistReminders();
 
   const [status, setStatus] = useState<TodoistStatus>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -138,11 +144,23 @@ export function useTaskBoard() {
   const tasks = useMemo<Task[]>(
     () =>
       [
-        ...todoTasks.map((g) => fromTodoist(g)),
+        ...todoTasks.map((g) => fromTodoist(g, reminders.file.todoist[g.id]?.reminders ?? [])),
         ...local.tasks.filter((t) => !t.completedAt).map(fromLocal),
       ].filter((t) => !hidden.has(t.key)),
-    [todoTasks, local.tasks, hidden],
+    [todoTasks, local.tasks, hidden, reminders.file],
   );
+
+  // Keep the reminder file's copy of Todoist titles and dates current, and
+  // drop entries of tasks that were closed — only after a successful read.
+  const { change: changeReminders } = reminders;
+  const reminderFile = reminders.file;
+  useEffect(() => {
+    if (status !== "ready" || Object.keys(reminderFile.todoist).length === 0) return;
+    const live = todoTasks.map((g) => ({ id: g.id, title: g.icerik, due: g.tarih }));
+    if (syncTodoistReminders(reminderFile, live)) {
+      void changeReminders((current) => syncTodoistReminders(current, live) ?? current);
+    }
+  }, [status, todoTasks, reminderFile, changeReminders]);
 
   const counts = useMemo(() => {
     const m = new Map<string, number>();
@@ -383,6 +401,7 @@ export function useTaskBoard() {
             recurrence: sched?.repeat.kind === "rule" ? sched.repeat.rule : null,
             priority: input.priority,
             important: input.important,
+            reminders: input.reminders,
           },
           newLocalId("t"),
           new Date().toISOString(),
@@ -401,12 +420,43 @@ export function useTaskBoard() {
         labels: input.important ? [ONEMLI_ETIKETI] : undefined,
       });
       setTodoTasks((all) => [...all, created]);
+      if (input.reminders?.length) {
+        await reminders.change((f) =>
+          setTodoistReminders(f, created.id, {
+            title: created.icerik,
+            due: created.tarih ? created.tarih.slice(0, 16) : null,
+            reminders: input.reminders!,
+          }),
+        );
+      }
       return true;
     } catch (e) {
       fail("Görev eklenemedi.")(e);
       return false;
     }
   };
+
+  /** Replaces a task's reminders (either source). */
+  const setReminders = async (task: Task, list: Reminder[]) => {
+    if (task.source === "local") {
+      await changeTasks((f) => updateTask(f, task.id, { reminders: list }));
+      return;
+    }
+    const ok = await reminders.change((f) =>
+      setTodoistReminders(f, task.id, {
+        title: task.title,
+        due: task.due ? task.due.slice(0, 16) : null,
+        reminders: list,
+      }),
+    );
+    if (!ok) bildir({ metin: "Hatırlatıcı kaydedilemedi.", tur: "hata" });
+  };
+
+  const addReminder = (task: Task, r: NewReminder) =>
+    setReminders(task, [...task.reminders, { ...r, id: newLocalId("r") }]);
+
+  const removeReminder = (task: Task, id: string) =>
+    setReminders(task, task.reminders.filter((r) => r.id !== id));
 
   /* --- list actions -------------------------------------------------------------- */
 
@@ -480,6 +530,8 @@ export function useTaskBoard() {
     setDescription,
     setPriority,
     toggleImportant,
+    addReminder,
+    removeReminder,
     move,
     createTask,
     toggleFavorite,

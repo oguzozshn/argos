@@ -3,6 +3,7 @@ import type { Modul } from "@/modules";
 import { Yapilacak } from "./Yapilacak";
 import { YapilacakOzet } from "./Ozet";
 import { OnemliTarihler } from "./OnemliTarihler";
+import { ReminderBackground } from "./ReminderBackground";
 import { yapilacakKomutlari } from "./komutlar";
 
 export const yapilacakModulu: Modul = {
@@ -14,4 +15,5 @@ export const yapilacakModulu: Modul = {
   Ozet: YapilacakOzet,
   Ust: OnemliTarihler,
   komutlar: yapilacakKomutlari,
+  ArkaPlan: ReminderBackground,
 };
