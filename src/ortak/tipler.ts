@@ -56,6 +56,11 @@ export interface TodoistProje {
   id: string;
   ad: string;
   inbox: boolean;
+  /** Hex colour resolved from Todoist's colour name. */
+  color: string;
+  favorite: boolean;
+  /** Todoist's own order in the sidebar. */
+  order: number;
 }
 
 export interface TodoistGorev {
@@ -72,6 +77,14 @@ export interface TodoistGorev {
   oncelik: number;
   etiketler: string[];
   altGorev: boolean;
+}
+
+/** Editable fields of a Todoist task apart from its date, which goes through `tarihVer`. */
+export interface TodoistTaskPatch {
+  title?: string;
+  description?: string;
+  /** 1 = P1 (highest) … 4 = P4. */
+  priority?: 1 | 2 | 3 | 4;
 }
 
 export interface TodoistDurum {
@@ -121,6 +134,13 @@ export interface ArgosApi {
     onemliler(): Promise<TodoistGorev[]>;
     /** Önemli etiketini ekler/kaldırır; görevin diğer etiketlerine ve tarihine dokunmaz. */
     onemliYap(id: string, onemli: boolean): Promise<TodoistGorev>;
+    /** Edits title, description or priority (1 = P1 … 4 = P4). Never touches the date. */
+    updateTask(id: string, patch: TodoistTaskPatch): Promise<TodoistGorev>;
+    /** Permanently deletes a task. */
+    deleteTask(id: string): Promise<void>;
+    /** Moves a task to another project. */
+    moveTask(id: string, projectId: string): Promise<void>;
+    setProjectFavorite(id: string, favorite: boolean): Promise<TodoistProje>;
     ekle(g: {
       icerik: string;
       projeId: string;
@@ -176,6 +196,10 @@ export const KANAL = {
   tdAralik: "todoist:aralik",
   tdOnemliler: "todoist:onemliler",
   tdOnemliYap: "todoist:onemli-yap",
+  tdUpdateTask: "todoist:update-task",
+  tdDeleteTask: "todoist:delete-task",
+  tdMoveTask: "todoist:move-task",
+  tdProjectFavorite: "todoist:project-favorite",
   tdHizli: "todoist:hizli",
   tdDegisti: "todoist:degisti",
   yakalaGizle: "yakala:gizle",

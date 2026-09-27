@@ -6,7 +6,9 @@ import {
   onemliMi,
   type TodoistGorev,
   type TodoistProje,
+  type TodoistTaskPatch,
 } from "../ortak/tipler.ts";
+import { todoistColor } from "../ortak/task.ts";
 import { hizliMetniCevir, tarihMetniTurkce, todoistTarihMetni } from "../ortak/todoist-tarih.ts";
 
 /**
@@ -81,6 +83,9 @@ export interface HamProje {
   name: string;
   inbox_project?: boolean;
   is_archived?: boolean;
+  color?: string;
+  is_favorite?: boolean;
+  child_order?: number;
 }
 
 export interface HamGorev {
@@ -98,6 +103,9 @@ export const projeCevir = (p: HamProje): TodoistProje => ({
   id: p.id,
   ad: p.name,
   inbox: p.inbox_project === true,
+  color: todoistColor(p.color),
+  favorite: p.is_favorite === true,
+  order: p.child_order ?? 0,
 });
 
 export const gorevCevir = (t: HamGorev): TodoistGorev => ({
@@ -200,6 +208,33 @@ export async function onemliYap(token: string, id: string, onemli: boolean): Pro
   const digerleri = mevcut.filter((e) => e.toLocaleLowerCase("tr") !== ONEMLI_ETIKETI);
   const labels = onemli ? [...digerleri, ONEMLI_ETIKETI] : digerleri;
   return gorevCevir(await istek<HamGorev>(token, yol, "POST", { labels }));
+}
+
+/* --- editing ---------------------------------------------------------------- */
+
+/**
+ * Edits a task's text or priority. The date is deliberately not part of the
+ * patch: it goes through `tarihVer` and `due_string`, which keeps a recurring
+ * task's rule intact.
+ */
+export async function updateTask(token: string, id: string, patch: TodoistTaskPatch): Promise<TodoistGorev> {
+  const body: Record<string, unknown> = {};
+  if (patch.title !== undefined) body.content = patch.title.trim();
+  if (patch.description !== undefined) body.description = patch.description;
+  if (patch.priority !== undefined) body.priority = 5 - patch.priority;
+  return gorevCevir(await istek<HamGorev>(token, `/tasks/${encodeURIComponent(id)}`, "POST", body));
+}
+
+export const deleteTask = (token: string, id: string): Promise<void> =>
+  istek(token, `/tasks/${encodeURIComponent(id)}`, "DELETE");
+
+export const moveTask = (token: string, id: string, projectId: string): Promise<void> =>
+  istek(token, `/tasks/${encodeURIComponent(id)}/move`, "POST", { project_id: projectId });
+
+export async function setProjectFavorite(token: string, id: string, favorite: boolean): Promise<TodoistProje> {
+  return projeCevir(
+    await istek<HamProje>(token, `/projects/${encodeURIComponent(id)}`, "POST", { is_favorite: favorite }),
+  );
 }
 
 export interface YeniGorev {

@@ -103,6 +103,18 @@ export function ipcKur(): void {
     todoistDegistiBildir();
     return gorev;
   });
+  // Edits notify the main window so every open list refreshes, like quick capture does.
+  const andNotify =
+    <A extends unknown[], R>(f: (...a: A) => Promise<R>) =>
+    async (_e: unknown, ...a: A): Promise<R> => {
+      const r = await f(...a);
+      todoistDegistiBildir();
+      return r;
+    };
+  ipcMain.handle(KANAL.tdUpdateTask, andNotify((id: string, patch: Parameters<typeof td.updateTask>[1]) => td.updateTask(id, patch)));
+  ipcMain.handle(KANAL.tdDeleteTask, andNotify((id: string) => td.deleteTask(id)));
+  ipcMain.handle(KANAL.tdMoveTask, andNotify((id: string, projectId: string) => td.moveTask(id, projectId)));
+  ipcMain.handle(KANAL.tdProjectFavorite, andNotify((id: string, favorite: boolean) => td.setProjectFavorite(id, favorite === true)));
   ipcMain.handle(KANAL.tdEkle, (_o, g: Parameters<typeof td.ekle>[0]) => td.ekle(g));
   ipcMain.handle(KANAL.tdKapat, (_o, id: string) => td.kapat(id));
   ipcMain.handle(KANAL.tdAc, (_o, id: string) => td.ac(id));
