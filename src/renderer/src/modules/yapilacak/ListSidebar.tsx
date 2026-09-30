@@ -1,7 +1,7 @@
-import { Inbox, Monitor, Palette, Pencil, Plus, Star, StarOff, Trash2 } from "lucide-react";
+import { Ellipsis, Inbox, Monitor, Palette, Pencil, Plus, Star, StarOff, Trash2 } from "lucide-react";
 import { useRef, useState, type MouseEvent } from "react";
 import { LIST_COLORS } from "@ortak/local-tasks";
-import type { TaskList } from "@ortak/task";
+import { TODOIST_COLOR_LABELS, TODOIST_COLORS, todoistColorName, type TaskList } from "@ortak/task";
 import { MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
 import type { TaskBoard } from "./useTaskBoard";
 import s from "./board.module.css";
@@ -9,7 +9,9 @@ import s from "./board.module.css";
 /**
  * The list column: Inbox, then "Favoriler" and "Projelerim" like Todoist's
  * sidebar. Todoist projects come first, Argos lists after them with a small
- * monitor mark (they do not reach the phone). Right-click opens the list menu.
+ * monitor mark (they do not reach the phone). Right-click, or the ⋯ that
+ * replaces the count on hover, opens the list menu:
+ * favourite, rename and colour for both; delete only for Argos lists.
  */
 export function ListSidebar({
   board,
@@ -33,6 +35,11 @@ export function ListSidebar({
     setMenu({ list, x: e.clientX, y: e.clientY });
   };
 
+  const openMenuBelow = (list: TaskList) => (e: MouseEvent<HTMLButtonElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setMenu({ list, x: r.left, y: r.bottom + 4 });
+  };
+
   const row = (list: TaskList) =>
     renaming === list.key ? (
       <NameInput
@@ -45,22 +52,32 @@ export function ListSidebar({
         }}
       />
     ) : (
-      <button
-        key={list.key}
-        type="button"
-        className={list.key === activeKey ? `${s.list} ${s.listActive}` : s.list}
-        onClick={() => onSelect(list.key)}
-        onContextMenu={openMenu(list)}
-      >
-        {list.inbox ? <Inbox size={15} className={s.listIcon} /> : <span className={s.dot} style={{ background: list.color }} />}
-        <span className={s.listName}>{list.name}</span>
-        {list.source === "local" && (
-          <span className={s.localMark} title="Argos listesi — telefondaki Todoist'te görünmez">
-            <Monitor size={12} />
-          </span>
-        )}
-        <span className={s.count}>{board.counts.get(list.key) || ""}</span>
-      </button>
+      <div key={list.key} className={menu?.list.key === list.key ? `${s.listRow} ${s.listRowMenu}` : s.listRow}>
+        <button
+          type="button"
+          className={list.key === activeKey ? `${s.list} ${s.listActive}` : s.list}
+          onClick={() => onSelect(list.key)}
+          onContextMenu={openMenu(list)}
+        >
+          {list.inbox ? <Inbox size={15} className={s.listIcon} /> : <span className={s.dot} style={{ background: list.color }} />}
+          <span className={s.listName}>{list.name}</span>
+          {list.source === "local" && (
+            <span className={s.localMark} title="Argos listesi — telefondaki Todoist'te görünmez">
+              <Monitor size={12} />
+            </span>
+          )}
+          <span className={s.count}>{board.counts.get(list.key) || ""}</span>
+        </button>
+        <button
+          type="button"
+          className={s.listMore}
+          aria-label={`${list.name} menüsü`}
+          title="Liste menüsü"
+          onClick={openMenuBelow(list)}
+        >
+          <Ellipsis size={15} />
+        </button>
+      </div>
     );
 
   return (
@@ -105,7 +122,7 @@ export function ListSidebar({
           >
             {menu.list.favorite ? "Favorilerden çıkar" : "Favorilere ekle"}
           </MenuItem>
-          {menu.list.source === "local" && (
+          {!menu.list.inbox && (
             <>
               <MenuItem
                 icon={<Pencil size={15} />}
@@ -121,21 +138,17 @@ export function ListSidebar({
                   <Palette size={12} /> Renk
                 </span>
               </MenuLabel>
-              <div className={s.swatches}>
-                {LIST_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={c === menu.list.color ? `${s.swatch} ${s.swatchActive}` : s.swatch}
-                    style={{ background: c }}
-                    aria-label={`Renk ${c}`}
-                    onClick={() => {
-                      void board.recolorList(menu.list, c);
-                      setMenu(null);
-                    }}
-                  />
-                ))}
-              </div>
+              <ColorSwatches
+                list={menu.list}
+                onPick={(color) => {
+                  void board.recolorList(menu.list, color);
+                  setMenu(null);
+                }}
+              />
+            </>
+          )}
+          {menu.list.source === "local" && (
+            <>
               <MenuSeparator />
               <MenuItem
                 danger
@@ -149,12 +162,40 @@ export function ListSidebar({
               </MenuItem>
             </>
           )}
-          {menu.list.source === "todoist" && (
-            <MenuLabel>Todoist projesi · adı ve rengi Todoist'ten değişir</MenuLabel>
+          {menu.list.source === "todoist" && !menu.list.inbox && (
+            <MenuLabel>Todoist projesi · değişiklik telefona da gider</MenuLabel>
           )}
         </Popover>
       )}
     </nav>
+  );
+}
+
+/**
+ * Argos lists pick from Argos's own soft palette (stored as hex). Todoist
+ * projects pick from Todoist's twenty named colours, so the phone shows the
+ * same colour.
+ */
+function ColorSwatches({ list, onPick }: { list: TaskList; onPick: (color: string) => void }) {
+  const todoist = list.source === "todoist";
+  const current = todoist ? todoistColorName(list.color) : list.color;
+  const options = todoist
+    ? Object.entries(TODOIST_COLORS).map(([name, hex]) => ({ value: name, hex, label: TODOIST_COLOR_LABELS[name] ?? name }))
+    : LIST_COLORS.map((hex) => ({ value: hex, hex, label: hex }));
+  return (
+    <div className={todoist ? `${s.swatches} ${s.swatchesWide}` : s.swatches}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className={o.value === current ? `${s.swatch} ${s.swatchActive}` : s.swatch}
+          style={{ background: o.hex }}
+          title={todoist ? o.label : undefined}
+          aria-label={`Renk ${o.label}`}
+          onClick={() => onPick(o.value)}
+        />
+      ))}
+    </div>
   );
 }
 

@@ -118,6 +118,7 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdDeleteTask, andNotify((id: string) => td.deleteTask(id)));
   ipcMain.handle(KANAL.tdMoveTask, andNotify((id: string, projectId: string) => td.moveTask(id, projectId)));
   ipcMain.handle(KANAL.tdProjectFavorite, andNotify((id: string, favorite: boolean) => td.setProjectFavorite(id, favorite === true)));
+  ipcMain.handle(KANAL.tdUpdateProject, andNotify((id: string, patch: Parameters<typeof td.updateProject>[1]) => td.updateProject(id, patch)));
   ipcMain.handle(KANAL.tdEkle, (_o, g: Parameters<typeof td.ekle>[0]) => td.ekle(g));
   ipcMain.handle(KANAL.tdKapat, (_o, id: string) => td.kapat(id));
   ipcMain.handle(KANAL.tdAc, (_o, id: string) => td.ac(id));

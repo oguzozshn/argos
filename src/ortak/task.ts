@@ -146,6 +146,34 @@ export const TODOIST_COLORS: Record<string, string> = {
 export const todoistColor = (name: string | undefined): string =>
   (name && TODOIST_COLORS[name]) || TODOIST_COLORS.charcoal!;
 
+/** Projects carry the hex; the colour menu needs the name back to mark the current swatch. */
+export const todoistColorName = (hex: string): string | null =>
+  Object.entries(TODOIST_COLORS).find(([, h]) => h.toLowerCase() === hex.toLowerCase())?.[0] ?? null;
+
+/** Names shown on the colour swatches of a Todoist project. */
+export const TODOIST_COLOR_LABELS: Record<string, string> = {
+  berry_red: "Bordo",
+  red: "Kırmızı",
+  orange: "Turuncu",
+  yellow: "Sarı",
+  olive_green: "Zeytin yeşili",
+  lime_green: "Açık yeşil",
+  green: "Yeşil",
+  mint_green: "Nane yeşili",
+  teal: "Petrol mavisi",
+  sky_blue: "Gök mavisi",
+  light_blue: "Açık mavi",
+  blue: "Mavi",
+  grape: "Üzüm",
+  violet: "Mor",
+  lavender: "Lavanta",
+  magenta: "Pembe",
+  salmon: "Somon",
+  charcoal: "Koyu gri",
+  grey: "Gri",
+  taupe: "Vizon",
+};
+
 /**
  * An Argos task in the Todoist shape, for the older screens (Takvim, Hafta,
  * Bugün cards) that render `TodoistGorev`. `source: "local"` lets their

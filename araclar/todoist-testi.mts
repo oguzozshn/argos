@@ -28,7 +28,9 @@ import {
   allTasks,
   moveTask,
   setProjectFavorite,
+  updateProject,
 } from "../src/main/todoist-cekirdek.ts";
+import { todoistColorName } from "../src/ortak/task.ts";
 import { onemliMi } from "../src/ortak/tipler.ts";
 import { todoistTarihi } from "../src/ortak/gorev-zaman.ts";
 import { gizliYolu } from "./yol.mts";
@@ -248,6 +250,23 @@ async function sahteBolum(): Promise<void> {
     sonIstek?.url.endsWith("/projects/P9") && sonIstek.govde?.is_favorite === true,
   );
   kontrol("project colour, favorite and order are mapped", fav.color === "#7ecc49" && fav.favorite && fav.order === 3);
+  sahteFetchAc({ id: "P9", name: "Ağva", color: "berry_red", child_order: 3 });
+  const recoloured = await updateProject("T", "P9", { color: "berry_red" });
+  kontrol(
+    "updateProject sends only the colour name",
+    sonIstek?.url.endsWith("/projects/P9") &&
+      sonIstek.yontem === "POST" &&
+      JSON.stringify(sonIstek.govde) === JSON.stringify({ color: "berry_red" }),
+  );
+  kontrol("updateProject returns the project with its hex colour", recoloured.color === "#b8256f");
+  await updateProject("T", "P9", { name: "  Ağva tatili  " });
+  kontrol("updateProject trims and sends only the name", JSON.stringify(sonIstek?.govde) === JSON.stringify({ name: "Ağva tatili" }));
+  sonIstek = null;
+  const refused = await updateProject("T", "P9", { color: "#ff0000" }).then(() => false, () => true);
+  kontrol("an unknown colour name is refused before any request", refused && sonIstek === null);
+  const emptyName = await updateProject("T", "P9", { name: "   " }).then(() => false, () => true);
+  kontrol("an empty name is refused before any request", emptyName && sonIstek === null);
+  kontrol("hex back to Todoist colour name", todoistColorName("#B8256F") === "berry_red" && todoistColorName("#123456") === null);
   const plain = projeCevir({ id: "1", name: "X" });
   kontrol("project without colour/favorite gets defaults", plain.color === "#808080" && !plain.favorite && plain.order === 0);
   sahteFetchAc();

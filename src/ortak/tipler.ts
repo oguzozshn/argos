@@ -97,6 +97,12 @@ export interface TodoistTaskPatch {
   priority?: 1 | 2 | 3 | 4;
 }
 
+export interface TodoistProjectPatch {
+  name?: string;
+  /** Todoist's colour name ("berry_red", "sky_blue" …), not hex. */
+  color?: string;
+}
+
 export interface TodoistDurum {
   /** gizli.json'da anahtar var mı. Yoksa modül nedenini söyler. */
   anahtarVar: boolean;
@@ -153,6 +159,8 @@ export interface ArgosApi {
     /** Moves a task to another project. */
     moveTask(id: string, projectId: string): Promise<void>;
     setProjectFavorite(id: string, favorite: boolean): Promise<TodoistProje>;
+    /** Renames or recolours a project; the change reaches the phone too. */
+    updateProject(id: string, patch: TodoistProjectPatch): Promise<TodoistProje>;
     ekle(g: {
       icerik: string;
       projeId: string;
@@ -215,6 +223,7 @@ export const KANAL = {
   tdDeleteTask: "todoist:delete-task",
   tdMoveTask: "todoist:move-task",
   tdProjectFavorite: "todoist:project-favorite",
+  tdUpdateProject: "todoist:update-project",
   tdHizli: "todoist:hizli",
   tdDegisti: "todoist:degisti",
   yakalaGizle: "yakala:gizle",
