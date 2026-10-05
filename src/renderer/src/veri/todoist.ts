@@ -8,10 +8,11 @@ import {
   type BirakmaSaati,
 } from "@ortak/gorev-zaman";
 import { tasksInRange, updateTask } from "@ortak/local-tasks";
+import { projectedRepeats } from "@ortak/repeats";
 import { localAsTodoist } from "@ortak/task";
 import type { TodoistGorev } from "@ortak/tipler";
 import { tekrarMetni, type TekrarTuru } from "@ortak/todoist-tarih";
-import { silVeBildir } from "@/ui/toast";
+import { bildir, silVeBildir } from "@/ui/toast";
 import { kopru, useBugun } from "./kanca";
 import { completeLocalWithUndo, useLocalTasks } from "./local-tasks";
 
@@ -60,7 +61,13 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
     () => tasksInRange({ version: 1, tasks: local.tasks }, basIso, sonIso).map(localAsTodoist),
     [local.tasks, basIso, sonIso],
   );
-  const all = useMemo(() => [...gorevler, ...localInRange], [gorevler, localInRange]);
+  // Recurring Todoist tasks whatever their next date: their later repeats join the range.
+  const [recurring, setRecurring] = useState<TodoistGorev[]>([]);
+  const repeats = useMemo(
+    () => projectedRepeats(recurring, local.tasks, basIso, sonIso, today),
+    [recurring, local.tasks, basIso, sonIso, today],
+  );
+  const all = useMemo(() => [...gorevler, ...localInRange, ...repeats], [gorevler, localInRange, repeats]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [anahtarYok, setAnahtarYok] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
@@ -79,9 +86,16 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
       setAnahtarYok(!d.anahtarVar);
       if (!d.anahtarVar) {
         setGorevler([]);
+        setRecurring([]);
         return;
       }
-      setGorevler(await k.todoist.tarihAraligi(basIso, sonIso));
+      const [range, rec] = await Promise.all([
+        k.todoist.tarihAraligi(basIso, sonIso),
+        // Without the repeats the calendar still works; it only loses them.
+        k.todoist.recurringTasks().catch(() => [] as TodoistGorev[]),
+      ]);
+      setGorevler(range);
+      setRecurring(rec);
       setHata(null);
     } catch (e) {
       // Ağ hatası takvimi düşürmez; plan tarafı görünmeye devam eder.
@@ -125,6 +139,10 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
 
   const kapat = useCallback(
     async (g: TodoistGorev) => {
+      if (g.projected) {
+        bildir({ metin: `"${g.icerik}" tekrarlı: önce sıradaki tarihindeki tamamlanır.` });
+        return;
+      }
       if (g.source === "local") {
         await completeLocalWithUndo(local, g.id, today);
         return;
@@ -139,6 +157,8 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
         sil: async () => {
           try {
             await k.todoist.kapat(g.id);
+            // A recurring task moved to its next date: redraw its repeats from there.
+            if (g.tekrarli) void tazele();
             return true;
           } catch (e) {
             setHata(mesaj(e));
@@ -158,7 +178,7 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
         },
       });
     },
-    [local, today],
+    [local, today, tazele],
   );
 
   const ekle = useCallback(
@@ -194,7 +214,7 @@ export function useTodoistAralik(basIso: string, sonIso: string): AralikDurumu {
     async (g: TodoistGorev, iso: string, istek: BirakmaSaati = { tur: "koru" }) => {
       // Gün de saat de aynıysa istek atmaya gerek yok. Eskiden yalnız gün
       // karşılaştırılıyordu, o yüzden aynı gün içinde saat değiştirilemiyordu.
-      if (tasimaGereksiz(g.tarih, iso, istek)) return;
+      if (g.projected || tasimaGereksiz(g.tarih, iso, istek)) return;
       const saat = hedefSaat(g.tarih, istek);
       // An Argos task keeps its repeat rule; only the date (and time) moves.
       if (g.source === "local") {

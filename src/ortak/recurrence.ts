@@ -75,6 +75,19 @@ export function nextDueAfterCompletion(rule: RecurrenceRule, due: string, today:
   return firstOccurrence(rule, gunEkle(after, 1), due);
 }
 
+/**
+ * Repeats of a task due on `anchor` that fall in [from, to], strictly after
+ * the anchor (the anchor itself is the real task, already on the calendar).
+ */
+export function occurrencesBetween(rule: RecurrenceRule, anchor: string, from: string, to: string): string[] {
+  const out: string[] = [];
+  const start = from > anchor ? from : gunEkle(anchor, 1);
+  for (let iso = start; iso <= to; iso = gunEkle(iso, 1)) {
+    if (occursOn(rule, iso, anchor)) out.push(iso);
+  }
+  return out;
+}
+
 /* --- description --------------------------------------------------------- */
 
 const lower = (s: string): string => s.toLocaleLowerCase("tr-TR");
