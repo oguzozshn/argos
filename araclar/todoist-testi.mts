@@ -261,7 +261,7 @@ async function sahteBolum(): Promise<void> {
   kontrol("updateProject returns the project with its hex colour", recoloured.color === "#b8256f");
   await updateProject("T", "P9", { name: "  Ağva tatili  " });
   kontrol("updateProject trims and sends only the name", JSON.stringify(sonIstek?.govde) === JSON.stringify({ name: "Ağva tatili" }));
-  sonIstek = null;
+  sonIstek = null as Yakalanan | null; // keeps the union: the calls below set it again
   const refused = await updateProject("T", "P9", { color: "#ff0000" }).then(() => false, () => true);
   kontrol("an unknown colour name is refused before any request", refused && sonIstek === null);
   const emptyName = await updateProject("T", "P9", { name: "   " }).then(() => false, () => true);
