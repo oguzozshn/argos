@@ -153,6 +153,47 @@
   text-align: right;
 }
 
+/* The ⋯ sits over the count and takes its place on hover, like Todoist. */
+.listRow {
+  position: relative;
+}
+
+.listMore {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r1);
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.listMore:hover {
+  color: var(--metin);
+}
+
+.listRow:hover .listMore,
+.listRowMenu .listMore,
+.listMore:focus-visible {
+  opacity: 1;
+}
+
+.listRow:hover .count,
+.listRowMenu .count,
+.listRow:has(.listMore:focus-visible) .count {
+  visibility: hidden;
+}
+
 .nameInput {
   display: flex;
   align-items: center;
@@ -181,6 +222,12 @@
   display: flex;
   gap: 6px;
   padding: 2px 10px 6px;
+}
+
+/* Todoist's twenty colours: two rows of ten, in its own rainbow order. */
+.swatchesWide {
+  display: grid;
+  grid-template-columns: repeat(10, 20px);
 }
 
 .swatch {

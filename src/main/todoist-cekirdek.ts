@@ -6,9 +6,10 @@ import {
   onemliMi,
   type TodoistGorev,
   type TodoistProje,
+  type TodoistProjectPatch,
   type TodoistTaskPatch,
 } from "../ortak/tipler.ts";
-import { todoistColor } from "../ortak/task.ts";
+import { TODOIST_COLORS, todoistColor } from "../ortak/task.ts";
 import { hizliMetniCevir, tarihMetniTurkce, todoistTarihMetni } from "../ortak/todoist-tarih.ts";
 
 /**
@@ -249,6 +250,21 @@ export async function setProjectFavorite(token: string, id: string, favorite: bo
   return projeCevir(
     await istek<HamProje>(token, `/projects/${encodeURIComponent(id)}`, "POST", { is_favorite: favorite }),
   );
+}
+
+/** Sends only the fields given. An unknown colour name is refused here, before Todoist silently ignores it. */
+export async function updateProject(token: string, id: string, patch: TodoistProjectPatch): Promise<TodoistProje> {
+  const body: Record<string, string> = {};
+  if (patch.name !== undefined) {
+    const name = patch.name.trim();
+    if (!name) throw new Error("Proje adı boş olamaz.");
+    body.name = name;
+  }
+  if (patch.color !== undefined) {
+    if (!(patch.color in TODOIST_COLORS)) throw new Error(`Bilinmeyen Todoist rengi: ${patch.color}`);
+    body.color = patch.color;
+  }
+  return projeCevir(await istek<HamProje>(token, `/projects/${encodeURIComponent(id)}`, "POST", body));
 }
 
 export interface YeniGorev {

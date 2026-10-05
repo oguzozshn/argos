@@ -20,6 +20,7 @@ import {
   listFromTodoist,
   priorityToTodoist,
   taskKey,
+  todoistColor,
   type Task,
   type TaskList,
 } from "@ortak/task";
@@ -28,6 +29,7 @@ import {
   PLAN_PROJESI,
   type TodoistGorev,
   type TodoistProje,
+  type TodoistProjectPatch,
   type TodoistTaskPatch,
 } from "@ortak/tipler";
 import { rescheduleRecurring, todoistRecurrence } from "@ortak/todoist-schedule";
@@ -44,7 +46,9 @@ import { useTodoistReminders } from "@/veri/reminders";
  * routed to the right source. The screen never checks where a task lives.
  */
 
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+/** Drops Electron's IPC wrapper ("Error invoking remote method '…': Error: ") so the toast shows only the cause. */
+const message = (e: unknown) =>
+  (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (\w+: )?/, "");
 const fail = (text: string) => (e: unknown) => bildir({ metin: `${text} ${message(e)}`, tur: "hata" });
 
 export interface NewTaskInput {
@@ -485,11 +489,34 @@ export function useTaskBoard() {
     return ok ? taskKey("local", id) : null;
   };
 
-  const renameList = (list: TaskList, name: string) =>
-    name.trim() && list.source === "local" ? changeLists((f) => updateList(f, list.id, { name })) : Promise.resolve(false);
+  /** Shows the change at once, sends it to Todoist, and puts the old project back if Todoist refuses. */
+  const patchProject = async (list: TaskList, patch: TodoistProjectPatch, shown: Partial<TodoistProje>) => {
+    const k = kopru();
+    const old = projects.find((p) => p.id === list.id);
+    if (!k || !old) return false;
+    setProjects((all) => all.map((p) => (p.id === list.id ? { ...p, ...shown } : p)));
+    try {
+      await k.todoist.updateProject(list.id, patch);
+      return true;
+    } catch (e) {
+      setProjects((all) => all.map((p) => (p.id === list.id ? old : p)));
+      fail("Proje değiştirilemedi.")(e);
+      return false;
+    }
+  };
 
+  const renameList = (list: TaskList, name: string) => {
+    if (!name.trim()) return Promise.resolve(false);
+    return list.source === "local"
+      ? changeLists((f) => updateList(f, list.id, { name }))
+      : patchProject(list, { name }, { ad: name.trim() });
+  };
+
+  /** `color` is a hex for an Argos list and a Todoist colour name for a Todoist project. */
   const recolorList = (list: TaskList, color: string) =>
-    list.source === "local" ? changeLists((f) => updateList(f, list.id, { color })) : Promise.resolve(false);
+    list.source === "local"
+      ? changeLists((f) => updateList(f, list.id, { color }))
+      : patchProject(list, { color }, { color: todoistColor(color) });
 
   /** Deletes an Argos list and its tasks; undo writes both back. */
   const removeList = async (list: TaskList) => {
