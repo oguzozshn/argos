@@ -28,6 +28,7 @@ import {
   allTasks,
   moveTask,
   setProjectFavorite,
+  recurringTasks,
   updateProject,
 } from "../src/main/todoist-cekirdek.ts";
 import { todoistColorName } from "../src/ortak/task.ts";
@@ -242,6 +243,14 @@ async function sahteBolum(): Promise<void> {
   const all = await allTasks("T");
   kontrol("allTasks GETs /tasks without a project filter", sonIstek?.url.includes("/tasks?limit=200") && !sonIstek.url.includes("project_id"));
   kontrol("allTasks leaves out the plan project", all.length === 1 && all[0]!.id === "1");
+
+  sahteFetchAc({ results: [
+    { id: "r1", content: "Aidat", project_id: "P", due: { date: "2026-11-01", string: "every 1st", is_recurring: true } },
+    { id: "r2", content: "slot", project_id: PLAN_PROJESI, due: { date: "2026-11-01", string: "every day", is_recurring: true } },
+  ] });
+  const rec = await recurringTasks("T");
+  kontrol("recurringTasks uses the 'recurring' filter", sonIstek?.url.includes("/tasks/filter?query=recurring") === true);
+  kontrol("recurringTasks keeps the due string and leaves out the plan project", rec.length === 1 && rec[0]!.dueString === "every 1st" && rec[0]!.tekrarli);
 
   sahteFetchAc({ id: "P9", name: "Ağva", color: "lime_green", is_favorite: true, child_order: 3 });
   const fav = await setProjectFavorite("T", "P9", true);

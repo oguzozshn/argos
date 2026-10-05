@@ -159,6 +159,21 @@ export async function allTasks(token: string): Promise<TodoistGorev[]> {
 }
 
 /**
+ * Every open recurring task. The date-range filter only returns a task whose
+ * next date is in the range; the calendar needs the rest to draw later repeats.
+ */
+export async function recurringTasks(token: string): Promise<TodoistGorev[]> {
+  const ham = await tumSayfalar<HamGorev>(
+    token,
+    (i) =>
+      `/tasks/filter?query=${encodeURIComponent("recurring")}&limit=200${
+        i ? `&cursor=${encodeURIComponent(i)}` : ""
+      }`,
+  );
+  return ham.map(gorevCevir).filter((g) => g.projeId !== PLAN_PROJESI && g.tekrarli);
+}
+
+/**
  * Bugün ekranının kartı: bugün ve gecikmiş görevler, tüm projelerden, tek
  * süzgeçle. Plan projesi elenir — slot görevleri Asistan modülünün işi.
  */

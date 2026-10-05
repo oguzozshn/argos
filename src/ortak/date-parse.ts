@@ -104,6 +104,32 @@ function resolveDate(spec: string, today: string): string | null {
 }
 
 /**
+ * The rule behind a recurring Todoist task's `due.string` ("every 1st",
+ * "every mon, thu at 09:00", "every day starting sep 26 2026"). `anchor` is
+ * the task's current due date: "every week" repeats on its weekday. Null for
+ * patterns Argos does not model ("every 3rd friday"); those keep showing
+ * only their next date.
+ */
+export function ruleFromTodoist(dueString: string, anchor: string): RecurrenceRule | null {
+  let spec = dueString
+    .toLowerCase()
+    .replace(/^every!/, "every")
+    .replace(/\s+starting\s+.*$/, "")
+    .replace(/\s+at\s+\d{1,2}:\d{2}(\s*[ap]m)?$/, "")
+    .trim();
+  // Full weekday names ("every saturday") → the short ones resolveRule reads.
+  spec = spec.replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/g, (d) => d.slice(0, 3));
+  const rule = resolveRule(spec, anchor);
+  if (rule) return rule;
+  const yearly = spec.match(/^every ([a-z]{3}) (\d{1,2})$/);
+  if (yearly) {
+    const month = MONTH_EN.indexOf(yearly[1]!) + 1;
+    if (month > 0) return { kind: "yearly", month, day: Number(yearly[2]) };
+  }
+  return null;
+}
+
+/**
  * Parses Turkish date text ("yarın 18:00", "haftaya cuma", "her ayın 15'i").
  * Returns null when the text is not a date. A recurring text yields its first
  * occurrence on or after today.

@@ -114,6 +114,7 @@ export function ipcKur(): void {
       todoistDegistiBildir();
       return r;
     };
+  ipcMain.handle(KANAL.tdRecurring, () => td.recurringTasks());
   ipcMain.handle(KANAL.tdUpdateTask, andNotify((id: string, patch: Parameters<typeof td.updateTask>[1]) => td.updateTask(id, patch)));
   ipcMain.handle(KANAL.tdDeleteTask, andNotify((id: string) => td.deleteTask(id)));
   ipcMain.handle(KANAL.tdMoveTask, andNotify((id: string, projectId: string) => td.moveTask(id, projectId)));

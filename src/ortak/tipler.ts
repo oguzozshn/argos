@@ -87,6 +87,11 @@ export interface TodoistGorev {
    * (Takvim, Hafta, Bugün cards). Absent means a Todoist task.
    */
   source?: "local";
+  /**
+   * A later repeat of a recurring task, drawn by the calendar from its rule.
+   * Not a real date: completing or moving happens on the task's next date.
+   */
+  projected?: boolean;
 }
 
 /** Editable fields of a Todoist task apart from its date, which goes through `tarihVer`. */
@@ -159,6 +164,8 @@ export interface ArgosApi {
     /** Moves a task to another project. */
     moveTask(id: string, projectId: string): Promise<void>;
     setProjectFavorite(id: string, favorite: boolean): Promise<TodoistProje>;
+    /** Every open recurring task, whatever its next date; the calendar draws their later repeats. */
+    recurringTasks(): Promise<TodoistGorev[]>;
     /** Renames or recolours a project; the change reaches the phone too. */
     updateProject(id: string, patch: TodoistProjectPatch): Promise<TodoistProje>;
     ekle(g: {
@@ -224,6 +231,7 @@ export const KANAL = {
   tdMoveTask: "todoist:move-task",
   tdProjectFavorite: "todoist:project-favorite",
   tdUpdateProject: "todoist:update-project",
+  tdRecurring: "todoist:recurring",
   tdHizli: "todoist:hizli",
   tdDegisti: "todoist:degisti",
   yakalaGizle: "yakala:gizle",
