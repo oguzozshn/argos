@@ -1,6 +1,6 @@
 {
   "name": "argos",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Argos — kişisel modüler masaüstü uygulaması",
   "private": true,
   "main": "./out/main/index.js",
