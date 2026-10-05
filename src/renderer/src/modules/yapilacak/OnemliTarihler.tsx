@@ -10,13 +10,14 @@ import s from "./yapilacak.module.css";
  * Bugün ekranının en üstündeki geri sayım: sınav, başvuru gibi `@önemli`
  * etiketli görevler. Her an göz önünde olsun diye ızgaranın dışında durur.
  *
- * Satır yerine döşeme: kart tam genişlikte, satırda ad ile kalan süre
- * arasında ekranın yarısı kadar boşluk kalıyordu. Kalan süre döşemenin en
- * büyük yazısı; renk yalnız ona verilir, kartı boyamaz.
+ * One row per date, stacked: the countdown sits in a fixed column on the
+ * left so it lines up and stays next to the name, the date goes to the
+ * right. The countdown is the only coloured text: green, yellow within a
+ * week, red within three days and once passed.
  */
 
-/** Tek satıra sığan sayı: fazlası alt satırda tek başına kalıyordu. */
-const GORUNEN = 4;
+/** Rows shown before "+N daha". */
+const GORUNEN = 5;
 
 function Doseme({ gorev, bugun }: { gorev: TodoistGorev; bugun: string }) {
   if (!gorev.tarih) {

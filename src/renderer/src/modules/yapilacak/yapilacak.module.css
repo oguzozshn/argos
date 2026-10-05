@@ -58,36 +58,34 @@
 /* --- önemli tarihler (Bugün ekranının üstü) ----------------------------- */
 
 /*
- * Döşemeler arası çizgi: her döşemenin solunda ve altında bir çizgi var,
- * -1px kaydırılıp taşan kısım kesiliyor. Böylece ilk sütunun solunda ve son
- * satırın altında çift çizgi olmuyor, eksik satırda boş hücre boyanmıyor.
- * auto-fit: iki önemli tarih varsa ikisi satırı paylaşır, sağda boşluk kalmaz.
+ * Stacked rows: countdown | name | date. The countdown column is fixed so
+ * every name starts at the same place; the date is pushed to the right.
  */
 .dosemeler {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  overflow: hidden;
-  border-radius: 0 0 var(--r3) var(--r3);
+  display: flex;
+  flex-direction: column;
 }
 
 .doseme {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  margin: 0 0 -1px -1px;
-  padding: var(--b4) var(--b6) var(--b5);
-  border-left: 1px solid var(--cizgi);
-  border-bottom: 1px solid var(--cizgi);
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--b5);
+  padding: var(--b4) var(--b6);
+  border-top: 1px solid var(--cizgi);
+}
+
+.doseme:first-child {
+  border-top: 0;
 }
 
 .kalan {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: var(--sik-kalin);
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   letter-spacing: -0.01em;
-  color: var(--metin);
+  color: var(--iyi);
   white-space: nowrap;
 }
 
@@ -105,25 +103,31 @@
 }
 
 .dosemeAd {
-  margin-top: var(--b1);
   font-size: var(--y3);
   font-weight: var(--sik-orta);
   line-height: 1.35;
   color: var(--metin);
-  /* Ad okunmalı: tek satırda "Motivation letter tes…" kalıyordu. İki satır. */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  white-space: nowrap;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
 }
 
 .dosemeTarih {
   font-size: var(--y4);
   color: var(--metin-soluk);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Narrow window: the date moves under the name instead of squeezing it. */
+@media (max-width: 720px) {
+  .doseme {
+    grid-template-columns: 120px minmax(0, 1fr);
+    row-gap: 2px;
+  }
+
+  .dosemeTarih {
+    grid-column: 2;
+  }
 }
 
 .dahaDugme {
