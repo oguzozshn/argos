@@ -283,6 +283,28 @@ export async function syncChanges(token: string, syncToken: string): Promise<Syn
 }
 
 /**
+ * Sends queued writes as Sync API commands in one request. Todoist answers
+ * per command ("ok" or an error) and names the items created with temp ids.
+ */
+export async function sendCommands(
+  token: string,
+  commands: Record<string, unknown>[],
+): Promise<{ sync_status: Record<string, "ok" | { error: string; error_code?: number }>; temp_id_mapping: Record<string, string> }> {
+  const cevap = await fetch(`${API}/sync`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ commands: JSON.stringify(commands) }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!cevap.ok) {
+    if (cevap.status === 401) throw new TodoistHata("Todoist anahtarı kabul edilmedi", 401);
+    throw new TodoistHata(`Todoist sync ${cevap.status}: ${(await cevap.text().catch(() => "")).slice(0, 200)}`, cevap.status);
+  }
+  const body = (await cevap.json()) as { sync_status?: Record<string, never>; temp_id_mapping?: Record<string, string> };
+  return { sync_status: body.sync_status ?? {}, temp_id_mapping: body.temp_id_mapping ?? {} };
+}
+
+/**
  * Whether Todoist no longer knows a task or project (404). A completed task
  * or an archived project still answers, so only real deletions return true.
  */

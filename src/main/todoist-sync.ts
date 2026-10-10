@@ -3,7 +3,10 @@ import { KANAL, type TodoistSyncStatus } from "../ortak/tipler";
 import { bildirimGoster } from "./bildirim";
 import { todoistDegistiBildir } from "./tepsi";
 import * as td from "./todoist";
-import { deleteFromArgos, syncOnce } from "./todoist-sync-core";
+import { randomUUID } from "node:crypto";
+import { bugunIso } from "../ortak/plan";
+import { deleteItem, deleteProject } from "../ortak/todoist-outbox";
+import { deleteFromArgos, flushAndSync } from "./todoist-sync-core";
 import { dataDir } from "./veri";
 
 /**
@@ -26,7 +29,7 @@ function serial<T>(f: () => Promise<T>): Promise<T> {
   return run;
 }
 
-const api = { sync: td.syncChanges, isGone: td.isGone };
+const api = { sync: td.syncChanges, isGone: td.isGone, send: td.sendCommands };
 
 let status: TodoistSyncStatus = { online: true, lastSyncAt: null, error: null };
 export const syncStatus = (): TodoistSyncStatus => status;
@@ -53,13 +56,22 @@ export function syncNow(opts: { notify?: boolean } = {}): Promise<boolean> {
   const run = serial(async () => {
     waiting = null;
     try {
-      const { kept, changed } = await syncOnce(dataDir(), api, new Date().toISOString());
+      // Queued writes go first; the sync then brings Todoist's state with them in it.
+      const { sync, rejected } = await flushAndSync(dataDir(), api, new Date().toISOString());
+      const { kept, changed } = sync;
       setStatus({ online: true, lastSyncAt: new Date().toISOString(), error: null });
+      if (rejected.length > 0) {
+        bildirimGoster(
+          rejected.length === 1 ? "Todoist bir değişikliği kabul etmedi" : `Todoist ${rejected.length} değişikliği kabul etmedi`,
+          rejected.map((r) => r.error).join("; "),
+        );
+      }
       if (kept.lists.length > 0 || kept.tasks > 0) {
         const what = kept.lists.length > 0 ? `${kept.lists.map((n) => `"${n}"`).join(", ")} listesi` : `${kept.tasks} görev`;
         bildirimGoster("Todoist'ten silindi, Argos'ta kaldı", `${what} artık Argos'ta duruyor.`);
       }
-      if (changed && opts.notify !== false) todoistDegistiBildir();
+      // A refused write leaves the view, so the screens reload whoever asked.
+      if ((changed && opts.notify !== false) || rejected.length > 0) todoistDegistiBildir();
       return changed;
     } catch (e) {
       console.error("[todoist-sync]", e);
@@ -72,8 +84,8 @@ export function syncNow(opts: { notify?: boolean } = {}): Promise<boolean> {
 }
 
 /**
- * Runs a Todoist write, then syncs before returning, so a screen that
- * reloads afterwards reads the copy with the write already in it.
+ * Runs a direct Todoist write (quick add, which Todoist parses), then syncs
+ * before returning, so a screen that reloads reads the copy with it in it.
  */
 export async function writeThenSync<R>(write: () => Promise<R>): Promise<R> {
   const r = await write();
@@ -81,11 +93,17 @@ export async function writeThenSync<R>(write: () => Promise<R>): Promise<R> {
   return r;
 }
 
+const clock = () => ({ uuid: randomUUID, now: new Date().toISOString(), today: bugunIso() });
+
+/** A queued write was added: send it now (offline it simply stays queued). */
+td.whenQueued(() => void syncNow({ notify: false }));
+
+/** In the queue like a sync, since both write the copy. */
 export const deleteTaskFromArgos = (id: string): Promise<void> =>
-  serial(() => deleteFromArgos(dataDir(), `item:${id}`, () => td.deleteTask(id)));
+  serial(() => deleteFromArgos(dataDir(), "item", id, deleteItem(id, clock()))).then(() => void syncNow({ notify: false }));
 
 export const deleteProjectFromArgos = (id: string): Promise<void> =>
-  serial(() => deleteFromArgos(dataDir(), `project:${id}`, () => td.deleteProject(id)));
+  serial(() => deleteFromArgos(dataDir(), "project", id, deleteProject(id, clock()))).then(() => void syncNow({ notify: false }));
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let mainWindow: () => BrowserWindow | null = () => null;
