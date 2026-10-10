@@ -77,6 +77,12 @@ export const updateTask = (id: string, patch: TodoistTaskPatch): Promise<Todoist
 
 export const deleteTask = (id: string): Promise<void> => cekirdek.deleteTask(jeton(), id);
 
+export const deleteProject = (id: string): Promise<void> => cekirdek.deleteProject(jeton(), id);
+
+export const syncChanges = (syncToken: string) => cekirdek.syncChanges(jeton(), syncToken);
+
+export const isGone = (kind: "tasks" | "projects", id: string): Promise<boolean> => cekirdek.isGone(jeton(), kind, id);
+
 export const moveTask = (id: string, projectId: string): Promise<void> =>
   cekirdek.moveTask(jeton(), id, projectId);
 

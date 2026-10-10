@@ -39,6 +39,11 @@ export type Priority = 1 | 2 | 3 | 4;
 export interface LocalTask {
   id: string;
   listId: string;
+  /**
+   * "todoist" when `listId` is a Todoist project: the task was deleted in
+   * Todoist and Argos kept it in its list. Absent for a task in an Argos list.
+   */
+  listSource?: "todoist";
   title: string;
   description: string;
   /** "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"; null when undated. */
@@ -126,6 +131,7 @@ export function deleteList(
 
 export interface NewTask {
   listId: string;
+  listSource?: "todoist";
   title: string;
   description?: string;
   due?: string | null;
@@ -139,6 +145,7 @@ export function addTask(file: TasksFile, input: NewTask, id: string, now: string
   const task: LocalTask = {
     id,
     listId: input.listId,
+    ...(input.listSource ? { listSource: input.listSource } : {}),
     title: input.title.trim(),
     description: input.description?.trim() ?? "",
     due: input.due ?? null,
@@ -155,7 +162,7 @@ export function addTask(file: TasksFile, input: NewTask, id: string, now: string
 }
 
 export type TaskPatch = Partial<
-  Pick<LocalTask, "listId" | "title" | "description" | "due" | "recurrence" | "priority" | "important" | "reminders" | "order">
+  Pick<LocalTask, "listId" | "listSource" | "title" | "description" | "due" | "recurrence" | "priority" | "important" | "reminders" | "order">
 >;
 
 export function updateTask(file: TasksFile, id: string, patch: TaskPatch): TasksFile {
@@ -242,6 +249,7 @@ export function normalizeTasks(raw: unknown): TasksFile {
       .map((t, i) => ({
         id: t.id,
         listId: t.listId,
+        ...(t.listSource === "todoist" ? { listSource: "todoist" as const } : {}),
         title: t.title,
         description: t.description ?? "",
         due: t.due ?? null,

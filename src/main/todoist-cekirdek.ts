@@ -10,6 +10,7 @@ import {
   type TodoistTaskPatch,
 } from "../ortak/tipler.ts";
 import { TODOIST_COLORS, todoistColor } from "../ortak/task.ts";
+import type { SyncResponse } from "../ortak/todoist-mirror.ts";
 import { hizliMetniCevir, tarihMetniTurkce, todoistTarihMetni } from "../ortak/todoist-tarih.ts";
 
 /**
@@ -257,6 +258,43 @@ export async function updateTask(token: string, id: string, patch: TodoistTaskPa
 
 export const deleteTask = (token: string, id: string): Promise<void> =>
   istek(token, `/tasks/${encodeURIComponent(id)}`, "DELETE");
+
+/** Permanently deletes a project with its tasks. */
+export const deleteProject = (token: string, id: string): Promise<void> =>
+  istek(token, `/projects/${encodeURIComponent(id)}`, "DELETE");
+
+/**
+ * One Sync API call for projects and tasks. `syncToken` "*" asks for
+ * everything; a previous token asks for what changed since, deletions and
+ * completions included.
+ */
+export async function syncChanges(token: string, syncToken: string): Promise<SyncResponse> {
+  const cevap = await fetch(`${API}/sync`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ sync_token: syncToken, resource_types: JSON.stringify(["projects", "items"]) }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!cevap.ok) {
+    if (cevap.status === 401) throw new TodoistHata("Todoist anahtarı kabul edilmedi", 401);
+    throw new TodoistHata(`Todoist sync ${cevap.status}: ${(await cevap.text().catch(() => "")).slice(0, 200)}`, cevap.status);
+  }
+  return (await cevap.json()) as SyncResponse;
+}
+
+/**
+ * Whether Todoist no longer knows a task or project (404). A completed task
+ * or an archived project still answers, so only real deletions return true.
+ */
+export async function isGone(token: string, kind: "tasks" | "projects", id: string): Promise<boolean> {
+  try {
+    await istek(token, `/${kind}/${encodeURIComponent(id)}`);
+    return false;
+  } catch (e) {
+    if (e instanceof TodoistHata && e.kod === 404) return true;
+    throw e;
+  }
+}
 
 export const moveTask = (token: string, id: string, projectId: string): Promise<void> =>
   istek(token, `/tasks/${encodeURIComponent(id)}/move`, "POST", { project_id: projectId });
