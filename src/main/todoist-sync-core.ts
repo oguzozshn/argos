@@ -12,6 +12,20 @@ import {
   type MirrorFile,
   type SyncResponse,
 } from "../ortak/todoist-mirror.ts";
+import {
+  OUTBOX_PATH,
+  cancelPendingClose,
+  forgetUnsent,
+  isTempId,
+  normalizeOutbox,
+  replay,
+  settle,
+  wireCommand,
+  type CommandStatus,
+  type OutboxCommand,
+  type OutboxFile,
+} from "../ortak/todoist-outbox.ts";
+import { REMINDERS_PATH, normalizeReminders, type RemindersFile } from "../ortak/reminders.ts";
 import { oku, yaz } from "./veri-cekirdek.ts";
 
 /**
@@ -87,19 +101,140 @@ async function writeKept(root: string, outcome: Parameters<typeof keepDeleted>[2
   throw new Error("Argos dosyaları yazılırken sürekli değişti");
 }
 
+/* --- the outbox ------------------------------------------------------------------ */
+
+/** The Sync API's answer to a batch of commands. */
+export interface CommandsResponse {
+  sync_status: Record<string, CommandStatus>;
+  temp_id_mapping: Record<string, string>;
+}
+
+export interface OutboxApi extends SyncApi {
+  send(commands: Record<string, unknown>[]): Promise<CommandsResponse>;
+}
+
+export async function readOutbox(root: string): Promise<{ outbox: OutboxFile; mtime: number | null }> {
+  const r = await oku<OutboxFile>(root, OUTBOX_PATH);
+  return { outbox: normalizeOutbox(r.veri), mtime: r.mtime };
+}
+
 /**
- * Deletes something in Todoist from Argos: the copy records it first so the
- * sync that reports the deletion does not keep it, and forgets it again if
- * Todoist refuses.
+ * Read → change → write on the outbox, again on the new state if someone
+ * wrote meanwhile (a queued write and a send can cross).
  */
-export async function deleteFromArgos(root: string, key: string, remove: () => Promise<void>): Promise<void> {
-  const before = await readMirror(root);
-  await writeMirror(root, expectDeletion(before.mirror, [key]), before.mtime);
-  try {
-    await remove();
-  } catch (e) {
-    const now = await readMirror(root);
-    await writeMirror(root, cancelDeletion(now.mirror, [key]), now.mtime).catch(() => undefined);
-    throw e;
+export async function changeOutbox(root: string, f: (o: OutboxFile) => OutboxFile): Promise<OutboxFile> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { outbox, mtime } = await readOutbox(root);
+    const next = f(outbox);
+    const w = await yaz(root, OUTBOX_PATH, next, mtime);
+    if (w.ok) return next;
+    if (w.sebep === "hata") throw new Error(w.mesaj);
   }
+  throw new Error("Bekleyen işler dosyası yazılırken sürekli değişti");
+}
+
+/** What the screens see: the server copy with the queued writes on top. */
+export async function readView(root: string): Promise<MirrorFile> {
+  const [{ mirror }, { outbox }] = await Promise.all([readMirror(root), readOutbox(root)]);
+  return replay(mirror, outbox);
+}
+
+export const enqueue = (root: string, c: OutboxCommand): Promise<OutboxFile> =>
+  changeOutbox(root, (o) => ({ ...o, commands: [...o.commands, c] }));
+
+/** Commands per request; the Sync API takes up to 100. */
+const BATCH = 50;
+
+export interface FlushResult {
+  sync: SyncResult;
+  sent: number;
+  rejected: { command: OutboxCommand; error: string }[];
+}
+
+/**
+ * Sends what is queued, then syncs. Order matters for what the screens see
+ * meanwhile: new Todoist ids are recorded first, then the copy is synced
+ * (it now holds the confirmed writes), and only then do the confirmed
+ * commands leave the queue, so no write ever blinks off the screen.
+ * A network failure throws with everything still queued.
+ */
+export async function flushAndSync(root: string, api: OutboxApi, now: string): Promise<FlushResult> {
+  const { outbox } = await readOutbox(root);
+  const batch = outbox.commands.slice(0, BATCH);
+  let statuses: Record<string, CommandStatus> = {};
+  if (batch.length > 0) {
+    const res = await api.send(batch.map((c) => wireCommand(outbox, c)));
+    statuses = res.sync_status ?? {};
+    const mapping = res.temp_id_mapping ?? {};
+    if (Object.keys(mapping).length > 0) {
+      await changeOutbox(root, (o) => ({ ...o, tempIds: { ...o.tempIds, ...mapping } }));
+      await rekeyReminders(root, mapping);
+    }
+  }
+
+  const sync = await syncOnce(root, api, now);
+  if (batch.length === 0) return { sync, sent: 0, rejected: [] };
+
+  let rejected: FlushResult["rejected"] = [];
+  await changeOutbox(root, (o) => {
+    const r = settle(o, batch.map((c) => c.uuid), statuses, {});
+    rejected = r.rejected;
+    return r.outbox;
+  });
+  // A refused delete is not a deletion to expect any more.
+  const refusedDeletes = rejected
+    .filter((r) => r.command.type === "item_delete" || r.command.type === "project_delete")
+    .map((r) => `${r.command.type === "item_delete" ? "item" : "project"}:${String(r.command.args.id)}`);
+  if (refusedDeletes.length > 0) {
+    const m = await readMirror(root);
+    await writeMirror(root, cancelDeletion(m.mirror, refusedDeletes), m.mtime);
+  }
+  const sent = batch.filter((c) => statuses[c.uuid] === "ok").length;
+  return { sync: { ...sync, changed: sync.changed || sent > 0 || rejected.length > 0 }, sent, rejected };
+}
+
+/** Argos's reminders on a task added offline follow it to its Todoist id. */
+async function rekeyReminders(root: string, mapping: Record<string, string>): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const r = await oku<RemindersFile>(root, REMINDERS_PATH);
+    const file = normalizeReminders(r.veri);
+    if (!Object.keys(mapping).some((t) => file.todoist[t])) return;
+    const todoist = { ...file.todoist };
+    for (const [temp, id] of Object.entries(mapping)) {
+      if (!todoist[temp]) continue;
+      todoist[id] = todoist[temp]!;
+      delete todoist[temp];
+    }
+    const w = await yaz(root, REMINDERS_PATH, { ...file, todoist }, r.mtime);
+    if (w.ok || w.sebep === "hata") return;
+  }
+}
+
+/**
+ * Deletes a task or project from Argos. It leaves the view at once and is
+ * queued for Todoist; the copy records the id first so the sync that
+ * reports the deletion does not keep it. A task Todoist never saw (added
+ * offline) is just forgotten.
+ */
+export async function deleteFromArgos(root: string, kind: "item" | "project", id: string, command: OutboxCommand): Promise<void> {
+  const { outbox } = await readOutbox(root);
+  const realId = outbox.tempIds[id] ?? id;
+  if (kind === "item" && isTempId(realId)) {
+    await changeOutbox(root, (o) => forgetUnsent(o, realId));
+    return;
+  }
+  const m = await readMirror(root);
+  await writeMirror(root, expectDeletion(m.mirror, [`${kind}:${realId}`]), m.mtime);
+  await enqueue(root, command);
+}
+
+/** Undo of a close: drops it if still queued; otherwise false, and the caller queues a reopen. */
+export async function cancelQueuedClose(root: string, id: string): Promise<boolean> {
+  let cancelled = false;
+  await changeOutbox(root, (o) => {
+    const next = cancelPendingClose(o, id);
+    cancelled = next !== null;
+    return next ?? o;
+  });
+  return cancelled;
 }

@@ -136,16 +136,40 @@ export function ruleFromTodoist(dueString: string, anchor: string): RecurrenceRu
  */
 export function parseDateText(text: string, today: string): ParsedDate | null {
   const english = turkceTarihCevir(text, today);
-  if (!english) return null;
+  return english ? parseEnglishDue(english, today) : null;
+}
 
-  const at = english.match(/^(.*?)(?: ?at (\d{2}:\d{2}))?$/)!;
+/**
+ * Resolves an English due string of the vocabulary Argos sends Todoist:
+ * "2026-10-20 14:30", "tomorrow at 09:00", "every 1st",
+ * "every day at 18:00 starting sep 26 2026". With "starting", a recurring
+ * text's first occurrence is on or after that date instead of today.
+ * Null when the text is outside that vocabulary.
+ */
+export function parseEnglishDue(english: string, today: string): ParsedDate | null {
+  let text = english.trim().toLowerCase().replace(/^every!/, "every");
+  const iso = text.match(/^(\d{4}-\d{2}-\d{2})(?:[ t](\d{2}:\d{2}))?$/);
+  if (iso) return { date: iso[1]!, time: iso[2] ?? null, rule: null };
+
+  let from = today;
+  const starting = text.match(/^(.*?)\s+starting\s+(.+)$/);
+  if (starting) {
+    const start = resolveDate(starting[2]!, today);
+    if (!start) return null;
+    from = start;
+    text = starting[1]!;
+  }
+
+  const at = text.match(/^(.*?)(?: ?at (\d{2}:\d{2}))?$/)!;
   const spec = at[1]!.trim();
   const time = at[2] ?? null;
 
   if (spec.startsWith("every")) {
-    const rule = resolveRule(spec, today);
+    // Full weekday names ("every saturday") read like the short ones.
+    const short = spec.replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/g, (d) => d.slice(0, 3));
+    const rule = resolveRule(short, from) ?? ruleFromTodoist(short, from);
     if (!rule) return null;
-    const date = firstOccurrence(rule, today);
+    const date = firstOccurrence(rule, from);
     return date ? { date, time, rule } : null;
   }
   const date = resolveDate(spec, today);

@@ -22,6 +22,7 @@ import {
   type SyncResponse,
 } from "../src/ortak/todoist-mirror.ts";
 import { deleteFromArgos, syncOnce } from "../src/main/todoist-sync-core.ts";
+import { OUTBOX_PATH, deleteItem } from "../src/ortak/todoist-outbox.ts";
 
 let passed = 0;
 let failed = 0;
@@ -126,17 +127,11 @@ try {
   const tasks = JSON.parse(readFileSync(join(root, "tasks/tasks.json"), "utf8"));
   eq("tasks file has the kept task", tasks.tasks.map((t: { title: string }) => t.title), ["Ödev"]);
 
-  let removed = false;
-  await deleteFromArgos(root, "item:z", async () => {
-    removed = true;
-  });
+  const clock = { uuid: () => "u1", now: "now", today: "2026-10-10" };
+  await deleteFromArgos(root, "item", "z", deleteItem("z", clock));
   const marked = JSON.parse(readFileSync(join(root, MIRROR_PATH), "utf8")) as MirrorFile;
-  eq("delete from Argos: recorded, then removed", [marked.argosDeleted, removed], [["item:z"], true]);
-  const refused = await deleteFromArgos(root, "item:y", async () => {
-    throw new Error("Todoist 500");
-  }).then(() => false, () => true);
-  const after = JSON.parse(readFileSync(join(root, MIRROR_PATH), "utf8")) as MirrorFile;
-  eq("Todoist refuses: error passes on, record undone", [refused, after.argosDeleted], [true, ["item:z"]]);
+  const queue = JSON.parse(readFileSync(join(root, OUTBOX_PATH), "utf8"));
+  eq("delete from Argos: recorded in the copy and queued", [marked.argosDeleted, queue.commands.map((c: { type: string }) => c.type)], [["item:z"], ["item_delete"]]);
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
