@@ -1,8 +1,9 @@
-import { Monitor, Moon, Search, Sun } from "lucide-react";
+import { CloudOff, Monitor, Moon, Search, Sun } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { moduller } from "@/modules";
 import { Dugme } from "@/ui/bilesenler";
 import { useTema } from "@/ui/tema";
+import { useTodoistSyncStatus } from "@/veri/sync-status";
 import s from "./kabuk.module.css";
 
 /** Bulunulan yerin adı: "Argos / Hobiler / Oyunlar". */
@@ -21,6 +22,10 @@ export function BaslikCubugu({ kaydirildi, paletAc }: { kaydirildi: boolean; pal
   const { tercih, sonraki } = useTema();
   const parcalar = kirinti(pathname);
   const Ikon = tercih === "sistem" ? Monitor : tercih === "acik" ? Sun : Moon;
+  const sync = useTodoistSyncStatus();
+  const lastSync = sync?.lastSyncAt
+    ? new Date(sync.lastSyncAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
+    : null;
 
   return (
     <header className={kaydirildi ? `${s.baslikCubugu} ${s.baslikCizgili}` : s.baslikCubugu}>
@@ -36,6 +41,16 @@ export function BaslikCubugu({ kaydirildi, paletAc }: { kaydirildi: boolean; pal
       </span>
 
       <div className={s.baslikSag}>
+        {/* Todoist unreachable: the screens show Argos's own copy, so say how fresh it is. */}
+        {sync && !sync.online && (
+          <span
+            className={s.cevrimdisi}
+            title={`Todoist'e ulaşılamıyor; görevler Argos'taki kopyadan gösteriliyor.${sync.error ? ` (${sync.error})` : ""}`}
+          >
+            <CloudOff size={14} strokeWidth={1.9} />
+            Çevrimdışı{lastSync ? ` · son eşitleme ${lastSync}` : ""}
+          </span>
+        )}
         {/* Paletin görünür kapısı: kısayolu bilmeyen de bulsun. */}
         <button type="button" className={s.paletDugmesi} onClick={paletAc} title="Komut paleti (Ctrl+K)">
           <Search size={14} strokeWidth={1.9} />

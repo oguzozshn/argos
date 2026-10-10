@@ -28,6 +28,8 @@ export interface MirrorProject {
   color: string;
   favorite: boolean;
   inbox: boolean;
+  /** Todoist's `child_order`: the sidebar order. */
+  order: number;
 }
 
 export interface MirrorItem {
@@ -42,10 +44,21 @@ export interface MirrorItem {
   /** Todoist's scale: 4 = P1 … 1 = P4. */
   priority: number;
   labels: string[];
+  /** Set for a sub-task. */
+  parentId: string | null;
+  /** Todoist's `child_order` within the project. */
+  order: number;
 }
 
+/**
+ * 2 added the fields the screens read (order, sub-tasks). A copy of an older
+ * version keeps its data but loses its token, so the next sync is a full one
+ * that refills every field and still checks what vanished meanwhile.
+ */
+export const MIRROR_VERSION = 2;
+
 export interface MirrorFile {
-  version: 1;
+  version: typeof MIRROR_VERSION;
   /** Null until the first full sync. */
   syncToken: string | null;
   projects: Record<string, MirrorProject>;
@@ -54,14 +67,14 @@ export interface MirrorFile {
   argosDeleted: string[];
 }
 
-export const emptyMirror = (): MirrorFile => ({ version: 1, syncToken: null, projects: {}, items: {}, argosDeleted: [] });
+export const emptyMirror = (): MirrorFile => ({ version: MIRROR_VERSION, syncToken: null, projects: {}, items: {}, argosDeleted: [] });
 
 export function normalizeMirror(raw: unknown): MirrorFile {
   const m = raw as Partial<MirrorFile> | null;
   if (!m || typeof m !== "object") return emptyMirror();
   return {
-    version: 1,
-    syncToken: typeof m.syncToken === "string" ? m.syncToken : null,
+    version: MIRROR_VERSION,
+    syncToken: typeof m.syncToken === "string" && m.version === MIRROR_VERSION ? m.syncToken : null,
     projects: m.projects && typeof m.projects === "object" ? m.projects : {},
     items: m.items && typeof m.items === "object" ? m.items : {},
     argosDeleted: Array.isArray(m.argosDeleted) ? m.argosDeleted : [],
@@ -78,6 +91,7 @@ export interface SyncProject {
   inbox_project?: boolean;
   is_deleted?: boolean;
   is_archived?: boolean;
+  child_order?: number;
 }
 
 export interface SyncItem {
@@ -90,6 +104,8 @@ export interface SyncItem {
   labels?: string[];
   checked?: boolean;
   is_deleted?: boolean;
+  parent_id?: string | null;
+  child_order?: number;
 }
 
 export interface SyncResponse {
@@ -105,6 +121,7 @@ const projectOf = (p: SyncProject): MirrorProject => ({
   color: todoistColor(p.color),
   favorite: p.is_favorite === true,
   inbox: p.inbox_project === true,
+  order: p.child_order ?? 0,
 });
 
 const itemOf = (i: SyncItem): MirrorItem => ({
@@ -117,6 +134,8 @@ const itemOf = (i: SyncItem): MirrorItem => ({
   recurring: i.due?.is_recurring === true,
   priority: i.priority ?? 1,
   labels: i.labels ?? [],
+  parentId: i.parent_id ?? null,
+  order: i.child_order ?? 0,
 });
 
 /* --- applying a sync -------------------------------------------------------------- */
@@ -168,14 +187,15 @@ export function applySync(prev: MirrorFile, res: SyncResponse): SyncOutcome {
     for (const i of res.items ?? []) {
       if (!i.is_deleted && !i.checked && nextProjects[i.project_id]) nextItems[i.id] = itemOf(i);
     }
-    const first = prev.syncToken === null;
+    // An empty copy is a first sync; a migrated one (no token, old data) is a re-sync.
+    const first = prev.syncToken === null && Object.keys(prev.items).length === 0 && Object.keys(prev.projects).length === 0;
     const vanishedProjects = first ? [] : Object.keys(prev.projects).filter((id) => !nextProjects[id]);
     const vanishedItems = first
       ? []
       : Object.keys(prev.items).filter((id) => !nextItems[id] && !vanishedProjects.includes(prev.items[id]!.projectId));
     return {
       // Nothing was copied before a first sync, so no deletion from Argos is pending.
-      mirror: { version: 1, syncToken: res.sync_token, projects: nextProjects, items: nextItems, argosDeleted: first ? [] : [...argosDeleted] },
+      mirror: { version: MIRROR_VERSION, syncToken: res.sync_token, projects: nextProjects, items: nextItems, argosDeleted: first ? [] : [...argosDeleted] },
       deletedProjects: [],
       deletedItems: [],
       vanishedProjects,
@@ -234,7 +254,7 @@ export function applySync(prev: MirrorFile, res: SyncResponse): SyncOutcome {
   }
 
   return {
-    mirror: { version: 1, syncToken: res.sync_token, projects, items, argosDeleted: [...argosDeleted] },
+    mirror: { version: MIRROR_VERSION, syncToken: res.sync_token, projects, items, argosDeleted: [...argosDeleted] },
     deletedProjects,
     deletedItems,
     vanishedProjects: [],

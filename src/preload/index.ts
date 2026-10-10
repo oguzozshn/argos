@@ -7,6 +7,7 @@ import {
   type Ortam,
   type TodoistDurum,
   type TodoistProjectPatch,
+  type TodoistSyncStatus,
   type TodoistTaskPatch,
   type Yazma,
 } from "../ortak/tipler";
@@ -41,6 +42,14 @@ const argos: ArgosApi = {
     deleteTask: (id: string) => ipcRenderer.invoke(KANAL.tdDeleteTask, id),
     deleteProject: (id: string) => ipcRenderer.invoke(KANAL.tdDeleteProject, id),
     sync: () => ipcRenderer.invoke(KANAL.tdSync),
+    syncStatus: () => ipcRenderer.invoke(KANAL.tdSyncStatusGet),
+    onSyncStatus: (f: (s: TodoistSyncStatus) => void) => {
+      const wrap = (_e: unknown, s: TodoistSyncStatus) => f(s);
+      ipcRenderer.on(KANAL.tdSyncDurum, wrap);
+      return () => {
+        ipcRenderer.off(KANAL.tdSyncDurum, wrap);
+      };
+    },
     moveTask: (id: string, projectId: string) => ipcRenderer.invoke(KANAL.tdMoveTask, id, projectId),
     setProjectFavorite: (id: string, favorite: boolean) =>
       ipcRenderer.invoke(KANAL.tdProjectFavorite, id, favorite),

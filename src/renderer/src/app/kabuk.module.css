@@ -56,6 +56,20 @@
   -webkit-app-region: no-drag;
 }
 
+.cevrimdisi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--b3);
+  border-radius: var(--r-tam);
+  background: var(--uyari-yumusak, var(--zemin-alt));
+  color: var(--uyari);
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  white-space: nowrap;
+}
+
 .paletDugmesi {
   display: flex;
   align-items: center;

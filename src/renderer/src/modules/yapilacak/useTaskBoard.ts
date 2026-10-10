@@ -109,7 +109,8 @@ export function useTaskBoard() {
         return;
       }
       // The copy first: what Todoist deleted since is turned into Argos lists and tasks before the lists vanish.
-      await k.todoist.sync().catch(() => undefined);
+      // At most a few seconds: offline, or on a slow line, the copy shows at once and a late sync refreshes it.
+      await Promise.race([k.todoist.sync().catch(() => false), new Promise((r) => setTimeout(r, 4000))]);
       const [p, t] = await Promise.all([k.todoist.projeler(), k.todoist.allTasks()]);
       setProjects(p.filter((x) => x.id !== PLAN_PROJESI));
       setTodoTasks(t);
