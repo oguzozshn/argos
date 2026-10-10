@@ -36,7 +36,13 @@ async function writeMirror(root: string, mirror: MirrorFile, mtime: number | nul
   if (!w.ok) throw new Error(w.sebep === "hata" ? w.mesaj : "Todoist kopyası yazılırken değişti");
 }
 
-export async function syncOnce(root: string, api: SyncApi, now: string): Promise<KeptSummary> {
+export interface SyncResult {
+  kept: KeptSummary;
+  /** Whether the copy's content changed, i.e. the screens have something new to show. */
+  changed: boolean;
+}
+
+export async function syncOnce(root: string, api: SyncApi, now: string): Promise<SyncResult> {
   const { mirror: prev, mtime } = await readMirror(root);
   let outcome = applySync(prev, await api.sync(prev.syncToken ?? "*"));
 
@@ -56,7 +62,7 @@ export async function syncOnce(root: string, api: SyncApi, now: string): Promise
   }
 
   if (outcome.changed) await writeMirror(root, outcome.mirror, mtime);
-  return summary;
+  return { kept: summary, changed: outcome.changed };
 }
 
 /**

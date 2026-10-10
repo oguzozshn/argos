@@ -143,7 +143,7 @@ if (!app.requestSingleInstanceLock()) {
     botBaslat(() => pencere);
     tepsiYedekAcici(() => void yedekKlasorunuAc().catch((e) => console.error("[yedek] açılamadı:", e)));
     yedekBaslat();
-    startTodoistSync();
+    startTodoistSync(() => pencere);
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) pencereKur();

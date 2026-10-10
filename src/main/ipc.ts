@@ -6,7 +6,7 @@ import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { tepsiOdak, todoistDegistiBildir, yakalamaHatasi, yakalamadanMi, yakalamayiGizle } from "./tepsi";
 import { dataDir, klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
 import { quickAddLocal } from "./local-quick-add";
-import { deleteProjectFromArgos, deleteTaskFromArgos, syncNow } from "./todoist-sync";
+import { deleteProjectFromArgos, deleteTaskFromArgos, syncNow, syncStatus, writeThenSync } from "./todoist-sync";
 import { bugunIso } from "../ortak/plan";
 import { bildirimGoster } from "./bildirim";
 import { yedekKlasorunuAc } from "./yedek";
@@ -102,7 +102,7 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdOnemliler, () => td.onemliler());
   ipcMain.handle(KANAL.tdAllTasks, () => td.allTasks());
   ipcMain.handle(KANAL.tdOnemliYap, async (_o, id: string, onemli: boolean) => {
-    const gorev = await td.onemliYap(id, onemli === true);
+    const gorev = await writeThenSync(() => td.onemliYap(id, onemli === true));
     // Bugün kartı ve Yapılacaklar ayrı kancalardan okuyor; ikisi de tazelensin.
     todoistDegistiBildir();
     return gorev;
@@ -111,7 +111,8 @@ export function ipcKur(): void {
   const andNotify =
     <A extends unknown[], R>(f: (...a: A) => Promise<R>) =>
     async (_e: unknown, ...a: A): Promise<R> => {
-      const r = await f(...a);
+      // The copy is synced before the screens reload from it.
+      const r = await writeThenSync(() => f(...a));
       todoistDegistiBildir();
       return r;
     };
@@ -121,13 +122,14 @@ export function ipcKur(): void {
   ipcMain.handle(KANAL.tdDeleteTask, andNotify((id: string) => deleteTaskFromArgos(id)));
   ipcMain.handle(KANAL.tdDeleteProject, andNotify((id: string) => deleteProjectFromArgos(id)));
   ipcMain.handle(KANAL.tdSync, () => syncNow());
+  ipcMain.handle(KANAL.tdSyncStatusGet, () => syncStatus());
   ipcMain.handle(KANAL.tdMoveTask, andNotify((id: string, projectId: string) => td.moveTask(id, projectId)));
   ipcMain.handle(KANAL.tdProjectFavorite, andNotify((id: string, favorite: boolean) => td.setProjectFavorite(id, favorite === true)));
   ipcMain.handle(KANAL.tdUpdateProject, andNotify((id: string, patch: Parameters<typeof td.updateProject>[1]) => td.updateProject(id, patch)));
-  ipcMain.handle(KANAL.tdEkle, (_o, g: Parameters<typeof td.ekle>[0]) => td.ekle(g));
-  ipcMain.handle(KANAL.tdKapat, (_o, id: string) => td.kapat(id));
-  ipcMain.handle(KANAL.tdAc, (_o, id: string) => td.ac(id));
-  ipcMain.handle(KANAL.tdTarih, (_o, id: string, metin: string | null) => td.tarihVer(id, metin));
+  ipcMain.handle(KANAL.tdEkle, (_o, g: Parameters<typeof td.ekle>[0]) => writeThenSync(() => td.ekle(g)));
+  ipcMain.handle(KANAL.tdKapat, (_o, id: string) => writeThenSync(() => td.kapat(id)));
+  ipcMain.handle(KANAL.tdAc, (_o, id: string) => writeThenSync(() => td.ac(id)));
+  ipcMain.handle(KANAL.tdTarih, (_o, id: string, metin: string | null) => writeThenSync(() => td.tarihVer(id, metin)));
 
   // Hızlı yakalama penceresi ve komut paleti. Tepsi balonu yalnızca yakalama
   // penceresi için: palet hatayı kendi içinde gösteriyor.
@@ -138,7 +140,7 @@ export function ipcKur(): void {
       // pick the file change up themselves.
       const yerel = await quickAddLocal(dataDir(), satir, bugunIso(), new Date().toISOString());
       if (yerel) return yerel;
-      const gorev = await td.hizliEkle(satir);
+      const gorev = await writeThenSync(() => td.hizliEkle(satir));
       todoistDegistiBildir();
       return gorev;
     } catch (e) {

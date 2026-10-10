@@ -94,6 +94,14 @@ export interface TodoistGorev {
   projected?: boolean;
 }
 
+/** Whether Argos reaches Todoist; the screens read Argos's copy either way. */
+export interface TodoistSyncStatus {
+  online: boolean;
+  /** ISO time of the last successful sync; null before the first one. */
+  lastSyncAt: string | null;
+  error: string | null;
+}
+
 /** Editable fields of a Todoist task apart from its date, which goes through `tarihVer`. */
 export interface TodoistTaskPatch {
   title?: string;
@@ -163,8 +171,10 @@ export interface ArgosApi {
     deleteTask(id: string): Promise<void>;
     /** Permanently deletes a project with its tasks, the same way. */
     deleteProject(id: string): Promise<void>;
-    /** Syncs Argos's Todoist copy now; what Todoist deleted becomes Argos lists and tasks. */
-    sync(): Promise<void>;
+    /** Syncs Argos's Todoist copy now; true when it changed. Never fails: offline shows in the status. */
+    sync(): Promise<boolean>;
+    syncStatus(): Promise<TodoistSyncStatus>;
+    onSyncStatus(f: (s: TodoistSyncStatus) => void): () => void;
     /** Moves a task to another project. */
     moveTask(id: string, projectId: string): Promise<void>;
     setProjectFavorite(id: string, favorite: boolean): Promise<TodoistProje>;
@@ -238,6 +248,8 @@ export const KANAL = {
   tdRecurring: "todoist:recurring",
   tdDeleteProject: "todoist:delete-project",
   tdSync: "todoist:sync",
+  tdSyncDurum: "todoist:sync-durum",
+  tdSyncStatusGet: "todoist:sync-status",
   tdHizli: "todoist:hizli",
   tdDegisti: "todoist:degisti",
   yakalaGizle: "yakala:gizle",

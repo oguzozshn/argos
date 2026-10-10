@@ -9,6 +9,10 @@ import type {
 import { ayar, ayarKaydet } from "./ayar";
 import { jsonCoz } from "./veri-cekirdek";
 import * as cekirdek from "./todoist-cekirdek";
+import { MIRROR_PATH, normalizeMirror, type MirrorFile } from "../ortak/todoist-mirror";
+import * as store from "../ortak/todoist-store";
+import { bugunIso } from "../ortak/plan";
+import { oku } from "./veri";
 import { TodoistHata, type YeniGorev } from "./todoist-cekirdek";
 
 /**
@@ -53,24 +57,37 @@ export function durum(): TodoistDurum {
   return { anahtarVar: anahtar() !== null, gizliYolu: gizliYolu() };
 }
 
-export const projeler = (): Promise<TodoistProje[]> => cekirdek.projeler(jeton());
+/* --- reads: from Argos's copy ------------------------------------------------
+ * Once the copy has been filled (see todoist-sync.ts), every read the screens
+ * make is answered from it, online or not. Only before the very first sync
+ * do they still ask Todoist.
+ */
+async function fromStore<T>(query: (m: MirrorFile) => T, live: () => Promise<T>): Promise<T> {
+  const m = normalizeMirror((await oku(MIRROR_PATH)).veri);
+  return store.storeReady(m) ? query(m) : live();
+}
+
+export const projeler = (): Promise<TodoistProje[]> =>
+  fromStore(store.storeProjects, () => cekirdek.projeler(jeton()));
 
 export const gorevler = (projeId: string): Promise<TodoistGorev[]> =>
   cekirdek.gorevler(jeton(), projeId);
 
-export const bugunVeGecikmis = (): Promise<TodoistGorev[]> => cekirdek.bugunVeGecikmis(jeton());
+export const bugunVeGecikmis = (): Promise<TodoistGorev[]> =>
+  fromStore((m) => store.storeTodayAndOverdue(m, bugunIso()), () => cekirdek.bugunVeGecikmis(jeton()));
 
 export const tarihAraligi = (bas: string, son: string): Promise<TodoistGorev[]> =>
-  cekirdek.tarihAraligi(jeton(), bas, son);
+  fromStore((m) => store.storeRange(m, bas, son), () => cekirdek.tarihAraligi(jeton(), bas, son));
 
-export const onemliler = (): Promise<TodoistGorev[]> => cekirdek.onemliler(jeton());
+export const onemliler = (): Promise<TodoistGorev[]> => fromStore(store.storeImportant, () => cekirdek.onemliler(jeton()));
 
 export const onemliYap = (id: string, onemli: boolean): Promise<TodoistGorev> =>
   cekirdek.onemliYap(jeton(), id, onemli);
 
-export const allTasks = (): Promise<TodoistGorev[]> => cekirdek.allTasks(jeton());
+export const allTasks = (): Promise<TodoistGorev[]> => fromStore(store.storeTasks, () => cekirdek.allTasks(jeton()));
 
-export const recurringTasks = (): Promise<TodoistGorev[]> => cekirdek.recurringTasks(jeton());
+export const recurringTasks = (): Promise<TodoistGorev[]> =>
+  fromStore(store.storeRecurring, () => cekirdek.recurringTasks(jeton()));
 
 export const updateTask = (id: string, patch: TodoistTaskPatch): Promise<TodoistGorev> =>
   cekirdek.updateTask(jeton(), id, patch);

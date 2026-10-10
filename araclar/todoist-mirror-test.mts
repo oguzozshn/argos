@@ -119,8 +119,10 @@ try {
   const copy = JSON.parse(readFileSync(join(root, MIRROR_PATH), "utf8")) as MirrorFile;
   eq("first run writes the copy", [copy.syncToken, Object.keys(copy.items)], ["t1", ["a"]]);
   next = delta([proj("P1", "Okul", { is_deleted: true })], []);
-  const summary = await syncOnce(root, api, "now");
-  eq("deleted project lands in the Argos files", summary, { lists: ["Okul"], tasks: 1 });
+  const { kept: summary, changed } = await syncOnce(root, api, "now");
+  eq("deleted project lands in the Argos files", [summary, changed], [{ lists: ["Okul"], tasks: 1 }, true]);
+  next = delta([], [], "t3");
+  eq("nothing new → unchanged", (await syncOnce(root, api, "now")).changed, false);
   const tasks = JSON.parse(readFileSync(join(root, "tasks/tasks.json"), "utf8"));
   eq("tasks file has the kept task", tasks.tasks.map((t: { title: string }) => t.title), ["Ödev"]);
 
