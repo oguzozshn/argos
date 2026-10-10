@@ -14,6 +14,7 @@ import type { MirrorFile, MirrorItem } from "../ortak/todoist-mirror";
 import * as store from "../ortak/todoist-store";
 import * as q from "../ortak/todoist-outbox";
 import { TODOIST_COLORS, todoistColor } from "../ortak/task";
+import { findProjectTag, parseTodoistQuickAdd } from "../ortak/quick-add";
 import { bugunIso } from "../ortak/plan";
 import { dataDir } from "./veri";
 import { cancelQueuedClose, enqueue, readOutbox, readView } from "./todoist-sync-core";
@@ -239,7 +240,46 @@ export async function ac(id: string): Promise<void> {
   queued();
 }
 
-export const hizliEkle = (metin: string): Promise<TodoistGorev> => cekirdek.hizliEkle(jeton(), metin);
+/**
+ * Quick add. Online, Todoist's Quick Add reads the line (it knows more
+ * syntax than Argos). When Todoist cannot be reached, Argos reads it itself
+ * (project, labels, priority, date) and queues the task like any other add.
+ * A timeout is not "offline": Todoist may have added it, and a queued copy
+ * would make two.
+ */
+export async function hizliEkle(metin: string): Promise<TodoistGorev> {
+  // Todoist's Quick Add only knows "#Project" without spaces, so Argos finds
+  // the project itself ("#GitHubPortföyü" → "GitHub Portföyü") and moves the
+  // task there after Todoist added it; offline reads the tag the same way.
+  const view = await readView(dataDir());
+  const tag = findProjectTag(metin, Object.values(view.projects));
+  try {
+    const gorev = await cekirdek.hizliEkle(jeton(), tag ? tag.rest : metin);
+    if (!tag || gorev.projeId === tag.projectId) return gorev;
+    await cekirdek.moveTask(jeton(), gorev.id, tag.projectId);
+    return { ...gorev, projeId: tag.projectId };
+  } catch (e) {
+    if (!(e instanceof TypeError)) throw e;
+    return quickAddOffline(metin);
+  }
+}
+
+async function quickAddOffline(metin: string): Promise<TodoistGorev> {
+  const view = await readView(dataDir());
+  if (!store.storeReady(view)) throw new TodoistHata("Todoist'e ulaşılamıyor");
+  const projects = Object.values(view.projects);
+  const line = parseTodoistQuickAdd(metin, projects, bugunIso());
+  if (!line.content) throw new TodoistHata("Görev adı boş");
+  const projectId = line.projectId ?? projects.find((p) => p.inbox)?.id;
+  if (!projectId) throw new TodoistHata("Inbox projesi bulunamadı");
+  const c = q.addItem(
+    { content: line.content, projectId, labels: line.labels, priority: line.priority ?? undefined, dueText: line.dueText },
+    clock(),
+  );
+  await enqueue(dataDir(), c);
+  queued();
+  return store.taskFromStore((c.effect as { item: MirrorItem }).item);
+}
 
 export const tarihVer = (id: string, tarihMetni: string | null): Promise<TodoistGorev> =>
   queuedItem(
