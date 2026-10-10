@@ -108,6 +108,8 @@ export function useTaskBoard() {
         setStatus("noKey");
         return;
       }
+      // The copy first: what Todoist deleted since is turned into Argos lists and tasks before the lists vanish.
+      await k.todoist.sync().catch(() => undefined);
       const [p, t] = await Promise.all([k.todoist.projeler(), k.todoist.allTasks()]);
       setProjects(p.filter((x) => x.id !== PLAN_PROJESI));
       setTodoTasks(t);
@@ -169,7 +171,7 @@ export function useTaskBoard() {
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     for (const t of tasks) {
-      const key = taskKey(t.source, t.listId);
+      const key = taskKey(t.listSource, t.listId);
       m.set(key, (m.get(key) ?? 0) + 1);
     }
     return m;
@@ -371,7 +373,8 @@ export function useTaskBoard() {
   const move = async (task: Task, list: TaskList) => {
     if (list.source !== task.source || list.id === task.listId) return;
     if (task.source === "local") {
-      await changeTasks((f) => updateTask(f, task.id, { listId: list.id }));
+      // Out of a Todoist list it was kept in, into an Argos list.
+      await changeTasks((f) => updateTask(f, task.id, { listId: list.id, listSource: undefined }));
       bildir({ metin: `"${task.title}" → ${list.name}` });
       return;
     }
@@ -519,7 +522,31 @@ export function useTaskBoard() {
       : patchProject(list, { color }, { color: todoistColor(color) });
 
   /** Deletes an Argos list and its tasks; undo writes both back. */
+  /**
+   * A Todoist project goes like a Todoist task: off the screen at once, and
+   * deleted in Todoist (with its tasks, and the Argos tasks kept in it) only
+   * when the undo toast closes.
+   */
+  const removeTodoistList = (list: TaskList) => {
+    const k = kopru();
+    const old = projects.find((p) => p.id === list.id);
+    if (!k || !old || old.inbox) return;
+    const count = todoTasks.filter((t) => t.projeId === list.id).length +
+      local.tasks.filter((t) => t.listSource === "todoist" && t.listId === list.id && !t.completedAt).length;
+    deferWithUndo({
+      metin: `"${list.name}" listesi silindi${count ? ` (${count} görevle)` : ""}; Todoist'ten de silinecek.`,
+      apply: () => setProjects((all) => all.filter((p) => p.id !== list.id)),
+      revert: () => setProjects((all) => (all.some((p) => p.id === old.id) ? all : [...all, old])),
+      commit: async () => {
+        await k.todoist.deleteProject(list.id);
+        await changeTasks((f) => ({ ...f, tasks: f.tasks.filter((t) => !(t.listSource === "todoist" && t.listId === list.id)) }));
+      },
+      hataMetni: `"${list.name}" Todoist'ten silinemedi.`,
+    });
+  };
+
   const removeList = async (list: TaskList) => {
+    if (list.source === "todoist") return removeTodoistList(list);
     if (list.source !== "local") return;
     const oldList = local.lists.find((l) => l.id === list.id);
     const oldTasks = local.tasks.filter((t) => t.listId === list.id);

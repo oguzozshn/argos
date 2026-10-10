@@ -16,6 +16,11 @@ export interface Task {
   /** The id within its source. */
   id: string;
   listId: string;
+  /**
+   * Which kind of list `listId` names. Equal to `source`, except for an Argos
+   * task kept in a Todoist list after Todoist deleted it.
+   */
+  listSource: TaskSource;
   title: string;
   description: string;
   /** "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM[:SS]"; null when undated. */
@@ -57,6 +62,7 @@ export function fromTodoist(g: TodoistGorev, reminders: Reminder[] = []): Task {
     source: "todoist",
     id: g.id,
     listId: g.projeId,
+    listSource: "todoist",
     title: g.icerik,
     description: g.aciklama,
     due: g.tarih,
@@ -78,6 +84,7 @@ export function fromLocal(t: LocalTask): Task {
     source: "local",
     id: t.id,
     listId: t.listId,
+    listSource: t.listSource ?? "local",
     title: t.title,
     description: t.description,
     due: t.due,

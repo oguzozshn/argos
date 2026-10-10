@@ -6,6 +6,7 @@ import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { tepsiOdak, todoistDegistiBildir, yakalamaHatasi, yakalamadanMi, yakalamayiGizle } from "./tepsi";
 import { dataDir, klasorAyarla, listele, oku, ortam, sil, yaz } from "./veri";
 import { quickAddLocal } from "./local-quick-add";
+import { deleteProjectFromArgos, deleteTaskFromArgos, syncNow } from "./todoist-sync";
 import { bugunIso } from "../ortak/plan";
 import { bildirimGoster } from "./bildirim";
 import { yedekKlasorunuAc } from "./yedek";
@@ -116,7 +117,10 @@ export function ipcKur(): void {
     };
   ipcMain.handle(KANAL.tdRecurring, () => td.recurringTasks());
   ipcMain.handle(KANAL.tdUpdateTask, andNotify((id: string, patch: Parameters<typeof td.updateTask>[1]) => td.updateTask(id, patch)));
-  ipcMain.handle(KANAL.tdDeleteTask, andNotify((id: string) => td.deleteTask(id)));
+  // Deletes from Argos go through the Todoist copy, so the sync does not keep them.
+  ipcMain.handle(KANAL.tdDeleteTask, andNotify((id: string) => deleteTaskFromArgos(id)));
+  ipcMain.handle(KANAL.tdDeleteProject, andNotify((id: string) => deleteProjectFromArgos(id)));
+  ipcMain.handle(KANAL.tdSync, () => syncNow());
   ipcMain.handle(KANAL.tdMoveTask, andNotify((id: string, projectId: string) => td.moveTask(id, projectId)));
   ipcMain.handle(KANAL.tdProjectFavorite, andNotify((id: string, favorite: boolean) => td.setProjectFavorite(id, favorite === true)));
   ipcMain.handle(KANAL.tdUpdateProject, andNotify((id: string, patch: Parameters<typeof td.updateProject>[1]) => td.updateProject(id, patch)));

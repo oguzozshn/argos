@@ -39,6 +39,8 @@ const argos: ArgosApi = {
     recurringTasks: () => ipcRenderer.invoke(KANAL.tdRecurring),
     updateTask: (id: string, patch: TodoistTaskPatch) => ipcRenderer.invoke(KANAL.tdUpdateTask, id, patch),
     deleteTask: (id: string) => ipcRenderer.invoke(KANAL.tdDeleteTask, id),
+    deleteProject: (id: string) => ipcRenderer.invoke(KANAL.tdDeleteProject, id),
+    sync: () => ipcRenderer.invoke(KANAL.tdSync),
     moveTask: (id: string, projectId: string) => ipcRenderer.invoke(KANAL.tdMoveTask, id, projectId),
     setProjectFavorite: (id: string, favorite: boolean) =>
       ipcRenderer.invoke(KANAL.tdProjectFavorite, id, favorite),

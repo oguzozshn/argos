@@ -11,7 +11,8 @@ import s from "./board.module.css";
  * sidebar. Todoist projects come first, Argos lists after them with a small
  * monitor mark (they do not reach the phone). Right-click, or the ⋯ that
  * replaces the count on hover, opens the list menu:
- * favourite, rename and colour for both; delete only for Argos lists.
+ * favourite, rename, colour and delete for both (a Todoist project is
+ * deleted in Todoist too, after the undo toast).
  */
 export function ListSidebar({
   board,
@@ -147,7 +148,7 @@ export function ListSidebar({
               />
             </>
           )}
-          {menu.list.source === "local" && (
+          {!menu.list.inbox && (
             <>
               <MenuSeparator />
               <MenuItem
@@ -163,7 +164,7 @@ export function ListSidebar({
             </>
           )}
           {menu.list.source === "todoist" && !menu.list.inbox && (
-            <MenuLabel>Todoist projesi · değişiklik telefona da gider</MenuLabel>
+            <MenuLabel>Todoist projesi · değişiklik ve silme telefona da gider</MenuLabel>
           )}
         </Popover>
       )}

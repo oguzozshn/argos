@@ -2,6 +2,7 @@ import { BrowserWindow, app, screen } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { botBaslat, botDurdur } from "./bot";
+import { startTodoistSync } from "./todoist-sync";
 import { ipcKur } from "./ipc";
 import { yedekBaslat, yedekDurdur, yedekKlasorunuAc } from "./yedek";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
@@ -142,6 +143,7 @@ if (!app.requestSingleInstanceLock()) {
     botBaslat(() => pencere);
     tepsiYedekAcici(() => void yedekKlasorunuAc().catch((e) => console.error("[yedek] açılamadı:", e)));
     yedekBaslat();
+    startTodoistSync();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) pencereKur();

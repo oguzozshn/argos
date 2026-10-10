@@ -8,6 +8,7 @@ import {
   CircleSlash,
   Ellipsis,
   Flag,
+  Monitor,
   Repeat,
   Sofa,
   Star,
@@ -68,6 +69,8 @@ export function TaskRow({
   };
   const cls = [s.row, menu && s.rowMenuOpen, selected && s.rowSelected].filter(Boolean).join(" ");
 
+  // Deleted in Todoist, kept by Argos in the same list.
+  const kept = task.source === "local" && task.listSource === "todoist";
   return (
     <div
       className={cls}
@@ -92,8 +95,14 @@ export function TaskRow({
 
       <div className={s.body}>
         <span className={s.title}>{task.title}</span>
-        {(due || task.description || labels.length > 0 || task.reminders.length > 0) && (
+        {(due || task.description || labels.length > 0 || task.reminders.length > 0 || kept) && (
           <span className={s.meta}>
+            {kept && (
+              <span title="Todoist'ten silindi; Argos'ta duruyor, telefonda görünmez">
+                <Monitor size={12} />
+                Argos'ta
+              </span>
+            )}
             {due && (
               <span className={TONE_CLASS[due.tone]}>
                 {task.recurring ? <Repeat size={12} /> : <Calendar size={12} />}

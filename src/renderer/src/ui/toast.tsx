@@ -180,6 +180,10 @@ export function ToastAlani() {
   };
   geriAlRef.current = () => void geriAl();
 
+  // A toast that closes under the cursor (its "Geri al" was clicked) never
+  // fires mouseleave; without this reset the next toast would never time out.
+  useEffect(() => setUzerinde(false), [etkin?.no]);
+
   // Süre dolunca kapanır; imleç üstündeyken ya da geri alma sürerken beklenir.
   useEffect(() => {
     if (!etkin || uzerinde || calisiyor) return;

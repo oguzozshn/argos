@@ -159,8 +159,12 @@ export interface ArgosApi {
     allTasks(): Promise<TodoistGorev[]>;
     /** Edits title, description or priority (1 = P1 … 4 = P4). Never touches the date. */
     updateTask(id: string, patch: TodoistTaskPatch): Promise<TodoistGorev>;
-    /** Permanently deletes a task. */
+    /** Permanently deletes a task; the Todoist copy records it so the sync does not keep it. */
     deleteTask(id: string): Promise<void>;
+    /** Permanently deletes a project with its tasks, the same way. */
+    deleteProject(id: string): Promise<void>;
+    /** Syncs Argos's Todoist copy now; what Todoist deleted becomes Argos lists and tasks. */
+    sync(): Promise<void>;
     /** Moves a task to another project. */
     moveTask(id: string, projectId: string): Promise<void>;
     setProjectFavorite(id: string, favorite: boolean): Promise<TodoistProje>;
@@ -232,6 +236,8 @@ export const KANAL = {
   tdProjectFavorite: "todoist:project-favorite",
   tdUpdateProject: "todoist:update-project",
   tdRecurring: "todoist:recurring",
+  tdDeleteProject: "todoist:delete-project",
+  tdSync: "todoist:sync",
   tdHizli: "todoist:hizli",
   tdDegisti: "todoist:degisti",
   yakalaGizle: "yakala:gizle",

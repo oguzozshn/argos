@@ -128,7 +128,7 @@ function TaskListCard({
 }) {
   const [composing, setComposing] = useState(false);
   const tasks = useMemo(
-    () => board.tasks.filter((t) => t.source === list.source && t.listId === list.id),
+    () => board.tasks.filter((t) => t.listSource === list.source && t.listId === list.id),
     [board.tasks, list],
   );
   const groups = useMemo(() => groupByDate(tasks, board.today), [tasks, board.today]);

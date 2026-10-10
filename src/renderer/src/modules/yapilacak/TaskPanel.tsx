@@ -17,7 +17,7 @@ import s from "./board.module.css";
  * Text is saved when the field loses focus (Enter in the title, too).
  */
 export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoard; onClose: () => void }) {
-  const list = board.lists.find((l) => l.source === task.source && l.id === task.listId);
+  const list = board.lists.find((l) => l.source === task.listSource && l.id === task.listId);
   const [picker, setPicker] = useState<{ x: number; y: number; repeat: boolean } | null>(null);
   const [menu, setMenu] = useState<{ kind: "list" | "priority" | "reminder"; x: number; y: number } | null>(null);
 
