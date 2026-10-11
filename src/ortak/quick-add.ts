@@ -49,3 +49,74 @@ export function splitQuickAdd(line: string, today?: string): QuickAdd {
   const title = `${text.slice(0, at)} ${text.slice(at + tarih.length)}`.replace(/\s+/g, " ").trim();
   return { title, dateText: tarih, priority, important };
 }
+
+/** "Kişisel Gelişim" and "#KişiselGelişim" or "#kisisel_gelisim"-style tags meet here. */
+const simplify = (s: string): string => s.toLocaleLowerCase("tr-TR").replace(/[\s_-]+/g, "");
+
+/**
+ * The first "#tag" that names a project, and the line without it. Null when
+ * no tag matches (Todoist then reads the line as typed).
+ */
+export function findProjectTag(
+  line: string,
+  projects: { id: string; name: string }[],
+): { projectId: string; rest: string } | null {
+  const words = line.trim().split(/\s+/);
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]!;
+    if (!w.startsWith("#") || w.length < 2) continue;
+    const hit = projects.find((p) => simplify(p.name) === simplify(w.slice(1)));
+    if (hit) return { projectId: hit.id, rest: [...words.slice(0, i), ...words.slice(i + 1)].join(" ") };
+  }
+  return null;
+}
+
+export interface TodoistQuickAdd {
+  content: string;
+  /** The project a "#tag" named, or null for Inbox. */
+  projectId: string | null;
+  labels: string[];
+  /** Todoist's scale (4 = P1), or null. */
+  priority: number | null;
+  dueText: string | null;
+}
+
+/**
+ * Argos's own reading of a Todoist quick-add line, for when Todoist cannot
+ * be reached: "#Proje" (a project in the copy), "@etiket", "p1"–"p4" and a
+ * Turkish date phrase. Online, Todoist's Quick Add reads the line itself.
+ */
+export function parseTodoistQuickAdd(
+  line: string,
+  projects: { id: string; name: string }[],
+  today?: string,
+): TodoistQuickAdd {
+  let projectId: string | null = null;
+  const labels: string[] = [];
+  const rest = line
+    .trim()
+    .split(/\s+/)
+    .filter((w) => {
+      if (w.startsWith("#") && w.length > 1 && projectId === null) {
+        const hit = projects.find((p) => simplify(p.name) === simplify(w.slice(1)));
+        if (hit) {
+          projectId = hit.id;
+          return false;
+        }
+      }
+      if (w.startsWith("@") && w.length > 1) {
+        labels.push(w.slice(1));
+        return false;
+      }
+      return true;
+    })
+    .join(" ");
+  const q = splitQuickAdd(rest, today);
+  return {
+    content: q.title,
+    projectId,
+    labels,
+    priority: q.priority ? 5 - q.priority : null,
+    dueText: q.dateText,
+  };
+}

@@ -15,7 +15,12 @@ export const yapilacakKomutlari: Komut[] = [
       const k = kopru();
       if (!k) throw new Error("Uygulama köprüsü yok");
       const g = await k.todoist.hizliEkle(metin);
-      const where = g.source === "local" ? "Argos listesine eklendi" : "Todoist'e eklendi";
+      const where =
+        g.source === "local"
+          ? "Argos listesine eklendi"
+          : g.id.startsWith("tmp-")
+            ? "Eklendi, internet gelince Todoist'e gidecek"
+            : "Todoist'e eklendi";
       return `${where}: ${g.icerik}${g.tarihMetni ? ` · ${g.tarihMetni}` : ""}`;
     },
   },

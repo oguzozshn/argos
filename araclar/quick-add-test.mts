@@ -2,7 +2,7 @@
  * One-line task entry: `node araclar/quick-add-test.mts`
  */
 
-import { splitQuickAdd } from "../src/ortak/quick-add.ts";
+import { findProjectTag, parseTodoistQuickAdd, splitQuickAdd } from "../src/ortak/quick-add.ts";
 
 let passed = 0;
 let failed = 0;
@@ -30,6 +30,17 @@ eq("a lone day name is the title, not a date", q("Pazar"), { title: "Pazar", dat
 eq("other labels stay in the title", q("süt al @market"), { title: "süt al @market", dateText: null, priority: null, important: false });
 eq("extra spaces collapse", q("  kitap   oku  yarın "), { title: "kitap oku", dateText: "yarın", priority: null, important: false });
 eq("p5 is not a priority", q("p5 notu"), { title: "p5 notu", dateText: null, priority: null, important: false });
+
+console.log("\nTodoist line read offline");
+const projects = [{ id: "P1", name: "Inbox" }, { id: "P2", name: "Kişisel Gelişim ve Merak" }, { id: "P3", name: "Ev" }];
+const t = (line: string) => parseTodoistQuickAdd(line, projects, TODAY);
+eq("project, label, priority, date", t("fatura öde yarın 18:00 #Ev @market p1"), { content: "fatura öde", projectId: "P3", labels: ["market"], priority: 4, dueText: "yarın 18:00" });
+eq("multi-word project name written together", t("TED izle #KişiselGelişimveMerak"), { content: "TED izle", projectId: "P2", labels: [], priority: null, dueText: null });
+eq("no project: Inbox (null)", t("süt al"), { content: "süt al", projectId: null, labels: [], priority: null, dueText: null });
+eq("unknown #tag stays in the title", t("oku #Bilinmeyen"), { content: "oku #Bilinmeyen", projectId: null, labels: [], priority: null, dueText: null });
+eq("project tag found and taken out (for Todoist's Quick Add)", findProjectTag("TED izle #KişiselGelişimveMerak cuma", projects), { projectId: "P2", rest: "TED izle cuma" });
+eq("no matching tag: null", findProjectTag("oku #Bilinmeyen", projects), null);
+eq("@önemli is a label like any other", t("sınav başvurusu cuma @önemli").labels, ["önemli"]);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exitCode = 1;

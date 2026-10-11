@@ -146,6 +146,8 @@ export function HizliYakala() {
             <span className={s.iyi}>
               <Check size={14} /> Eklendi: {durum.gorev.icerik}
               {tarih && <span className={s.soluk}> · {tarih}</span>}
+              {/* Added offline: queued in Argos, sent when Todoist can be reached. */}
+              {durum.gorev.id.startsWith("tmp-") && <span className={s.soluk}> · internet gelince Todoist'e gidecek</span>}
             </span>
           ) : durum.tur === "hata" ? (
             <span className={s.hata} role="alert">
