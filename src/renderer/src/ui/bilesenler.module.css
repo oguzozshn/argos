@@ -231,6 +231,11 @@
   min-width: 0;
 }
 
+/* The wrapper's border already lights up (focus-within); a second ring around the bare input doubled it. */
+.giris:focus-visible {
+  outline: none;
+}
+
 .giris::placeholder {
   color: var(--metin-soluk);
 }

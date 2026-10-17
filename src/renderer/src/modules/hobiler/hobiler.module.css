@@ -842,3 +842,25 @@
   background: var(--cizgi);
   color: var(--hata);
 }
+
+/* --- search in the list (Ctrl+F, issue #34) --------------------------------- */
+
+.ara {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b3) var(--b5);
+  border-bottom: 1px solid var(--cizgi);
+  background: var(--kart-hover);
+}
+
+.ara > :first-child {
+  flex: 1;
+}
+
+.araSayi {
+  padding-right: var(--b3);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+}

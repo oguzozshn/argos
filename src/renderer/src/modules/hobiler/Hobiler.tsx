@@ -6,12 +6,14 @@ import {
   LayoutGrid,
   List,
   Plus,
+  Search,
   SlidersHorizontal,
   Tags,
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { matches } from "@ortak/hobi-ara";
 import { bugunIso } from "@ortak/plan";
 import { grubaTasi, tasi } from "@ortak/siralama";
 import { Kisayollar } from "@/ui/Kisayollar";
@@ -191,6 +193,25 @@ function AlanEkrani({
   // Sürüklenen kayıt ve bırakılırsa nereye ineceği.
   const [suruklenen, setSuruklenen] = useState<string | null>(null);
   const [hedef, setHedef] = useState<Hedef | null>(null);
+  // Search in this list (issue #34): null = closed, "" = open and empty.
+  const [arama, setArama] = useState<string | null>(null);
+  const aramaKutusu = useRef<HTMLInputElement>(null);
+
+  // Ctrl+F opens the search box (or puts the cursor back in it). It only
+  // exists while a Hobiler list is on screen, so elsewhere Ctrl+F does nothing.
+  useEffect(() => {
+    const tus = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "f") return;
+      e.preventDefault();
+      setArama((x) => x ?? "");
+      requestAnimationFrame(() => {
+        aramaKutusu.current?.focus();
+        aramaKutusu.current?.select();
+      });
+    };
+    window.addEventListener("keydown", tus);
+    return () => window.removeEventListener("keydown", tus);
+  }, []);
 
   // Eski biçim (durumlar: string[]) burada yeni biçime çevrilir; ilk yazmada
   // diske de yeni biçim iner, eskisi .bak olarak kalır.
@@ -229,6 +250,10 @@ function AlanEkrani({
   const bilinmeyen = [
     ...new Set(veri.maddeler.map((m) => m.durum).filter((d) => !durumlar.some((x) => x.ad === d))),
   ].map((ad) => ({ ad, renk: durumRengi(durumlar, ad) }));
+
+  const aranan = arama?.trim() ?? "";
+  const gorunur = (m: Madde) => !aranan || matches(m, aranan);
+  const bulunan = aranan ? veri.maddeler.filter(gorunur).length : null;
 
   const kaydet = (yeniAlan: Alan) => void yaz(yeniAlan);
   const maddeleriKaydet = (maddeler: Madde[]) => kaydet({ ...veri, maddeler });
@@ -359,8 +384,10 @@ function AlanEkrani({
   };
 
   const grup = (d: { ad: string; renk: string }) => {
-    const grupMaddeleri = veri.maddeler.filter((m) => m.durum === d.ad);
-    const acik = !kapali.has(d.ad);
+    const grupMaddeleri = veri.maddeler.filter((m) => m.durum === d.ad && gorunur(m));
+    // While searching, only groups with a match show, and they show open.
+    if (aranan && grupMaddeleri.length === 0) return null;
+    const acik = aranan ? true : !kapali.has(d.ad);
 
     return (
       <section key={d.ad} className={s.grup}>
@@ -431,7 +458,7 @@ function AlanEkrani({
               </>
             )}
 
-            {ekleGrup === d.ad ? (
+            {aranan ? null : ekleGrup === d.ad ? (
               <div className={s.ekleSatir}>
                 <Giris
                   value={yeni}
@@ -473,7 +500,7 @@ function AlanEkrani({
 
   const panelVar = durumlarAcik || secili !== null;
   const kategoriListesi = tumKategoriler(veri.maddeler);
-  const kategoriGruplari = kategoriyeGoreGrupla(veri.maddeler);
+  const kategoriGruplari = kategoriyeGoreGrupla(veri.maddeler.filter(gorunur));
 
   /**
    * Üstten yeni kayıt: kartın başında, grup seçilerek. Önceden eklemek için
@@ -524,6 +551,16 @@ function AlanEkrani({
         }
         bas={
           <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+            <Dugme
+              tur={arama !== null ? "cizgili" : "sade"}
+              ikon={<Search size={15} />}
+              onClick={() => {
+                setArama((x) => (x === null ? "" : null));
+                requestAnimationFrame(() => aramaKutusu.current?.focus());
+              }}
+              title="Bu listede ara (Ctrl+F)"
+              aria-label="Bu listede ara"
+            />
             {yeniKayit && (
               <Dugme tur="dolu" ikon={<Plus size={15} />} onClick={yeniKayit} title="Yeni kayıt (N)">
                 Ekle
@@ -613,7 +650,30 @@ function AlanEkrani({
             />
           </div>
         )}
-        {gorunum === "kategori" ? (
+        {arama !== null && (
+          <div className={s.ara}>
+            <Giris
+              ref={aramaKutusu}
+              autoFocus
+              value={arama}
+              ikon={<Search size={15} />}
+              placeholder="Bu listede ara… (Esc kapatır)"
+              aria-label="Bu listede ara"
+              onChange={(e) => setArama(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setArama(null);
+                }
+              }}
+              sag={bulunan !== null ? <span className={s.araSayi}>{bulunan} sonuç</span> : undefined}
+            />
+            <Dugme tur="sade" ikon={<X size={15} />} onClick={() => setArama(null)} aria-label="Aramayı kapat" />
+          </div>
+        )}
+        {bulunan === 0 ? (
+          <p className={s.kategoriBos}>Sonuç yok</p>
+        ) : gorunum === "kategori" ? (
           <KategoriGorunumu
             gruplar={kategoriGruplari}
             durumlar={durumlar}
