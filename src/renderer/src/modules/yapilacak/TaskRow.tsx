@@ -25,9 +25,9 @@ import { dueLabel } from "@ortak/task-dates";
 import { ONEMLI_ETIKETI } from "@ortak/tipler";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
-import type { TaskBoard } from "./useTaskBoard";
+import type { TaskBoard } from "@/veri/task-board";
 import { PRIORITY_COLOR } from "@/ui/gorev/priority";
-import { MoveMenu } from "./MoveMenu";
+import { MoveMenu } from "@/ui/gorev/MoveMenu";
 import s from "./board.module.css";
 
 

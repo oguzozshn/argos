@@ -904,3 +904,23 @@
 .gorevKutusu {
   margin: var(--b2) calc(var(--b4) * -1) 0;
 }
+
+/* The task's name in the day list opens its detail panel (issue #52). */
+.gunSatirAc {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gunSatirAc:hover {
+  color: var(--vurgu);
+}

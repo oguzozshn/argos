@@ -7,9 +7,9 @@ import { BosDurum, Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { kopru } from "@/veri/kanca";
 import { Composer } from "@/ui/gorev/Composer";
 import { ListSidebar } from "./ListSidebar";
-import { TaskPanel } from "./TaskPanel";
+import { TaskPanel } from "@/ui/gorev/TaskPanel";
 import { TaskRow } from "./TaskRow";
-import { useTaskBoard, type TaskBoard } from "./useTaskBoard";
+import { useTaskBoard, type TaskBoard } from "@/veri/task-board";
 import s from "./board.module.css";
 
 /**

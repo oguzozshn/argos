@@ -3,7 +3,7 @@ import { useState } from "react";
 import { plain } from "@ortak/hobi-ara";
 import type { Task, TaskList } from "@ortak/task";
 import { MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
-import s from "./board.module.css";
+import s from "./gorev.module.css";
 
 /**
  * "Listeye taşı": every other list, Todoist projects and Argos lists alike
