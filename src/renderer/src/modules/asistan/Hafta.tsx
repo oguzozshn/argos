@@ -18,6 +18,7 @@ import {
   kaynakOzellikleri,
   useSurukle,
 } from "@/ui/surukle";
+import { YlHaftaKarti } from "./YuksekLisans";
 import s from "./hafta.module.css";
 
 /**
@@ -305,6 +306,8 @@ function HaftaIcerik({
               ))}
             </div>
           )}
+
+          {veri.gunler[0]?.isoTarih && <YlHaftaKarti bas={veri.gunler[0].isoTarih} />}
 
           <Kart dolgulu={false}>
             <div className={s.bilgi}>
