@@ -929,3 +929,17 @@
   color: var(--uyari);
   font-weight: var(--sik-orta);
 }
+
+/* --- reordering the lists (issue #37) ----------------------------------------- */
+
+.alanBag[data-hedef="once"] {
+  box-shadow: inset 0 2px 0 var(--vurgu);
+}
+
+.alanBag[data-hedef="sonra"] {
+  box-shadow: inset 0 -2px 0 var(--vurgu);
+}
+
+.alanBag[data-suruklenen] {
+  opacity: 0.45;
+}

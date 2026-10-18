@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { existingMatches, matches } from "@ortak/hobi-ara";
+import { HOBI_SIRA_PATH, moveList, normalizeSira, orderLists, stepList, type HobiSira } from "@ortak/hobi-sira";
 import { bugunIso } from "@ortak/plan";
 import { grubaTasi, tasi } from "@ortak/siralama";
 import { Kisayollar } from "@/ui/Kisayollar";
@@ -49,13 +50,27 @@ function AlanListesi({
   secili,
   onSec,
   onEkle,
+  onSirala,
 }: {
   alanlar: { slug: string; ad: string; adet: number }[];
   secili: string | null;
   onSec: (slug: string) => void;
   onEkle: (slug: string, alan: Alan) => Promise<boolean>;
+  /** The new order of the lists, as slugs (issue #37). */
+  onSirala: (sira: string[]) => void;
 }) {
   const [acik, setAcik] = useState(false);
+  // The list being dragged, and where it would land.
+  const [suruklenen, setSuruklenen] = useState<string | null>(null);
+  const [hedef, setHedef] = useState<{ slug: string; once: boolean } | null>(null);
+  const sirasi = alanlar.map((a) => a.slug);
+  const sirala = (yeni: string[]) => {
+    if (yeni.join("\n") !== sirasi.join("\n")) onSirala(yeni);
+  };
+  const bitir = () => {
+    setSuruklenen(null);
+    setHedef(null);
+  };
   const [ad, setAd] = useState("");
   const [sablonId, setSablonId] = useState(SABLONLAR[0]!.id);
   const [hata, setHata] = useState<string | null>(null);
@@ -93,6 +108,35 @@ function AlanListesi({
           type="button"
           className={a.slug === secili ? `${s.alanBag} ${s.alanEtkin}` : s.alanBag}
           onClick={() => onSec(a.slug)}
+          title="Sürükleyerek sırala · Alt + ↑/↓"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", a.slug);
+            setSuruklenen(a.slug);
+          }}
+          onDragOver={(e) => {
+            // Only a list being dragged lands here, not an entry from the list on the right.
+            if (!suruklenen) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            const r = e.currentTarget.getBoundingClientRect();
+            const once = e.clientY < r.top + r.height / 2;
+            if (hedef?.slug !== a.slug || hedef.once !== once) setHedef({ slug: a.slug, once });
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (suruklenen && hedef) sirala(moveList(sirasi, suruklenen, hedef.slug, hedef.once));
+            bitir();
+          }}
+          onDragEnd={bitir}
+          onKeyDown={(e) => {
+            if (!e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+            e.preventDefault();
+            sirala(stepList(sirasi, a.slug, e.key === "ArrowUp"));
+          }}
+          data-suruklenen={a.slug === suruklenen || undefined}
+          data-hedef={hedef?.slug === a.slug && a.slug !== suruklenen ? (hedef.once ? "once" : "sonra") : undefined}
         >
           <span className={s.alanAd}>{a.ad}</span>
           <span className={s.alanSayi}>{a.adet}</span>
@@ -761,8 +805,13 @@ function MevcutKayitlar({
 /* --- modül ekranı ------------------------------------------------------ */
 
 export function Hobiler() {
-  const { alanlar, yukleniyor, alanEkle, alanSil } = useAlanlar();
+  const { alanlar: dosyaSirasi, yukleniyor, alanEkle, alanSil } = useAlanlar();
   const [secili, setSecili] = useState<string | null>(null);
+  // The order chosen by dragging (issue #37); lists it does not know follow in file-name order.
+  const siraDosyasi = useDosya<HobiSira>(HOBI_SIRA_PATH);
+  const sira = normalizeSira(siraDosyasi.veri);
+  const siraAnahtari = sira.join("\n");
+  const alanlar = useMemo(() => orderLists(dosyaSirasi, sira), [dosyaSirasi, siraAnahtari]);
 
   useEffect(() => {
     if (alanlar.length === 0) setSecili(null);
@@ -825,6 +874,7 @@ export function Hobiler() {
               secili={secili}
               onSec={setSecili}
               onEkle={alanEkle}
+              onSirala={(yeni) => void siraDosyasi.yaz({ version: 1, sira: yeni })}
             />
           }
         />
