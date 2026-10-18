@@ -32,11 +32,28 @@ function ayinGununde(iso: string, gun: number): string {
 
 const sonrakiAy = (iso: string): string => ayEkle(`${iso.slice(0, 7)}-01`, 1);
 
+const yillik = (kural: Duzenli): boolean => kural.periyot === "yillik";
+
+/** The rule's day in the given year: its month, its day clamped to that month (Feb 29 → 28). */
+function yilinGununde(yil: number, kural: Duzenli): string {
+  const ay = Math.min(12, Math.max(1, Math.trunc(kural.ay ?? ayAl(kural.baslangic))));
+  const g = Math.min(Math.max(1, Math.trunc(kural.ayinGunu)), ayGunSayisi(yil, ay));
+  return `${yil}-${String(ay).padStart(2, "0")}-${String(g).padStart(2, "0")}`;
+}
+
 /** Kuralın `tarihten` itibaren ilk çalışacağı gün; bittiyse null. */
 export function sonrakiTekrar(kural: Duzenli, tarihten: string): string | null {
   if (kural.durdu) return null;
 
   const capa = tarihten < kural.baslangic ? kural.baslangic : tarihten;
+
+  // A yearly rule (subscriptions, issue #43) moves a year at a time.
+  if (yillik(kural)) {
+    let aday = yilinGununde(yilAl(capa), kural);
+    if (aday < capa) aday = yilinGununde(yilAl(capa) + 1, kural);
+    if (aday < kural.baslangic) aday = yilinGununde(yilAl(aday) + 1, kural);
+    return kural.bitis && aday > kural.bitis ? null : aday;
+  }
 
   let aday = ayinGununde(capa, kural.ayinGunu);
   if (aday < capa) aday = ayinGununde(sonrakiAy(capa), kural.ayinGunu);
@@ -49,7 +66,7 @@ export function sonrakiTekrar(kural: Duzenli, tarihten: string): string | null {
 export function tekSeferlik(kural: Duzenli): boolean {
   if (!kural.bitis) return false;
   const ilk = sonrakiTekrar(kural, kural.baslangic);
-  return ilk !== null && kural.bitis < ayEkle(ilk, 1);
+  return ilk !== null && kural.bitis < ayEkle(ilk, yillik(kural) ? 12 : 1);
 }
 
 /**
@@ -149,4 +166,19 @@ export function duzenlemeyeUyarla(
     }
   }
   return sonuc;
+}
+
+/* --- subscriptions (issue #43) ------------------------------------------------ */
+
+/** What a rule costs per month: a yearly one is spread over twelve. */
+export const aylikKarsilik = (kural: Duzenli): number => (yillik(kural) ? kural.kurus / 12 : kural.kurus);
+
+/**
+ * Totals of the subscriptions still running on `bugun` (not paused, not
+ * ended), in kuruş: per month (yearly ones spread) and per year.
+ */
+export function abonelikToplami(kurallar: Duzenli[], bugun: string): { aylik: number; yillik: number; adet: number } {
+  const suren = kurallar.filter((k) => k.abonelik && !k.durdu && sonrakiTekrar(k, bugun) !== null);
+  const aylik = suren.reduce((t, k) => t + aylikKarsilik(k), 0);
+  return { aylik: Math.round(aylik), yillik: Math.round(aylik * 12), adet: suren.length };
 }

@@ -102,8 +102,9 @@ export function Duzenli() {
     );
   }
 
+  // Subscriptions have their own screen (Abonelikler, issue #43).
   const sirali = tanimlar.duzenliler
-    .slice()
+    .filter((d) => !d.abonelik)
     .sort((a, b) =>
       a.durdu !== b.durdu ? (a.durdu ? 1 : -1) : a.ayinGunu !== b.ayinGunu ? a.ayinGunu - b.ayinGunu : a.ad.localeCompare(b.ad, "tr"),
     );
@@ -148,7 +149,7 @@ export function Duzenli() {
           {sirali.length === 0 ? (
             <BosDurum
               baslik="Kural yok"
-              metin="Kira, abonelik ya da maaş gibi her ay tekrar eden kalemleri buraya yazınca defter kendi kendine dolar."
+              metin="Kira, fatura ya da maaş gibi her ay tekrar eden kalemleri buraya yazınca defter kendi kendine dolar."
             />
           ) : (
             <div className={s.satirlar}>

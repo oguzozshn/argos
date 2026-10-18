@@ -103,6 +103,12 @@ export interface Duzenli {
    * yeniden yazılırdı.
    */
   atlananlar?: string[];
+  /** A subscription (issue #43): listed under Abonelikler, not Düzenli. Absent on older rules. */
+  abonelik?: boolean;
+  /** "yillik": once a year, on `ayinGunu` of month `ay`. Absent: every month. */
+  periyot?: "aylik" | "yillik";
+  /** 1-12, the month of a yearly rule. */
+  ay?: number;
 }
 
 export interface Ayarlar {

@@ -146,6 +146,9 @@ export function normalizeTanimlar(ham: unknown): Tanimlar {
       ...(Array.isArray(d.atlananlar)
         ? { atlananlar: d.atlananlar.filter((x): x is string => typeof x === "string") }
         : {}),
+      // Subscriptions (issue #43); absent on older rules, which stay monthly Düzenli rules.
+      ...(d.abonelik === true ? { abonelik: true } : {}),
+      ...(d.periyot === "yillik" ? { periyot: "yillik" as const, ay: Math.min(12, Math.max(1, Math.trunc(sayi(d.ay, 1)))) } : {}),
     };
   });
 
