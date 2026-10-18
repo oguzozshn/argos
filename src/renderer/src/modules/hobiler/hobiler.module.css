@@ -943,3 +943,26 @@
 .alanBag[data-suruklenen] {
   opacity: 0.45;
 }
+
+/* --- Bugün card of one list ---------------------------------------------------- */
+
+.kartGrup {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b3) var(--b6) var(--b1);
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-soluk);
+}
+
+.kartGrupSayi {
+  font-weight: var(--sik-normal);
+}
+
+.kartDaha,
+.kartBos {
+  padding: var(--b2) var(--b6) var(--b4);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}

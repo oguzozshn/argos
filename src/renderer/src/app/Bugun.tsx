@@ -1,4 +1,4 @@
-import { Check, LayoutGrid, Pencil, Plus, RotateCcw, X } from "lucide-react";
+import { Check, LayoutGrid, Pencil, Plus, RotateCcw, Settings2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent } from "react";
 import ReactGridLayout, { useContainerWidth, type Layout } from "react-grid-layout";
 import { GridBackground } from "react-grid-layout/extras";
@@ -11,6 +11,7 @@ import {
   KOLON,
   altSinir,
   ayniDuzen,
+  kartAyarla,
   kartEkle,
   kartKaldir,
   normalizeDuzen,
@@ -18,11 +19,12 @@ import {
   sinirla,
   varsayilanDuzen,
   type BugunDuzen,
+  type KartAyari,
   type KartYeri,
 } from "@ortak/bugun-duzen";
-import { moduller } from "@/modules";
+import { moduller, type KartAyarTanimi } from "@/modules";
 import { BosDurum, Dugme, EkranBasi } from "@/ui/bilesenler";
-import { MenuItem, Popover } from "@/ui/Popover";
+import { MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
 import { useDosya } from "@/veri/kanca";
 import { HataSiniri } from "./HataSiniri";
 import s from "./bugun.module.css";
@@ -39,23 +41,85 @@ const ARA: [number, number] = [16, 16];
 /** Below this width the cards stack in reading order and the layout cannot be edited. */
 const DAR = 760;
 
+/** A card type, as this screen uses it. */
 interface Kart {
+  /** "<module>:<kind>". */
   id: string;
   ad: string;
   ust: boolean;
+  /** Can be added more than once, each copy with its own settings. */
+  coklu: boolean;
   modulAd: string;
-  Bilesen: ComponentType;
+  Bilesen: ComponentType<{ ayar: KartAyari }>;
+  ayarlar?: KartAyarTanimi[];
+  w?: number;
+  h?: number;
 }
 
-/** Every card the modules offer: their always-visible strips and their summary cards. */
+/** A module's `Ozet`/`Ust` component as a card type: one of a kind, no settings. */
+const tekil = (C: ComponentType): ComponentType<{ ayar: KartAyari }> => {
+  const Sar = () => <C />;
+  Sar.displayName = C.displayName ?? C.name;
+  return Sar;
+};
+
+/** Every card type the modules offer: strips, summary cards, and the card types with settings. */
 const KARTLAR: Kart[] = [
   ...moduller
     .filter((m) => m.Ust)
-    .map((m) => ({ id: `${m.id}:ust`, ad: m.ustAd ?? m.ad, ust: true, modulAd: m.ad, Bilesen: m.Ust! })),
+    .map((m) => ({ id: `${m.id}:ust`, ad: m.ustAd ?? m.ad, ust: true, coklu: false, modulAd: m.ad, Bilesen: tekil(m.Ust!) })),
   ...moduller
     .filter((m) => m.Ozet)
-    .map((m) => ({ id: `${m.id}:ozet`, ad: m.ozetAd ?? m.ad, ust: false, modulAd: m.ad, Bilesen: m.Ozet! })),
+    .map((m) => ({ id: `${m.id}:ozet`, ad: m.ozetAd ?? m.ad, ust: false, coklu: false, modulAd: m.ad, Bilesen: tekil(m.Ozet!) })),
+  ...moduller.flatMap((m) =>
+    (m.kartlar ?? []).map((t) => ({
+      id: `${m.id}:${t.id}`,
+      ad: t.ad,
+      ust: false,
+      coklu: true,
+      modulAd: m.ad,
+      Bilesen: t.Bilesen,
+      ayarlar: t.ayarlar,
+      w: t.w,
+      h: t.h,
+    })),
+  ),
 ];
+
+/** A copy's id: unique, and readable in the layout file. */
+const kopyaId = (tur: string): string => `${tur}#${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+
+/** A card's settings menu: each setting's choices, the current one marked. */
+function AyarMenusu({ kart, ayar, onSec }: { kart: Kart; ayar: KartAyari; onSec: (ayar: KartAyari) => void }) {
+  return (
+    <>
+      {(kart.ayarlar ?? []).map((t, i) => (
+        <AyarSecimi key={t.anahtar} tanim={t} ilk={i === 0} secili={ayar[t.anahtar]} onSec={(deger) => onSec({ ...ayar, [t.anahtar]: deger })} />
+      ))}
+    </>
+  );
+}
+
+function AyarSecimi({ tanim, ilk, secili, onSec }: { tanim: KartAyarTanimi; ilk: boolean; secili?: string; onSec: (deger: string) => void }) {
+  const secenekler = tanim.useSecenekler();
+  // A setting not chosen yet shows the first choice as current: that is what the card falls back to.
+  const gecerli = secenekler.some((x) => x.deger === secili) ? secili : secenekler[0]?.deger;
+  return (
+    <>
+      {!ilk && <MenuSeparator />}
+      <MenuLabel>{tanim.ad}</MenuLabel>
+      {secenekler.length === 0 ? (
+        <MenuLabel>Seçenek yok</MenuLabel>
+      ) : (
+        secenekler.map((x) => (
+          <MenuItem key={x.deger} active={x.deger === gecerli} onSelect={() => onSec(x.deger)}>
+            {x.ad}
+          </MenuItem>
+        ))
+      )}
+    </>
+  );
+}
 
 /**
  * Cards that render nothing right now (no important dates, no plan…), kept
@@ -101,15 +165,23 @@ export function Bugun() {
   const dosya = useDosya<BugunDuzen>(BUGUN_DUZEN_PATH);
   const [duzenleniyor, setDuzenleniyor] = useState(false);
   const [ekleMenusu, setEkleMenusu] = useState<{ x: number; y: number } | null>(null);
+  const [ayarMenusu, setAyarMenusu] = useState<{ id: string; x: number; y: number } | null>(null);
   const { width, containerRef, mounted } = useContainerWidth();
   const [bos, bagla] = useBosKartlar();
-  // Stable per card, so a re-render does not re-attach every observer.
-  const baglar = useMemo(() => new Map(KARTLAR.map((k) => [k.id, bagla(k.id)])), [bagla]);
+  // Stable per card copy, so a re-render does not re-attach every observer.
+  const baglar = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
+  const baglayici = (id: string) => {
+    let f = baglar.current.get(id);
+    if (!f) baglar.current.set(id, (f = bagla(id)));
+    return f;
+  };
 
   const kayitli = useMemo(() => normalizeDuzen(dosya.veri, KARTLAR.map((k) => k.id)), [dosya.veri]);
   const duzen = kayitli ?? varsayilanDuzen(KARTLAR);
   const ekrandakiler = new Set(duzen.map((k) => k.id));
-  const eklenebilir = KARTLAR.filter((k) => !ekrandakiler.has(k.id));
+  const ekrandakiTurler = new Set(duzen.map((k) => k.tur));
+  // Copies can always be added; a one-of-a-kind card only when it is not on the screen.
+  const eklenebilir = KARTLAR.filter((k) => k.coklu || !ekrandakiTurler.has(k.id));
   const dar = mounted && width < DAR;
 
   const kaydet = (yeni: KartYeri[]) => {
@@ -119,16 +191,21 @@ export function Bugun() {
 
   /** The grid's layout after a drag or resize; only cards it knows, kept inside the grid. */
   const izgaradan = (layout: Layout): KartYeri[] =>
-    layout.filter((l) => ekrandakiler.has(l.i)).map((l) => ({ id: l.i, x: l.x, y: l.y, w: l.w, h: l.h }));
+    duzen
+      .map((k) => {
+        const l = layout.find((x) => x.i === k.id);
+        return l ? { ...k, x: l.x, y: l.y, w: l.w, h: l.h } : k;
+      })
+      .filter((k) => ekrandakiler.has(k.id));
 
   const ekleAc = (e: MouseEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
     setEkleMenusu({ x: r.left, y: r.bottom + 4 });
   };
 
-  const kart = (k: Kart) => (
-    <HataSiniri ad={k.modulAd}>
-      <k.Bilesen />
+  const kart = (t: Kart, yer: KartYeri) => (
+    <HataSiniri ad={t.modulAd}>
+      <t.Bilesen ayar={yer.ayar ?? {}} />
     </HataSiniri>
   );
 
@@ -145,7 +222,7 @@ export function Bugun() {
     );
   }
 
-  const tanim = (id: string) => KARTLAR.find((k) => k.id === id)!;
+  const tanim = (tur: string) => KARTLAR.find((k) => k.id === tur)!;
 
   return (
     <>
@@ -197,7 +274,7 @@ export function Bugun() {
           // Too narrow for twelve columns: the cards one under another, in the layout's reading order.
           <div className={s.dizi}>
             {okumaSirasi(duzen).map((k) => (
-              <div key={k.id}>{kart(tanim(k.id))}</div>
+              <div key={k.id}>{kart(tanim(k.tur), k)}</div>
             ))}
           </div>
         ) : (
@@ -236,11 +313,11 @@ export function Bugun() {
                 onResizeStop={(layout) => kaydet(izgaradan(layout))}
               >
                 {duzen.map((k) => {
-                  const t = tanim(k.id);
+                  const t = tanim(k.tur);
                   return (
                     <div key={k.id} className={s.oge}>
-                      <div className={s.icerik} ref={baglar.get(k.id)}>
-                        {kart(t)}
+                      <div className={s.icerik} ref={baglayici(k.id)}>
+                        {kart(t, k)}
                       </div>
                       {duzenleniyor && (
                         // Over the card while editing: the whole card is the handle, and its links do not fire.
@@ -249,6 +326,21 @@ export function Bugun() {
                             {t.ad}
                             {bos.has(k.id) ? " · şu an boş" : ""}
                           </span>
+                          <span className={s.katmanEylem}>
+                          {t.ayarlar?.length ? (
+                            <button
+                              type="button"
+                              className={s.kaldir}
+                              onClick={(e) => {
+                                const r = e.currentTarget.getBoundingClientRect();
+                                setAyarMenusu({ id: k.id, x: r.left, y: r.bottom + 4 });
+                              }}
+                              aria-label={`${t.ad} kartının ayarları`}
+                              title="Ayarlar"
+                            >
+                              <Settings2 size={14} />
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             className={s.kaldir}
@@ -258,6 +350,7 @@ export function Bugun() {
                           >
                             <X size={14} />
                           </button>
+                          </span>
                         </div>
                       )}
                     </div>
@@ -269,19 +362,45 @@ export function Bugun() {
         )}
       </div>
 
+      {ayarMenusu &&
+        (() => {
+          const yer = duzen.find((k) => k.id === ayarMenusu.id);
+          if (!yer) return null;
+          return (
+            <Popover x={ayarMenusu.x} y={ayarMenusu.y} onClose={() => setAyarMenusu(null)} label="Kart ayarları">
+              <AyarMenusu
+                kart={tanim(yer.tur)}
+                ayar={yer.ayar ?? {}}
+                onSec={(ayar) => {
+                  kaydet(kartAyarla(duzen, yer.id, ayar));
+                  setAyarMenusu(null);
+                }}
+              />
+            </Popover>
+          );
+        })()}
+
       {ekleMenusu && (
         <Popover x={ekleMenusu.x} y={ekleMenusu.y} onClose={() => setEkleMenusu(null)} label="Kart ekle">
-          {eklenebilir.map((k) => (
-            <MenuItem
-              key={k.id}
-              icon={<Plus size={15} />}
-              onSelect={() => {
-                kaydet(kartEkle(duzen, k));
-                setEkleMenusu(null);
-              }}
-            >
-              {k.ad}
-            </MenuItem>
+          {[...new Set(eklenebilir.map((k) => k.modulAd))].map((modul, i) => (
+            <div key={modul}>
+              {i > 0 && <MenuSeparator />}
+              <MenuLabel>{modul}</MenuLabel>
+              {eklenebilir
+                .filter((k) => k.modulAd === modul)
+                .map((k) => (
+                  <MenuItem
+                    key={k.id}
+                    icon={<Plus size={15} />}
+                    onSelect={() => {
+                      kaydet(kartEkle(duzen, k, k.coklu ? kopyaId(k.id) : undefined));
+                      setEkleMenusu(null);
+                    }}
+                  >
+                    {k.ad}
+                  </MenuItem>
+                ))}
+            </div>
           ))}
         </Popover>
       )}

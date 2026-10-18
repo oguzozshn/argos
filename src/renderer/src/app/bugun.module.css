@@ -78,8 +78,13 @@
   font-weight: var(--sik-kalin);
 }
 
-.kaldir {
+.katmanEylem {
   align-self: flex-start;
+  display: flex;
+  gap: 6px;
+}
+
+.kaldir {
   display: flex;
   align-items: center;
   justify-content: center;
