@@ -2,6 +2,7 @@ import { Gamepad2 } from "lucide-react";
 import type { Modul } from "@/modules";
 import { Hobiler } from "./Hobiler";
 import { HobilerOzet } from "./Ozet";
+import { hobiListeKarti } from "./ListeKarti";
 
 export const hobilerModulu: Modul = {
   id: "hobiler",
@@ -10,4 +11,5 @@ export const hobilerModulu: Modul = {
   rotalar: [{ yol: "", ad: "Listeler", Ekran: Hobiler }],
   Ozet: HobilerOzet,
   ozetAd: "Şu an (Hobiler)",
+  kartlar: [hobiListeKarti],
 };

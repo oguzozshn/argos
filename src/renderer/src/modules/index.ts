@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { KartAyari } from "@ortak/bugun-duzen";
 import type { LucideIcon } from "lucide-react";
 
 /**
@@ -49,6 +50,37 @@ export interface Komut {
   calistir: (arguman: string, o: KomutOrtami) => Promise<string | void> | string | void;
 }
 
+/** One choice of a card setting: a list, a period… */
+export interface KartSecenegi {
+  deger: string;
+  ad: string;
+}
+
+/** A setting of a card type, with its choices read live (the lists that exist now). */
+export interface KartAyarTanimi {
+  anahtar: string;
+  ad: string;
+  useSecenekler: () => KartSecenegi[];
+}
+
+/**
+ * A card type a module offers on Bugün besides its `Ozet`/`Ust` cards. It
+ * can be added more than once, each copy with its own settings; a card
+ * whose setting is not chosen yet (or points to something deleted) falls
+ * back to the first choice.
+ */
+export interface KartTuru {
+  /** Within the module: "liste" is the type "hobiler:liste". */
+  id: string;
+  /** Name in the "Kart ekle" menu. */
+  ad: string;
+  Bilesen: ComponentType<{ ayar: KartAyari }>;
+  ayarlar?: KartAyarTanimi[];
+  /** Size of a new copy, in grid columns and rows. */
+  w?: number;
+  h?: number;
+}
+
 export interface Modul {
   id: string;
   ad: string;
@@ -71,6 +103,8 @@ export interface Modul {
   ozetAd?: string;
   /** Same for the `Ust` card. */
   ustAd?: string;
+  /** More card types for Bugün, each addable more than once with its own settings. */
+  kartlar?: KartTuru[];
   /**
    * Bugün ekranında ızgaranın üstünde, tam genişlikte duran kart. Her an
    * görünmesi gereken şeyler için (önemli tarihlerin geri sayımı); modül
