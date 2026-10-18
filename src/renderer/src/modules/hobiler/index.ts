@@ -9,4 +9,5 @@ export const hobilerModulu: Modul = {
   ikon: Gamepad2,
   rotalar: [{ yol: "", ad: "Listeler", Ekran: Hobiler }],
   Ozet: HobilerOzet,
+  ozetAd: "Şu an (Hobiler)",
 };

@@ -28,4 +28,5 @@ export const harcamaModulu: Modul = {
     { yol: "ayarlar", ad: "Ayarlar", Ekran: Ayarlar },
   ],
   Ozet: HarcamaOzet,
+  ozetAd: "Harcama özeti",
 };

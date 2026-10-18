@@ -67,6 +67,10 @@ export interface Modul {
   genis?: boolean;
   /** Bugün ekranında görünecek kart. Modül isterse vermez. */
   Ozet?: ComponentType;
+  /** The card's name in Bugün's "Kart ekle" menu; the module name when absent. */
+  ozetAd?: string;
+  /** Same for the `Ust` card. */
+  ustAd?: string;
   /**
    * Bugün ekranında ızgaranın üstünde, tam genişlikte duran kart. Her an
    * görünmesi gereken şeyler için (önemli tarihlerin geri sayımı); modül

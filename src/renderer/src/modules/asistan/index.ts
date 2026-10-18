@@ -30,6 +30,7 @@ export const asistanModulu: Modul = {
     { yol: "roadmap", ad: "Yol haritaları", Ekran: YolHaritalari },
   ],
   Ozet: AsistanOzet,
+  ozetAd: "Bugünün planı · Aklında tut",
   komutlar: asistanKomutlari,
   ArkaPlan: OdakArkaPlan,
 };
