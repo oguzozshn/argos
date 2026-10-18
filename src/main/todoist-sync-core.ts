@@ -148,6 +148,8 @@ const BATCH = 50;
 export interface FlushResult {
   sync: SyncResult;
   sent: number;
+  /** Tasks added offline that Todoist named in this send. */
+  named: number;
   rejected: { command: OutboxCommand; error: string }[];
 }
 
@@ -162,18 +164,20 @@ export async function flushAndSync(root: string, api: OutboxApi, now: string): P
   const { outbox } = await readOutbox(root);
   const batch = outbox.commands.slice(0, BATCH);
   let statuses: Record<string, CommandStatus> = {};
+  let named = 0;
   if (batch.length > 0) {
     const res = await api.send(batch.map((c) => wireCommand(outbox, c)));
     statuses = res.sync_status ?? {};
     const mapping = res.temp_id_mapping ?? {};
-    if (Object.keys(mapping).length > 0) {
+    named = Object.keys(mapping).length;
+    if (named > 0) {
       await changeOutbox(root, (o) => ({ ...o, tempIds: { ...o.tempIds, ...mapping } }));
       await rekeyReminders(root, mapping);
     }
   }
 
   const sync = await syncOnce(root, api, now);
-  if (batch.length === 0) return { sync, sent: 0, rejected: [] };
+  if (batch.length === 0) return { sync, sent: 0, named: 0, rejected: [] };
 
   let rejected: FlushResult["rejected"] = [];
   await changeOutbox(root, (o) => {
@@ -190,7 +194,7 @@ export async function flushAndSync(root: string, api: OutboxApi, now: string): P
     await writeMirror(root, cancelDeletion(m.mirror, refusedDeletes), m.mtime);
   }
   const sent = batch.filter((c) => statuses[c.uuid] === "ok").length;
-  return { sync: { ...sync, changed: sync.changed || sent > 0 || rejected.length > 0 }, sent, rejected };
+  return { sync: { ...sync, changed: sync.changed || sent > 0 || rejected.length > 0 }, sent, named, rejected };
 }
 
 /** Argos's reminders on a task added offline follow it to its Todoist id. */
