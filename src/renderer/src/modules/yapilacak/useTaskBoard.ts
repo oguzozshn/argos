@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { todoistTarihi } from "@ortak/gorev-zaman";
 import {
   addList,
-  addTask,
   deleteList,
   deleteTask,
   newLocalId,
@@ -39,6 +38,7 @@ import { bildir, deferWithUndo, silVeBildir } from "@/ui/toast";
 import { kopru, useBugun } from "@/veri/kanca";
 import { completeLocalWithUndo, useLocalTasks } from "@/veri/local-tasks";
 import { useTodoistReminders } from "@/veri/reminders";
+import { createTaskIn, type NewTaskInput } from "@/veri/task-create";
 
 /**
  * Everything the task screen needs: Todoist projects and tasks, Argos-local
@@ -50,15 +50,6 @@ import { useTodoistReminders } from "@/veri/reminders";
 const message = (e: unknown) =>
   (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (\w+: )?/, "");
 const fail = (text: string) => (e: unknown) => bildir({ metin: `${text} ${message(e)}`, tur: "hata" });
-
-export interface NewTaskInput {
-  title: string;
-  description?: string;
-  schedule: Schedule | null;
-  priority: Priority;
-  important: boolean;
-  reminders?: Reminder[];
-}
 
 /** Todoist keeps the due string as typed, which may be Turkish; the API needs English. */
 const englishDue = (s: string): string => (/^every\b/i.test(s.trim()) ? s : (turkceTarihCevir(s) ?? s));
@@ -393,55 +384,11 @@ export function useTaskBoard() {
   };
 
   /** Creates a task in a list of either source. Resolves true on success. */
+  /** Adds through the add box's shared create (veri/task-create.ts); a Todoist task shows here at once. */
   const createTask = async (list: TaskList, input: NewTaskInput): Promise<boolean> => {
-    const title = input.title.trim();
-    if (!title) return false;
-    const sched = input.schedule;
-    if (list.source === "local") {
-      return changeTasks((f) =>
-        addTask(
-          f,
-          {
-            listId: list.id,
-            title,
-            description: input.description,
-            due: sched?.date ? (sched.time ? `${sched.date}T${sched.time}` : sched.date) : null,
-            recurrence: sched?.repeat.kind === "rule" ? sched.repeat.rule : null,
-            priority: input.priority,
-            important: input.important,
-            reminders: input.reminders,
-          },
-          newLocalId("t"),
-          new Date().toISOString(),
-        ),
-      );
-    }
-    const k = kopru();
-    if (!k) return false;
-    try {
-      const created = await k.todoist.ekle({
-        icerik: title,
-        projeId: list.id,
-        tarihMetni: sched ? (todoistDueText(null, sched) ?? undefined) : undefined,
-        oncelik: input.priority < 4 ? priorityToTodoist(input.priority) : undefined,
-        description: input.description,
-        labels: input.important ? [ONEMLI_ETIKETI] : undefined,
-      });
-      setTodoTasks((all) => [...all, created]);
-      if (input.reminders?.length) {
-        await reminders.change((f) =>
-          setTodoistReminders(f, created.id, {
-            title: created.icerik,
-            due: created.tarih ? created.tarih.slice(0, 16) : null,
-            reminders: input.reminders!,
-          }),
-        );
-      }
-      return true;
-    } catch (e) {
-      fail("Görev eklenemedi.")(e);
-      return false;
-    }
+    const created = await createTaskIn(list, input, { changeTasks, changeReminders: reminders.change });
+    if (created && created !== true) setTodoTasks((all) => [...all, created]);
+    return created !== false;
   };
 
   /** Replaces a task's reminders (either source). */

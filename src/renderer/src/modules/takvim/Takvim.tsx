@@ -1,13 +1,13 @@
-import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, Plus, RefreshCw, Repeat, X } from "lucide-react";
+import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, Plus, RefreshCw, X } from "lucide-react";
 import type { Uygulama } from "@ortak/bot";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu, saatAyikla } from "@ortak/gun";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
 import { dakika, gununSlotlari, kuralSetiTamamla, type KuralSeti } from "@ortak/kural";
 import { gunBosalt, gunTipi, slotEkle, slotuYerlestir, type BosaltRaporu } from "@ortak/plan-islem";
+import type { TaskList } from "@ortak/task";
 import type { TodoistGorev } from "@ortak/tipler";
-import { tekrarAdi, type TekrarTuru } from "@ortak/todoist-tarih";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { SlotPaneli } from "@/ui/SlotPaneli";
@@ -23,6 +23,8 @@ import { dosyayiGuncelle } from "@/veri/guncelle";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
+import { useTaskComposerTarget, type NewTaskInput, type TaskComposerTarget } from "@/veri/task-create";
+import { Composer } from "@/ui/gorev/Composer";
 import {
   birakmayiCoz,
   dakikaMetni,
@@ -412,6 +414,19 @@ export function Takvim() {
 
   // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
   const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1));
+  const gorevHedefi = useTaskComposerTarget();
+  const { tazele: tdTazele } = td;
+  const ekleHost = useMemo(
+    () => ({
+      ...gorevHedefi,
+      createTask: async (list: TaskList, input: NewTaskInput) => {
+        const ok = await gorevHedefi.createTask(list, input);
+        if (ok) void tdTazele();
+        return ok;
+      },
+    }),
+    [gorevHedefi, tdTazele],
+  );
 
   // Anahtar hedefe göre değişiyor: "gün", "günTsaat" ya da "gün#gunboyu".
   // Ay hücresi günü değiştirir ve saati korur; eksen saat verir; gün boyu
@@ -735,7 +750,7 @@ export function Takvim() {
             kurallar={kuralSeti}
             gorevler={td.gunlere.get(secili) ?? []}
             onGorevKapat={td.kapat}
-            onGorevEkle={td.ekle}
+            ekleHost={ekleHost}
             surukle={surukle}
             seciliSlot={seciliSlot}
             onSlotSec={setSeciliSlot}
@@ -746,7 +761,7 @@ export function Takvim() {
             iso={secili}
             gorevler={td.gunlere.get(secili) ?? []}
             onGorevKapat={td.kapat}
-            onGorevEkle={td.ekle}
+            ekleHost={ekleHost}
             surukle={surukle}
           />
         )}
@@ -1249,105 +1264,26 @@ function GunListesi({
  * Listenin sonundaki ekleme satırı. Görev Inbox'a gider: `Gelişim Planı`
  * slotların projesi, kişisel görev oraya yazılmaz.
  */
-type GorevEkleFn = (iso: string, icerik: string, saat?: string | null, tekrar?: TekrarTuru | null) => Promise<boolean>;
-
-const TEKRARLAR: TekrarTuru[] = ["gun", "haftaIci", "hafta", "ay", "yil"];
-
-function GorevEkle({ iso, onEkle }: { iso: string; onEkle: GorevEkleFn }) {
-  const [metin, setMetin] = useState("");
-  const [tekrar, setTekrar] = useState<TekrarTuru | null>(null);
-  const [secici, setSecici] = useState(false);
-  const [gonderiliyor, setGonderiliyor] = useState(false);
-  const girdi = useRef<HTMLInputElement>(null);
-  // Saat metnin içinden çıkar: dar panelde ayrı bir saat kutusu hem yer yiyor
-  // hem de tarayıcının kendi çizimiyle geliyordu.
-  const { icerik, saat } = saatAyikla(metin);
-
-  // Başka güne geçilince seçili tekrar taşınmasın: "her Cumartesi" o günün adıydı.
-  useEffect(() => {
-    setTekrar(null);
-    setSecici(false);
-  }, [iso]);
-
-  const gonder = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!icerik || gonderiliyor) return;
-    setGonderiliyor(true);
-    // Eklenemediyse yazılan metin kaybolmasın; hata üstte gösteriliyor.
-    if (await onEkle(iso, icerik, saat, tekrar)) {
-      setMetin("");
-      setTekrar(null);
-    }
-    setGonderiliyor(false);
-    girdi.current?.focus();
-  };
-
-  const sec = (x: TekrarTuru | null) => {
-    setTekrar(x);
-    setSecici(false);
-    girdi.current?.focus();
-  };
-
-  return (
-    <div className={s.gorevEkleSarmal}>
-      <form className={s.gorevEkle} onSubmit={(e) => void gonder(e)}>
-        <Plus size={15} className={s.gorevEkleIkon} />
-        <input
-          ref={girdi}
-          className={s.gorevEkleGiris}
-          placeholder="Görev ekle"
-          title="Sona saat yazılabilir: Spor 18:00"
-          value={metin}
-          onChange={(e) => setMetin(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setSecici(false)}
-          disabled={gonderiliyor}
-          aria-label="Yeni görev"
-        />
-        {/* Ayrıştırmanın sonucu görünür olsun: sihir görünmezse güvenilmez. */}
-        {saat && (
-          <span className={s.gorevEkleCip} title={`${icerik} — ${saat}`}>
-            {saat}
-          </span>
-        )}
-        <button
-          type="button"
-          className={tekrar ? `${s.tekrarDugme} ${s.tekrarDugmeAcik}` : s.tekrarDugme}
-          onClick={() => setSecici((x) => !x)}
-          title={tekrar ? tekrarAdi(tekrar, iso) : "Tekrarla"}
-          aria-label="Tekrar seç"
-          aria-expanded={secici}
-        >
-          <Repeat size={14} />
-        </button>
-      </form>
-      {tekrar && !secici && (
-        <p className={s.tekrarNot}>
-          {tekrarAdi(tekrar, iso)}
-          {saat ? ` · ${saat}` : ""} — bu günden başlar
-        </p>
-      )}
-      {secici && (
-        <div className={s.tekrarListe} role="menu">
-          {TEKRARLAR.map((x) => (
-            <button
-              key={x}
-              type="button"
-              role="menuitemradio"
-              aria-checked={tekrar === x}
-              className={tekrar === x ? `${s.tekrarSecenek} ${s.tekrarSecenekSecili}` : s.tekrarSecenek}
-              onClick={() => sec(x)}
-            >
-              {tekrarAdi(x, iso)}
-              {tekrar === x && <Check size={13} />}
-            </button>
-          ))}
-          <button type="button" role="menuitemradio" aria-checked={!tekrar} className={s.tekrarSecenek} onClick={() => sec(null)}>
-            Tekrar yok
-            {!tekrar && <Check size={13} />}
-          </button>
-        </div>
-      )}
+/**
+ * Adding a task on a day: the same box as Yapılacaklar (issue #45), with
+ * the day already set. Any list, description, priority, important, time,
+ * repeat and reminders; Inbox unless another list is picked.
+ */
+function GunaGorevEkle({ iso, host }: { iso: string; host: TaskComposerTarget & { inbox: TaskList | null } }) {
+  const [acik, setAcik] = useState(false);
+  // Another day picked: the box closes, so it never adds to the day left behind.
+  useEffect(() => setAcik(false), [iso]);
+  const liste = host.inbox ?? host.lists[0] ?? null;
+  if (!liste) return null;
+  return acik ? (
+    <div className={s.gorevKutusu}>
+      <Composer key={iso} list={liste} host={host} defaultDate={iso} onClose={() => setAcik(false)} />
     </div>
+  ) : (
+    <button type="button" className={s.gorevEkleAc} onClick={() => setAcik(true)}>
+      <Plus size={15} />
+      Görev ekle
+    </button>
   );
 }
 
@@ -1356,20 +1292,20 @@ function GunPaneliPlansiz({
   iso,
   gorevler,
   onGorevKapat,
-  onGorevEkle,
+  ekleHost,
   surukle,
 }: {
   iso: string;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
-  onGorevEkle: GorevEkleFn;
+  ekleHost: TaskComposerTarget & { inbox: TaskList | null };
   surukle: Surukle;
 }) {
   return (
     <aside className={s.panel}>
       <PanelBasi iso={iso} />
       <GunListesi gorevler={gorevler} slotlar={[]} onKapat={onGorevKapat} surukle={surukle} />
-      <GorevEkle iso={iso} onEkle={onGorevEkle} />
+      <GunaGorevEkle iso={iso} host={ekleHost} />
       <p className={s.aciklama}>Bu haftanın planı kurulmamış; slot eklemek için önce hafta kurulur.</p>
     </aside>
   );
@@ -1382,7 +1318,7 @@ function GunPaneliDosyali({
   kurallar,
   gorevler,
   onGorevKapat,
-  onGorevEkle,
+  ekleHost,
   surukle,
   seciliSlot,
   onSlotSec,
@@ -1394,7 +1330,7 @@ function GunPaneliDosyali({
   kurallar: KuralSeti;
   gorevler: TodoistGorev[];
   onGorevKapat: (g: TodoistGorev) => Promise<void>;
-  onGorevEkle: GorevEkleFn;
+  ekleHost: TaskComposerTarget & { inbox: TaskList | null };
   surukle: Surukle;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
@@ -1501,7 +1437,7 @@ function GunPaneliDosyali({
         onKapat={onGorevKapat}
         surukle={surukle}
       />
-      <GorevEkle iso={iso} onEkle={onGorevEkle} />
+      <GunaGorevEkle iso={iso} host={ekleHost} />
     </aside>
   );
 }

@@ -797,134 +797,6 @@
   cursor: default;
 }
 
-/* --- görev ekleme --------------------------------------------------------- */
-
-.gorevEkleSarmal {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Listenin son satırı gibi durur; odaklanınca kutu belirir. */
-.gorevEkle {
-  display: flex;
-  align-items: center;
-  gap: var(--b2);
-  padding: 4px 6px;
-  margin: 0 -6px;
-  border: 1px solid transparent;
-  border-radius: var(--r1);
-  color: var(--metin-soluk);
-}
-
-.gorevEkle:hover {
-  background: var(--zemin-alt);
-}
-
-.gorevEkle:focus-within {
-  background: var(--kart);
-  border-color: var(--vurgu);
-  box-shadow: 0 0 0 3px var(--vurgu-yumusak);
-}
-
-.gorevEkleIkon {
-  flex-shrink: 0;
-}
-
-.gorevEkleGiris {
-  flex: 1;
-  min-width: 0;
-  padding: 5px 0;
-  border: none;
-  background: transparent;
-  outline: none;
-  font: inherit;
-  font-size: var(--y4);
-  color: var(--metin);
-}
-
-.gorevEkleGiris:focus-visible {
-  /* Çerçeveyi satırın kendisi çiziyor; içteki ikinci halka fazlaydı. */
-  outline: none;
-}
-
-.gorevEkleGiris::placeholder {
-  color: var(--metin-soluk);
-}
-
-/* Yakalanan saat kutunun içinde çip olarak görünür. */
-.gorevEkleCip {
-  flex-shrink: 0;
-  font-size: var(--y5);
-  font-variant-numeric: tabular-nums;
-  padding: 1px 6px;
-  border-radius: var(--r-tam);
-  background: var(--vurgu-yumusak);
-  color: var(--vurgu-koyu);
-}
-
-.tekrarDugme {
-  display: flex;
-  flex-shrink: 0;
-  padding: 4px;
-  border: none;
-  border-radius: var(--r1);
-  background: none;
-  color: var(--metin-soluk);
-  cursor: pointer;
-}
-
-.tekrarDugme:hover {
-  color: var(--metin);
-  background: var(--zemin-alt);
-}
-
-.tekrarDugmeAcik,
-.tekrarDugmeAcik:hover {
-  color: var(--vurgu-koyu);
-  background: var(--vurgu-yumusak);
-}
-
-.tekrarNot {
-  font-size: var(--y5);
-  color: var(--vurgu);
-  padding-left: 23px;
-}
-
-.tekrarListe {
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-  border: 1px solid var(--cizgi);
-  border-radius: var(--r2);
-  background: var(--kart);
-  box-shadow: var(--golge1);
-}
-
-.tekrarSecenek {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--b2);
-  padding: 6px 8px;
-  border: none;
-  border-radius: var(--r1);
-  background: none;
-  font: inherit;
-  font-size: var(--y4);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.tekrarSecenek:hover {
-  background: var(--zemin-alt);
-}
-
-.tekrarSecenekSecili {
-  color: var(--vurgu-koyu);
-}
-
 /* Todoist'e ulaşılamadığında: plan görünmeye devam eder, görev yokluğu açıklanır. */
 .todoistHata {
   margin: 0 0 var(--b4);
@@ -1006,4 +878,29 @@
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--vurgu);
+}
+
+/* --- adding a task on a day: the shared add box (issue #45) ----------------- */
+
+.gorevEkleAc {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  width: 100%;
+  padding: var(--b2) 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gorevEkleAc:hover {
+  color: var(--metin);
+}
+
+.gorevKutusu {
+  margin: var(--b2) calc(var(--b4) * -1) 0;
 }

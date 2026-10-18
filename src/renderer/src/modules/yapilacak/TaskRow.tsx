@@ -26,14 +26,9 @@ import { ONEMLI_ETIKETI } from "@ortak/tipler";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
 import type { TaskBoard } from "./useTaskBoard";
+import { PRIORITY_COLOR } from "@/ui/gorev/priority";
 import s from "./board.module.css";
 
-export const PRIORITY_COLOR: Record<Priority, string | undefined> = {
-  1: "var(--hata)",
-  2: "var(--uyari)",
-  3: "var(--vurgu)",
-  4: undefined,
-};
 
 const TONE_CLASS = { overdue: s.toneOverdue, today: s.toneToday, tomorrow: s.toneTomorrow, later: "" };
 
