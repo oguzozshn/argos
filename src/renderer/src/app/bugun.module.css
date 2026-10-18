@@ -1,24 +1,112 @@
 /*
- * Bugün panosu: kartlar iki sütunda alt alta akar (ızgara satır hizasında
- * kısa kartın yanında boşluk bırakıyordu). Dar pencerede tek sütun.
- * Tüm genişliği isteyen kart `column-span: all` verir (Şimdi kartı).
+ * Bugün panosu: 12 sütunlu ızgara (issue #48). Kartlar hücrelerini
+ * doldurur, içerik taşarsa hücrenin içinde kayar. Dar pencerede kartlar
+ * düzenin okuma sırasıyla alt alta dizilir.
  */
-.izgara {
-  columns: 2 380px;
-  column-gap: var(--b5);
+
+.alan {
+  position: relative;
 }
 
-.izgara > * {
-  break-inside: avoid;
-  margin-bottom: var(--b5);
+.icerik {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b4);
+  height: 100%;
+  overflow: auto;
 }
 
-/* Izgaranın üstündeki tam genişlik kartlar. Göstereceği yoksa kart null
-   döner; boş kalan sarmal aralık bırakmasın. */
-.ust {
-  margin-bottom: var(--b5);
+/* Cards fill their cell, so neighbouring edges line up even when contents differ. */
+.icerik > * {
+  flex: 1 0 auto;
 }
 
-.ust:empty {
-  display: none;
+.oge {
+  position: relative;
+}
+
+.dizi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b5);
+}
+
+.eylemler {
+  display: flex;
+  gap: var(--b2);
+}
+
+.ipucu {
+  margin: calc(var(--b4) * -1) 0 var(--b4);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+/* --- editing --------------------------------------------------------------- */
+
+.izgaraArka {
+  position: absolute;
+  inset: 0 auto auto 0;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.duzenKatmani {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  /* Name at the bottom: the card's own title stays readable at the top. */
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--b3);
+  border: 2px dashed var(--vurgu);
+  border-radius: var(--r3);
+  background: color-mix(in srgb, var(--zemin) 35%, transparent);
+  cursor: grab;
+}
+
+.duzenKatmani:active {
+  cursor: grabbing;
+}
+
+.kartAdi {
+  padding: 3px 10px;
+  border-radius: var(--r-tam);
+  background: var(--vurgu);
+  color: var(--zemin);
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+}
+
+.kaldir {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-tam);
+  background: var(--kart);
+  color: var(--metin);
+  box-shadow: var(--golge1);
+  cursor: pointer;
+}
+
+.kaldir:hover {
+  background: var(--hata);
+  color: var(--zemin);
+}
+
+/* The library's placeholder and resize handles in Argos's colours. */
+.alan :global(.react-grid-placeholder) {
+  background: var(--vurgu);
+  opacity: 0.18;
+  border-radius: var(--r3);
+}
+
+.alanDuzen :global(.react-resizable-handle) {
+  z-index: 2;
+  opacity: 0.8;
 }

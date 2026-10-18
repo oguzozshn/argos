@@ -13,7 +13,9 @@ export const yapilacakModulu: Modul = {
   rotalar: [{ yol: "", ad: "Görevler", Ekran: Yapilacak }],
   genis: true,
   Ozet: YapilacakOzet,
+  ozetAd: "Bugün yapılacaklar",
   Ust: OnemliTarihler,
+  ustAd: "Önemli tarihler",
   komutlar: yapilacakKomutlari,
   ArkaPlan: ReminderBackground,
 };
