@@ -1,0 +1,271 @@
+/* Takvim's Bugün cards: week, month, year, today's flow, upcoming. */
+
+.bos,
+.bosMetin {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}
+
+.bosMetin {
+  padding: var(--b3) 0;
+}
+
+/* --- one item: a plan slot (accent bar) or a task (dot) ----------------------- */
+
+.oge {
+  display: flex;
+  align-items: baseline;
+  gap: var(--b2);
+  min-width: 0;
+  padding: 3px 0;
+  font-size: var(--y5);
+  line-height: 1.4;
+}
+
+.ogeSaat {
+  flex: none;
+  width: 38px;
+  color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums;
+}
+
+.ogeAd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ogeAd::before {
+  content: "";
+  display: inline-block;
+  vertical-align: middle;
+  margin: -2px 7px 0 0;
+}
+
+.ogeGorev .ogeAd::before {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-tam);
+  background: var(--metin-soluk);
+}
+
+.ogeSlot .ogeAd::before {
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--vurgu);
+}
+
+.ogeGecti {
+  opacity: 0.45;
+}
+
+/* --- week ----------------------------------------------------------------------- */
+
+.hafta {
+  display: flex;
+  flex-direction: column;
+}
+
+.haftaGun {
+  display: flex;
+  gap: var(--b3);
+  padding: var(--b2) var(--b6);
+  border-top: 1px solid var(--cizgi);
+}
+
+.haftaGun:first-child {
+  border-top: none;
+}
+
+.haftaGunAd {
+  flex: none;
+  width: 44px;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-top: 3px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.haftaGunNo {
+  color: var(--metin-orta);
+  font-weight: var(--sik-kalin);
+  font-variant-numeric: tabular-nums;
+}
+
+.haftaOgeler {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 0;
+}
+
+.haftaOgeler .bos {
+  display: block;
+  padding: 0;
+}
+
+.haftaGun.bugun {
+  background: var(--vurgu-yumusak);
+}
+
+.haftaGun.bugun .haftaGunAd,
+.haftaGun.bugun .haftaGunNo {
+  color: var(--vurgu);
+}
+
+/* --- month ---------------------------------------------------------------------- */
+
+.ay {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: var(--b2) var(--b5) var(--b4);
+}
+
+.ayBaslik {
+  padding-bottom: 4px;
+  text-align: center;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.ayGun {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 42px;
+  padding: 6px 0;
+  border-radius: var(--r2);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+}
+
+.ayDisi {
+  opacity: 0.35;
+}
+
+.ayGun.bugun {
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+  font-weight: var(--sik-kalin);
+}
+
+.noktalar {
+  display: flex;
+  gap: 3px;
+  height: 5px;
+}
+
+.noktaGorev,
+.noktaSlot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-tam);
+  background: var(--metin-soluk);
+}
+
+.noktaSlot {
+  background: var(--vurgu);
+}
+
+/* --- year ----------------------------------------------------------------------- */
+
+.yil {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--b3) var(--b5);
+  padding: var(--b3) var(--b6) var(--b5);
+}
+
+.yilAyAd {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.yilAyBu {
+  color: var(--vurgu);
+  font-weight: var(--sik-kalin);
+}
+
+.yilIzgara {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  max-width: 150px;
+}
+
+.yilGun {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--zemin-alt);
+}
+
+.yilGun.gecmis {
+  opacity: 0.5;
+}
+
+.yogun1 {
+  background: color-mix(in srgb, var(--vurgu) 30%, var(--zemin-alt));
+}
+
+.yogun2 {
+  background: color-mix(in srgb, var(--vurgu) 60%, var(--zemin-alt));
+}
+
+.yogun3 {
+  background: var(--vurgu);
+}
+
+.yilGun.bugun {
+  outline: 1.5px solid var(--metin);
+  outline-offset: 1px;
+}
+
+/* --- today's flow and upcoming --------------------------------------------------- */
+
+.akis {
+  padding: var(--b2) var(--b6) var(--b4);
+}
+
+.gunBoyu {
+  margin-bottom: var(--b2);
+  padding-bottom: var(--b2);
+  border-bottom: 1px dashed var(--cizgi);
+}
+
+/* The current time between what is over and what is next. */
+.simdi {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  margin: 4px 0;
+  font-size: 11px;
+  font-weight: var(--sik-kalin);
+  color: var(--hata);
+  font-variant-numeric: tabular-nums;
+}
+
+.simdi::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hata);
+}
+
+.yaklasanGun + .yaklasanGun {
+  margin-top: var(--b3);
+}
+
+.yaklasanBaslik {
+  padding: 2px 0 4px;
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-orta);
+}
