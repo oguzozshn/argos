@@ -16,6 +16,8 @@ export interface Rota {
   yol: string;
   ad: string;
   Ekran: ComponentType;
+  /** This screen alone goes wide, in a module that is narrow otherwise (`Modul.genis`). */
+  genis?: boolean;
 }
 
 /** Komut çalışırken kabuğun verdiği olanaklar. */
