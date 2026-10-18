@@ -1,4 +1,4 @@
-import { Bell, Calendar, Check, Flag, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
+import { Bell, Calendar, Check, Flag, Maximize2, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { Priority } from "@ortak/local-tasks";
 import type { Task } from "@ortak/task";
@@ -17,7 +17,21 @@ import s from "./gorev.module.css";
  * edited in place, then list, date, repeat, priority and important.
  * Text is saved when the field loses focus (Enter in the title, too).
  */
-export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoard; onClose: () => void }) {
+export function TaskPanel({
+  task,
+  board,
+  onClose,
+  onExpand,
+  variant = "panel",
+}: {
+  task: Task;
+  board: TaskBoard;
+  onClose: () => void;
+  /** Opens the large view (issue #55); the side panel shows a ⤢ for it. */
+  onExpand?: () => void;
+  /** "buyuk": the large view, with a big title and room for the description. */
+  variant?: "panel" | "buyuk";
+}) {
   const list = board.lists.find((l) => l.source === task.listSource && l.id === task.listId);
   const [picker, setPicker] = useState<{ x: number; y: number; repeat: boolean } | null>(null);
   const [menu, setMenu] = useState<{ kind: "list" | "priority" | "reminder"; x: number; y: number } | null>(null);
@@ -30,12 +44,17 @@ export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoa
   const targets = board.lists.filter((l) => !(l.source === task.listSource && l.id === task.listId));
 
   return (
-    <aside className={s.panel} aria-label="Görev ayrıntısı">
+    <aside className={variant === "buyuk" ? `${s.panel} ${s.panelBuyuk}` : s.panel} aria-label="Görev ayrıntısı">
       <div className={s.panelTop}>
         <span className={s.panelPath}>
           {list && <span className={s.dot} style={{ background: list.color }} />}
           {list?.name}
         </span>
+        {onExpand && (
+          <button type="button" onClick={onExpand} title="Büyük aç (çift tık)" aria-label="Büyük aç">
+            <Maximize2 size={15} />
+          </button>
+        )}
         <button type="button" onClick={onClose} title="Kapat (Esc)" aria-label="Kapat">
           <X size={16} />
         </button>

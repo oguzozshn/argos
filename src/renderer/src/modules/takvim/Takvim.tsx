@@ -25,6 +25,7 @@ import { usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
 import { useTaskComposerTarget, type NewTaskInput, type TaskComposerTarget } from "@/veri/task-create";
 import { Composer } from "@/ui/gorev/Composer";
+import { TaskModal } from "@/ui/gorev/TaskModal";
 import { TaskPanel } from "@/ui/gorev/TaskPanel";
 import { useTaskBoard } from "@/veri/task-board";
 import {
@@ -421,6 +422,7 @@ export function Takvim() {
   // The task detail panel (issue #52): the same panel as Yapılacaklar, on the right.
   const pano = useTaskBoard();
   const [acikGorev, setAcikGorev] = useState<string | null>(null);
+  const [buyuk, setBuyuk] = useState(false);
   const gorevAc = useCallback((g: TodoistGorev) => setAcikGorev(`${g.source === "local" ? "local" : "todoist"}:${g.id}`), []);
   const acikTask = acikGorev ? pano.tasks.find((t) => t.key === acikGorev) ?? null : null;
   const gorevHedefi = useTaskComposerTarget();
@@ -752,7 +754,7 @@ export function Takvim() {
 
         {acikTask ? (
           // A completed or deleted task leaves the board: the day panel comes back by itself.
-          <TaskPanel key={acikTask.key} task={acikTask} board={pano} onClose={() => setAcikGorev(null)} />
+          <TaskPanel key={acikTask.key} task={acikTask} board={pano} onClose={() => setAcikGorev(null)} onExpand={() => setBuyuk(true)} />
         ) : seciliKayit ? (
           <GunPaneliDosyali
             kod={seciliKayit.kod}
@@ -778,6 +780,7 @@ export function Takvim() {
         )}
       </div>
       </GorevAc.Provider>
+      {buyuk && acikTask && <TaskModal task={acikTask} board={pano} onClose={() => setBuyuk(false)} />}
     </>
   );
 }
