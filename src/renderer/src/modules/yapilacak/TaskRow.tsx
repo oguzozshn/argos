@@ -20,13 +20,14 @@ import {
 import { useState, type MouseEvent } from "react";
 import { gunEkle, haftaninGunu } from "@ortak/gun";
 import type { Priority } from "@ortak/local-tasks";
-import type { Task, TaskList } from "@ortak/task";
+import type { Task } from "@ortak/task";
 import { dueLabel } from "@ortak/task-dates";
 import { ONEMLI_ETIKETI } from "@ortak/tipler";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
 import type { TaskBoard } from "./useTaskBoard";
 import { PRIORITY_COLOR } from "@/ui/gorev/priority";
+import { MoveMenu } from "./MoveMenu";
 import s from "./board.module.css";
 
 
@@ -206,27 +207,23 @@ function TaskMenu({
 
 
   if (moving) {
-    const targets: TaskList[] = board.lists.filter((l) => l.source === task.source && l.id !== task.listId);
     return (
-      <Popover x={x} y={y} onClose={onClose} label="Listeye taşı" className={s.moveMenu}>
-        <MenuItem icon={<ChevronLeft size={15} />} onSelect={() => setMoving(false)}>
-          Geri
-        </MenuItem>
-        <MenuSeparator />
-        {targets.length === 0 && <MenuLabel>Taşınacak başka liste yok</MenuLabel>}
-        {targets.map((l) => (
-          <MenuItem
-            key={l.key}
-            icon={<span className={s.dot} style={{ background: l.color }} />}
-            onSelect={run(() => board.move(task, l))}
-          >
-            {l.name}
-          </MenuItem>
-        ))}
-        <MenuLabel>
-          {task.source === "local" ? "Argos görevi yalnız Argos listelerine taşınır" : "Todoist görevi yalnız Todoist projelerine taşınır"}
-        </MenuLabel>
-      </Popover>
+      <MoveMenu
+        task={task}
+        lists={board.lists}
+        x={x}
+        y={y}
+        onClose={onClose}
+        onMove={(l) => run(() => board.move(task, l))()}
+        header={
+          <>
+            <MenuItem icon={<ChevronLeft size={15} />} onSelect={() => setMoving(false)}>
+              Geri
+            </MenuItem>
+            <MenuSeparator />
+          </>
+        }
+      />
     );
   }
 

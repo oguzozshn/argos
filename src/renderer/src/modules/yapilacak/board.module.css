@@ -750,3 +750,31 @@
     max-height: none;
   }
 }
+
+/* --- "Listeye taşı" search (issue #53) ------------------------------------------- */
+
+.moveSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 4px 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  color: var(--metin-soluk);
+}
+
+.moveSearch:focus-within {
+  border-color: var(--vurgu);
+}
+
+.moveSearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  outline: none;
+}

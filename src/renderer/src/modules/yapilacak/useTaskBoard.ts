@@ -33,6 +33,7 @@ import {
 } from "@ortak/tipler";
 import { rescheduleRecurring, todoistRecurrence } from "@ortak/todoist-schedule";
 import { turkceTarihCevir } from "@ortak/todoist-tarih";
+import { ruleFromTodoist } from "@ortak/date-parse";
 import type { Schedule } from "@/ui/DatePicker";
 import { bildir, deferWithUndo, silVeBildir } from "@/ui/toast";
 import { kopru, useBugun } from "@/veri/kanca";
@@ -362,8 +363,18 @@ export function useTaskBoard() {
   };
 
   /** Moves a task to another list of the same source. */
+  /**
+   * Moves a task to another list. Between a Todoist project and an Argos list
+   * (issue #54) the task is made again in the other store with everything
+   * it had (title, description, date, repeat, priority, important,
+   * reminders) and the old one is deleted; Todoist cannot hold Argos lists.
+   */
   const move = async (task: Task, list: TaskList) => {
-    if (list.source !== task.source || list.id === task.listId) return;
+    if (list.source === task.listSource && list.id === task.listId) return;
+    if (list.source !== task.source) {
+      await moveAcross(task, list);
+      return;
+    }
     if (task.source === "local") {
       // Out of a Todoist list it was kept in, into an Argos list.
       await changeTasks((f) => updateTask(f, task.id, { listId: list.id, listSource: undefined }));
@@ -381,6 +392,41 @@ export function useTaskBoard() {
       putTodoist(before);
       fail("Görev taşınamadı.")(e);
     }
+  };
+
+  const moveAcross = async (task: Task, list: TaskList) => {
+    const due = task.due ? (task.due.length > 10 ? task.due.slice(0, 16) : task.due) : null;
+    const rule = task.rule ?? (task.recurring && task.todoistDueString && due ? ruleFromTodoist(task.todoistDueString, due.slice(0, 10)) : null);
+    const created = await createTaskIn(
+      list,
+      {
+        title: task.title,
+        description: task.description || undefined,
+        schedule: due
+          ? { date: due.slice(0, 10), time: due.length > 10 ? due.slice(11, 16) : null, repeat: rule ? { kind: "rule", rule } : { kind: "none" } }
+          : null,
+        priority: task.priority,
+        important: task.important,
+        reminders: task.reminders,
+      },
+      { changeTasks, changeReminders: reminders.change },
+    );
+    if (created === false) return;
+    if (created !== true) setTodoTasks((all) => [...all, created]);
+    // The copy is in place: the original goes (a Todoist delete from Argos is not kept back as an Argos task).
+    if (task.source === "local") {
+      await changeTasks((f) => deleteTask(f, task.id));
+    } else {
+      const k = kopru();
+      setTodoTasks((all) => all.filter((x) => x.id !== task.id));
+      await k?.todoist.deleteTask(task.id).catch(fail("Eski görev Todoist'ten silinemedi."));
+    }
+    bildir({
+      metin:
+        list.source === "local"
+          ? `"${task.title}" → ${list.name} (Argos listesi; telefondaki Todoist'ten kalktı)`
+          : `"${task.title}" → ${list.name} (Todoist)`,
+    });
   };
 
   /** Creates a task in a list of either source. Resolves true on success. */

@@ -1,14 +1,15 @@
 import { Bell, Calendar, Check, Flag, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { Priority } from "@ortak/local-tasks";
-import type { Task, TaskList } from "@ortak/task";
+import type { Task } from "@ortak/task";
 import { describeReminder } from "@ortak/reminders";
 import { dueLabel } from "@ortak/task-dates";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
-import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, Popover } from "@/ui/Popover";
+import { MenuIconButton, MenuIconRow, Popover } from "@/ui/Popover";
 import { PRIORITY_COLOR } from "@/ui/gorev/priority";
 import { ReminderMenu } from "@/ui/gorev/ReminderMenu";
 import type { TaskBoard } from "./useTaskBoard";
+import { MoveMenu } from "./MoveMenu";
 import s from "./board.module.css";
 
 /**
@@ -26,7 +27,7 @@ export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoa
     return { x: r.left, y: r.bottom + 4 };
   };
   const due = task.due ? dueLabel(task.due, board.today) : null;
-  const targets = board.lists.filter((l) => l.source === task.source && l.id !== task.listId);
+  const targets = board.lists.filter((l) => !(l.source === task.listSource && l.id === task.listId));
 
   return (
     <aside className={s.panel} aria-label="Görev ayrıntısı">
@@ -190,23 +191,17 @@ export function TaskPanel({ task, board, onClose }: { task: Task; board: TaskBoa
       )}
 
       {menu?.kind === "list" && (
-        <Popover x={menu.x} y={menu.y} onClose={() => setMenu(null)} label="Listeye taşı" className={s.moveMenu}>
-          {targets.map((l: TaskList) => (
-            <MenuItem
-              key={l.key}
-              icon={<span className={s.dot} style={{ background: l.color }} />}
-              onSelect={() => {
-                void board.move(task, l);
-                setMenu(null);
-              }}
-            >
-              {l.name}
-            </MenuItem>
-          ))}
-          <MenuLabel>
-            {task.source === "local" ? "Argos görevi yalnız Argos listelerine taşınır" : "Todoist görevi yalnız Todoist projelerine taşınır"}
-          </MenuLabel>
-        </Popover>
+        <MoveMenu
+          task={task}
+          lists={board.lists}
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          onMove={(l) => {
+            void board.move(task, l);
+            setMenu(null);
+          }}
+        />
       )}
 
       {menu?.kind === "reminder" && (
