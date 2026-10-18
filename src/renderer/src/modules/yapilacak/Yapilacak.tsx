@@ -7,6 +7,7 @@ import { BosDurum, Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { kopru } from "@/veri/kanca";
 import { Composer } from "@/ui/gorev/Composer";
 import { ListSidebar } from "./ListSidebar";
+import { TaskModal } from "@/ui/gorev/TaskModal";
 import { TaskPanel } from "@/ui/gorev/TaskPanel";
 import { TaskRow } from "./TaskRow";
 import { useTaskBoard, type TaskBoard } from "@/veri/task-board";
@@ -31,6 +32,8 @@ export function Yapilacak() {
   const board = useTaskBoard();
   const [activeKey, setActiveKey] = useState<string | null>(readStoredList);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // The task open in the large view (issue #55).
+  const [largeKey, setLargeKey] = useState<string | null>(null);
 
   const select = (key: string) => {
     setActiveKey(key);
@@ -46,6 +49,8 @@ export function Yapilacak() {
     board.lists.find((l) => l.key === activeKey) ?? board.lists.find((l) => l.inbox) ?? board.lists[0] ?? null;
   // A completed, deleted or moved-away task closes the panel on its own.
   const selected = board.tasks.find((t) => t.key === selectedKey) ?? null;
+  // Completed or deleted from the large view: it closes by itself.
+  const largeTask = board.tasks.find((t) => t.key === largeKey) ?? null;
 
   return (
     <>
@@ -67,6 +72,10 @@ export function Yapilacak() {
               board={board}
               selectedKey={selected?.key ?? null}
               onSelect={(key) => setSelectedKey((k) => (k === key ? null : key))}
+              onOpen={(key) => {
+                setSelectedKey(key);
+                setLargeKey(key);
+              }}
             />
           ) : (
             <Kart>
@@ -76,9 +85,18 @@ export function Yapilacak() {
               />
             </Kart>
           )}
-          {selected && <TaskPanel key={selected.key} task={selected} board={board} onClose={() => setSelectedKey(null)} />}
+          {selected && (
+            <TaskPanel
+              key={selected.key}
+              task={selected}
+              board={board}
+              onClose={() => setSelectedKey(null)}
+              onExpand={() => setLargeKey(selected.key)}
+            />
+          )}
         </div>
       )}
+      {largeTask && <TaskModal key={largeTask.key} task={largeTask} board={board} onClose={() => setLargeKey(null)} />}
     </>
   );
 }
@@ -120,11 +138,13 @@ function TaskListCard({
   board,
   selectedKey,
   onSelect,
+  onOpen,
 }: {
   list: TaskList;
   board: TaskBoard;
   selectedKey: string | null;
   onSelect: (key: string | null) => void;
+  onOpen: (key: string) => void;
 }) {
   const [composing, setComposing] = useState(false);
   const tasks = useMemo(
@@ -191,7 +211,7 @@ function TaskListCard({
               {group} <span>{items.length}</span>
             </h3>
             {items.map((t) => (
-              <TaskRow key={t.key} task={t} board={board} selected={t.key === selectedKey} onSelect={onSelect} />
+              <TaskRow key={t.key} task={t} board={board} selected={t.key === selectedKey} onSelect={onSelect} onOpen={onOpen} />
             ))}
           </section>
         ))

@@ -542,3 +542,78 @@
   color: var(--metin);
   outline: none;
 }
+
+/* --- description height and the large view (issue #55) ----------------------- */
+
+/* A long description no longer stretches the side panel: it scrolls in its box. */
+.panelDescription {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.modalArka {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: color-mix(in srgb, #000 55%, transparent);
+  animation: modalBelir var(--sure-hizli) var(--egri);
+}
+
+.modal {
+  width: min(960px, 100%);
+  height: min(88vh, 100%);
+  display: flex;
+}
+
+.panelBuyuk {
+  position: static;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: none;
+  border-radius: var(--r3);
+  box-shadow: var(--golge3);
+}
+
+.panelBuyuk .panelHead {
+  padding: 40px 72px 4px;
+}
+
+.panelBuyuk .panelTitle {
+  font-size: 30px;
+  line-height: 1.25;
+}
+
+.panelBuyuk .props {
+  order: 1;
+  padding: 8px 72px 16px;
+}
+
+/* The description takes the rest of the page and scrolls inside it. */
+.panelBuyuk .panelDescription {
+  order: 2;
+  flex: 1;
+  width: auto;
+  max-height: none;
+  min-height: 160px;
+  margin: 0 72px 24px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--cizgi);
+  border-radius: 0;
+  font-size: var(--y3);
+  line-height: 1.7;
+}
+
+.panelBuyuk .panelFoot {
+  order: 3;
+}
+
+@keyframes modalBelir {
+  from {
+    opacity: 0;
+  }
+}

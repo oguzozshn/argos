@@ -38,11 +38,14 @@ export function TaskRow({
   board,
   selected,
   onSelect,
+  onOpen,
 }: {
   task: Task;
   board: TaskBoard;
   selected: boolean;
   onSelect: (key: string) => void;
+  /** Double click: the large view (issue #55). */
+  onOpen?: (key: string) => void;
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
@@ -74,6 +77,9 @@ export function TaskRow({
       onClick={(e) => {
         // Buttons inside the row do their own thing.
         if (!(e.target as HTMLElement).closest("button")) onSelect(task.key);
+      }}
+      onDoubleClick={(e) => {
+        if (!(e.target as HTMLElement).closest("button")) onOpen?.(task.key);
       }}
       data-task={task.key}
       aria-selected={selected}
