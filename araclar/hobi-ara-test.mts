@@ -2,7 +2,7 @@
  * Search in a Hobiler list (issue #34): `node araclar/hobi-ara-test.mts`
  */
 
-import { matches, plain } from "../src/ortak/hobi-ara.ts";
+import { existingMatches, matches, plain } from "../src/ortak/hobi-ara.ts";
 
 let passed = 0;
 let failed = 0;
@@ -30,6 +30,19 @@ eq("every word must match", matches(e("Red Dead Redemption 2"), "red 2"), true);
 eq("a missing word fails", matches(e("Red Dead Redemption 2"), "red 3"), false);
 eq("empty query matches all", matches(e("x"), "   "), true);
 eq("no match", matches(e("Celeste"), "zelda"), false);
+
+console.log("Existing entries while adding (#38)");
+const list = [{ ad: "Metro 2033" }, { ad: "Metro: Last Light" }, { ad: "Şeytan ve 3 Opera" }, { ad: "Hades" }];
+const names = (typed: string) => existingMatches(list, typed).map((m) => m.entry.ad + (m.exact ? " (exact)" : ""));
+eq("'Metro' shows both Metro games", names("Metro"), ["Metro 2033", "Metro: Last Light"]);
+eq("'metro 20' narrows to 2033", names("metro 20"), ["Metro 2033"]);
+eq("'metro e' (Exodus) shows nothing", names("metro e"), []);
+eq("exact name is marked and first", names("metro last light"), ["Metro: Last Light (exact)"]);
+eq("Turkish letters typed plain", names("seytan"), ["Şeytan ve 3 Opera"]);
+eq("'#category' words are ignored", names("hades #Roguelike"), ["Hades (exact)"]);
+eq("words must start a word, not sit inside one", names("etro"), []);
+eq("nothing before the first letter", names("   "), []);
+eq("at most five", existingMatches(Array.from({ length: 8 }, (_, i) => ({ ad: `Metro ${i}` })), "metro").length, 5);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exitCode = 1;

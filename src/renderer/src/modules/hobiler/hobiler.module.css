@@ -864,3 +864,68 @@
   color: var(--metin-soluk);
   white-space: nowrap;
 }
+
+/* --- existing entries while adding (issue #38) ------------------------------ */
+
+.ustIpucu {
+  padding: 0 var(--b5) var(--b3);
+  border-bottom: 1px solid var(--cizgi);
+  background: var(--kart-hover);
+}
+
+.mevcut {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--b2);
+}
+
+.mevcutBaslik {
+  padding: 0 var(--b2);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.mevcutSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  width: 100%;
+  padding: 6px var(--b2);
+  border: 0;
+  border-radius: var(--r1);
+  background: none;
+  font: inherit;
+  color: var(--metin-orta);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mevcutSatir:hover {
+  background: var(--kart);
+  color: var(--metin);
+}
+
+.mevcutAd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mevcutGrup {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  white-space: nowrap;
+}
+
+.mevcutAyni .mevcutAd {
+  font-weight: var(--sik-orta);
+  color: var(--metin);
+}
+
+.mevcutAyni .mevcutGrup {
+  color: var(--uyari);
+  font-weight: var(--sik-orta);
+}

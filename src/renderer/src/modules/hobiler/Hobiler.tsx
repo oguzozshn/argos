@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { matches } from "@ortak/hobi-ara";
+import { existingMatches, matches } from "@ortak/hobi-ara";
 import { bugunIso } from "@ortak/plan";
 import { grubaTasi, tasi } from "@ortak/siralama";
 import { Kisayollar } from "@/ui/Kisayollar";
@@ -280,6 +280,18 @@ function AlanEkrani({
     setYeni("");
   };
 
+  /** A hint was clicked: the existing entry opens instead of a new one being added. */
+  const mevcuduAc = (id: string) => {
+    setSeciliId(id);
+    setDurumlarAcik(false);
+    setUstEkle(false);
+    setEkleGrup(null);
+    setYeni("");
+  };
+  const ipucu = (
+    <MevcutKayitlar maddeler={veri.maddeler} yazilan={yeni} durumlar={[...durumlar, ...bilinmeyen]} onAc={mevcuduAc} />
+  );
+
   const maddeDegistir = (yeniMadde: Madde) =>
     maddeleriKaydet(veri.maddeler.map((x) => (x.id === yeniMadde.id ? yeniMadde : x)));
 
@@ -477,6 +489,7 @@ function AlanEkrani({
                     if (!yeni.trim()) setEkleGrup(null);
                   }}
                 />
+                {ipucu}
               </div>
             ) : (
               <button
@@ -650,6 +663,7 @@ function AlanEkrani({
             />
           </div>
         )}
+        {ustEkle && <div className={s.ustIpucu}>{ipucu}</div>}
         {arama !== null && (
           <div className={s.ara}>
             <Giris
@@ -701,6 +715,45 @@ function AlanEkrani({
           kategoriOnerileri={kategoriListesi}
         />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Entries already in the list that the name being typed may be (issue #38).
+ * Only a hint: Enter still adds. A click opens the existing entry.
+ */
+function MevcutKayitlar({
+  maddeler,
+  yazilan,
+  durumlar,
+  onAc,
+}: {
+  maddeler: Madde[];
+  yazilan: string;
+  durumlar: { ad: string; renk: string }[];
+  onAc: (id: string) => void;
+}) {
+  const eslesen = existingMatches(maddeler, yazilan);
+  if (eslesen.length === 0) return null;
+  return (
+    <div className={s.mevcut} aria-live="polite">
+      <span className={s.mevcutBaslik}>Listede zaten var</span>
+      {eslesen.map(({ entry: m, exact }) => (
+        <button
+          key={m.id}
+          type="button"
+          className={exact ? `${s.mevcutSatir} ${s.mevcutAyni}` : s.mevcutSatir}
+          // Keep the cursor in the add box; the click still lands.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onAc(m.id)}
+          title="Bu kaydı aç"
+        >
+          <span className={s.durumNokta} style={{ background: durumRengi(durumlar, m.durum) }} />
+          <span className={s.mevcutAd}>{m.ad}</span>
+          <span className={s.mevcutGrup}>{exact ? "Zaten listede" : m.durum}</span>
+        </button>
+      ))}
     </div>
   );
 }
