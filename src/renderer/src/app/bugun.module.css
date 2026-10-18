@@ -115,3 +115,125 @@
   z-index: 2;
   opacity: 0.8;
 }
+
+/*
+ * The library's handles are 20 px squares at the middle of an edge: hard to
+ * catch. Each edge becomes a strip along its whole length, half outside the
+ * card, and the corners grow; the strip shows in the accent colour on hover.
+ */
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle) {
+  background-image: none;
+  opacity: 1;
+  padding: 0;
+  margin: 0;
+  transform: none;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-n),
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-s) {
+  left: 18px;
+  right: 18px;
+  width: auto;
+  height: 14px;
+  cursor: ns-resize;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-n) {
+  top: -7px;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-s) {
+  bottom: -7px;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-e),
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-w) {
+  top: 18px;
+  bottom: 18px;
+  height: auto;
+  width: 14px;
+  margin-top: 0;
+  cursor: ew-resize;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-e) {
+  right: -7px;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-w) {
+  left: -7px;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-ne),
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-nw),
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-se),
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-sw) {
+  width: 22px;
+  height: 22px;
+  z-index: 3;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-ne) {
+  top: -8px;
+  right: -8px;
+  cursor: nesw-resize;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-sw) {
+  bottom: -8px;
+  left: -8px;
+  cursor: nesw-resize;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-nw) {
+  top: -8px;
+  left: -8px;
+  cursor: nwse-resize;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-se) {
+  bottom: -8px;
+  right: -8px;
+  cursor: nwse-resize;
+}
+
+/* The line shows where the grab is. */
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  border: none;
+  border-radius: var(--r-tam);
+  background: var(--vurgu);
+  opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-n)::after,
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-s)::after {
+  width: auto;
+  height: 3px;
+  left: 0;
+  right: 0;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-e)::after,
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-w)::after {
+  width: 3px;
+  height: auto;
+  top: 0;
+  bottom: 0;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-ne)::after,
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-nw)::after,
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-se)::after,
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle-sw)::after {
+  width: 10px;
+  height: 10px;
+}
+
+.alanDuzen :global(.react-grid-item) > :global(.react-resizable-handle.react-resizable-handle):hover::after {
+  opacity: 0.9;
+}
