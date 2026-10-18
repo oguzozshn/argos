@@ -1,5 +1,6 @@
 import { CalendarDays } from "lucide-react";
 import type { Modul } from "@/modules";
+import { takvimKartlari } from "./Kartlar";
 import { Takvim } from "./Takvim";
 
 /**
@@ -15,4 +16,5 @@ export const takvimModulu: Modul = {
   // Ay ızgarası ve gün paneli yan yana; 1080px'te hücreler sıkışıyordu.
   genis: true,
   rotalar: [{ yol: "", ad: "Takvim", Ekran: Takvim }],
+  kartlar: takvimKartlari,
 };

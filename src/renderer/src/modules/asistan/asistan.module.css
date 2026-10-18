@@ -384,3 +384,41 @@
   background: var(--iyi-yumusak);
   color: var(--iyi);
 }
+
+/* --- Odak card on Bugün ------------------------------------------------------ */
+
+.odakKart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b5) var(--b5) var(--b6);
+}
+
+.odakKartRakam {
+  font-family: var(--aile-sayi);
+  font-size: 44px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--metin);
+}
+
+.odakKartCubuk {
+  width: 100%;
+  max-width: 220px;
+  height: 5px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  overflow: hidden;
+}
+
+.odakKartDolgu {
+  display: block;
+  height: 100%;
+  background: var(--vurgu);
+  transition: width var(--sure) var(--egri);
+}
+
+.odakKartMola {
+  background: var(--iyi);
+}

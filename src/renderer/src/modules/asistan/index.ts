@@ -3,6 +3,7 @@ import type { Modul } from "@/modules";
 import { Arsiv } from "./Arsiv";
 import { Hafta } from "./Hafta";
 import { Hatirla } from "./Hatirla";
+import { asistanKartlari } from "./Kartlar";
 import { asistanKomutlari } from "./komutlar";
 import { OdakArkaPlan } from "./OdakArkaPlan";
 import { Odak } from "./Odak";
@@ -31,6 +32,7 @@ export const asistanModulu: Modul = {
   ],
   Ozet: AsistanOzet,
   ozetAd: "Bugünün planı · Aklında tut",
+  kartlar: asistanKartlari,
   komutlar: asistanKomutlari,
   ArkaPlan: OdakArkaPlan,
 };
