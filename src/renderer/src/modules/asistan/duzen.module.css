@@ -1,0 +1,334 @@
+/* Asistan's editing screens: Hedefler, Yetenekler, Yol haritaları (issue #56). */
+
+/* Text edited in place: looks like text until hovered or focused. */
+.metinSatiri,
+.metinAlani {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 8px;
+  margin: 0 -8px;
+  border: 1px solid transparent;
+  border-radius: var(--r2);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.metinAlani {
+  resize: vertical;
+  color: var(--metin-orta);
+}
+
+.metinSatiri:hover,
+.metinAlani:hover {
+  border-color: var(--cizgi);
+}
+
+.metinSatiri:focus,
+.metinAlani:focus {
+  outline: none;
+  border-color: var(--vurgu);
+  background: var(--zemin-alt);
+}
+
+.metinSatiri::placeholder,
+.metinAlani::placeholder {
+  color: var(--metin-soluk);
+}
+
+.baslikMetni {
+  font-size: var(--y3);
+  font-weight: var(--sik-kalin);
+}
+
+/* --- layout --------------------------------------------------------------------- */
+
+.izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: var(--b5);
+  align-items: start;
+}
+
+.ust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--b2);
+  align-items: center;
+  margin-bottom: var(--b5);
+}
+
+.ust > :first-child {
+  flex: 1;
+  min-width: 220px;
+}
+
+.govde {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+  padding: var(--b4) var(--b6) var(--b5);
+}
+
+.bolum {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bolumAd {
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-soluk);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.satir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  flex-wrap: wrap;
+}
+
+.soluk {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}
+
+.sayilar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--b2);
+}
+
+.sayi {
+  display: flex;
+  flex-direction: column;
+  padding: var(--b2) var(--b3);
+  border-radius: var(--r2);
+  background: var(--zemin-alt);
+}
+
+.sayiDeger {
+  font-weight: var(--sik-kalin);
+  font-variant-numeric: tabular-nums;
+}
+
+.cubukYuva {
+  height: 6px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  overflow: hidden;
+}
+
+.cubuk {
+  height: 100%;
+  background: var(--vurgu);
+  border-radius: var(--r-tam);
+}
+
+.bag {
+  color: var(--metin-orta);
+  font-size: var(--y5);
+  text-decoration: none;
+}
+
+.bag:hover {
+  color: var(--metin);
+}
+
+/* small form controls */
+.kucukGiris,
+.secim {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--kart);
+  color: var(--metin);
+  font: inherit;
+  font-size: var(--y5);
+  min-width: 0;
+}
+
+.kucukGiris:focus,
+.secim:focus {
+  outline: none;
+  border-color: var(--vurgu);
+}
+
+.dar {
+  width: 72px;
+}
+
+.orta {
+  width: 130px;
+}
+
+.genisGiris {
+  flex: 1;
+}
+
+.ikonDugme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: none;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.ikonDugme:hover:not(:disabled) {
+  background: var(--zemin-alt);
+  color: var(--metin);
+}
+
+.ikonDugme:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.tehlike:hover:not(:disabled) {
+  color: var(--hata);
+}
+
+/* --- measurements --------------------------------------------------------------------- */
+
+.olcum {
+  display: flex;
+  align-items: baseline;
+  gap: var(--b2);
+  font-size: var(--y5);
+}
+
+.olcumAd {
+  flex: 1;
+  min-width: 0;
+  color: var(--metin-orta);
+}
+
+.olcumDeger {
+  font-weight: var(--sik-kalin);
+  font-variant-numeric: tabular-nums;
+}
+
+.olcumGecmis {
+  color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- goals ------------------------------------------------------------------------- */
+
+.hedefBitti {
+  opacity: 0.6;
+}
+
+.bagliSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  font-size: var(--y5);
+}
+
+.bagliSatir > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.bagliSatir .cubukYuva {
+  width: 90px;
+  flex: none;
+}
+
+/* --- roadmap editor ------------------------------------------------------------------------- */
+
+.asama {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--b3) var(--b4);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r3);
+}
+
+.asamaSuAn {
+  border-color: var(--vurgu);
+  box-shadow: inset 3px 0 0 var(--vurgu);
+}
+
+.asamaBas {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+}
+
+.asamaNo {
+  flex: none;
+  width: 22px;
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+}
+
+.suAnDugme {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r-tam);
+  background: transparent;
+  color: var(--metin-soluk);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.suAnDugme:hover {
+  color: var(--metin);
+  border-color: var(--metin-soluk);
+}
+
+.suAnSecili,
+.suAnSecili:hover {
+  border-color: var(--vurgu);
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}
+
+.adim {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding-left: 30px;
+}
+
+.adim input[type="checkbox"] {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--vurgu);
+}
+
+.adimYapildi .metinSatiri {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.adimEkle {
+  padding-left: 30px;
+}
+
+.altSerit {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--b2);
+  padding: var(--b3) var(--b6);
+  border-top: 1px solid var(--cizgi);
+}
