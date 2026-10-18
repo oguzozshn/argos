@@ -3,7 +3,7 @@ import type { KartAyari } from "@ortak/bugun-duzen";
 import { compareTasks, dueLabel } from "@ortak/task-dates";
 import type { KartSecenegi, KartTuru } from "@/modules";
 import { Etiket, Kart, Satir } from "@/ui/bilesenler";
-import { useTaskBoard } from "./useTaskBoard";
+import { useTaskBoard } from "@/veri/task-board";
 import s from "./yapilacak.module.css";
 
 /**
