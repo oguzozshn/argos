@@ -308,7 +308,7 @@ export function Bugun() {
                 }))}
                 gridConfig={{ cols: KOLON, rowHeight: SATIR, margin: ARA, containerPadding: [0, 0] }}
                 dragConfig={{ enabled: duzenleniyor, cancel: `.${s.kaldir}` }}
-                resizeConfig={{ enabled: duzenleniyor, handles: ["s", "e", "w", "se", "sw"] }}
+                resizeConfig={{ enabled: duzenleniyor, handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"] }}
                 onDragStop={(layout) => kaydet(izgaradan(layout))}
                 onResizeStop={(layout) => kaydet(izgaradan(layout))}
               >
