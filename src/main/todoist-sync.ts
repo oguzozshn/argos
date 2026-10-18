@@ -57,7 +57,7 @@ export function syncNow(opts: { notify?: boolean } = {}): Promise<boolean> {
     waiting = null;
     try {
       // Queued writes go first; the sync then brings Todoist's state with them in it.
-      const { sync, rejected } = await flushAndSync(dataDir(), api, new Date().toISOString());
+      const { sync, rejected, named } = await flushAndSync(dataDir(), api, new Date().toISOString());
       const { kept, changed } = sync;
       setStatus({ online: true, lastSyncAt: new Date().toISOString(), error: null });
       if (rejected.length > 0) {
@@ -70,8 +70,9 @@ export function syncNow(opts: { notify?: boolean } = {}): Promise<boolean> {
         const what = kept.lists.length > 0 ? `${kept.lists.map((n) => `"${n}"`).join(", ")} listesi` : `${kept.tasks} görev`;
         bildirimGoster("Todoist'ten silindi, Argos'ta kaldı", `${what} artık Argos'ta duruyor.`);
       }
-      // A refused write leaves the view, so the screens reload whoever asked.
-      if ((changed && opts.notify !== false) || rejected.length > 0) todoistDegistiBildir();
+      // A refused write leaves the view, and a newly named task changes its id:
+      // in both cases the screens reload whoever asked, so none keeps a temp id.
+      if ((changed && opts.notify !== false) || rejected.length > 0 || named > 0) todoistDegistiBildir();
       return changed;
     } catch (e) {
       console.error("[todoist-sync]", e);

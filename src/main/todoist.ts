@@ -88,8 +88,13 @@ async function queuedItem<T extends TodoistGorev | null>(
 ): Promise<TodoistGorev | T> {
   const root = dataDir();
   const [view, { outbox }] = await Promise.all([readView(root), readOutbox(root)]);
-  const item = view.items[outbox.tempIds[id] ?? id];
-  if (!store.storeReady(view) || !item) return live();
+  const realId = outbox.tempIds[id] ?? id;
+  const item = view.items[realId];
+  if (!store.storeReady(view) || !item) {
+    // Never hand Todoist a temp id: it only knows its own.
+    if (q.isTempId(realId)) throw new TodoistHata("Görev bulunamadı");
+    return live();
+  }
   await enqueue(root, build(item, clock()));
   queued();
   const after = (await readView(root)).items[item.id];
@@ -230,12 +235,20 @@ export async function kapat(id: string): Promise<void> {
  * a reopen is queued with the task as it was before the close.
  */
 export async function ac(id: string): Promise<void> {
-  if (await cancelQueuedClose(dataDir(), id)) {
+  // A screen may still hold the temp id of a task added from it, while the
+  // close was recorded under the id Todoist gave it meanwhile (issue #44).
+  const { outbox } = await readOutbox(dataDir());
+  const realId = outbox.tempIds[id] ?? id;
+  if ((await cancelQueuedClose(dataDir(), realId)) || (realId !== id && (await cancelQueuedClose(dataDir(), id)))) {
     queued();
     return;
   }
-  const snapshot = recentlyClosed.get(id);
-  if (!snapshot) return cekirdek.ac(jeton(), id);
+  const snapshot = recentlyClosed.get(realId) ?? recentlyClosed.get(id);
+  if (!snapshot) {
+    // Todoist only knows its own ids; a temp id would come back as "Invalid argument value".
+    if (q.isTempId(realId)) throw new TodoistHata("Görev geri alınamadı: Todoist'e henüz ulaşmamıştı");
+    return cekirdek.ac(jeton(), realId);
+  }
   await enqueue(dataDir(), q.reopenItem(snapshot, clock()));
   queued();
 }
