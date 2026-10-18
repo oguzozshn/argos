@@ -5,7 +5,7 @@ import type { TodoistGorev } from "@ortak/tipler";
 import { kopru } from "@/veri/kanca";
 import { useLocalTasks } from "@/veri/local-tasks";
 
-/** Data hook of the important-dates card. The task screen's data lives in useTaskBoard.ts. */
+/** Data hook of the important-dates card. The task screen's data lives in veri/task-board.ts. */
 
 /* --- önemli tarihler --------------------------------------------------- */
 

@@ -6,11 +6,11 @@ import { describeReminder } from "@ortak/reminders";
 import { dueLabel } from "@ortak/task-dates";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, Popover } from "@/ui/Popover";
-import { PRIORITY_COLOR } from "@/ui/gorev/priority";
-import { ReminderMenu } from "@/ui/gorev/ReminderMenu";
-import type { TaskBoard } from "./useTaskBoard";
+import { PRIORITY_COLOR } from "./priority";
+import { ReminderMenu } from "./ReminderMenu";
+import type { TaskBoard } from "@/veri/task-board";
 import { MoveMenu } from "./MoveMenu";
-import s from "./board.module.css";
+import s from "./gorev.module.css";
 
 /**
  * The right-hand task panel, like Todoist's task view: title and description

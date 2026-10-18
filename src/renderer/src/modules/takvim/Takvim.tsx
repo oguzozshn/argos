@@ -1,6 +1,6 @@
 import { ArrowRight, CalendarOff, Check, ChevronLeft, ChevronRight, Plus, RefreshCw, X } from "lucide-react";
 import type { Uygulama } from "@ortak/bot";
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { AY_TAM, GUN_ADLARI, GUN_KISA, gunEkle, haftaninGunu } from "@ortak/gun";
 import type { Hafta as HaftaTipi, Slot } from "@ortak/plan";
 import { takvim } from "@ortak/ozet";
@@ -25,6 +25,8 @@ import { usePlanVerisi } from "@/veri/plan";
 import { gorevSaati, useTodoistAralik } from "@/veri/todoist";
 import { useTaskComposerTarget, type NewTaskInput, type TaskComposerTarget } from "@/veri/task-create";
 import { Composer } from "@/ui/gorev/Composer";
+import { TaskPanel } from "@/ui/gorev/TaskPanel";
+import { useTaskBoard } from "@/veri/task-board";
 import {
   birakmayiCoz,
   dakikaMetni,
@@ -127,22 +129,22 @@ const gorevKaynagi = (g: TodoistGorev, sr: Surukle) =>
 
 /* --- görev parçaları ----------------------------------------------------- */
 
-function GorevCipi({
-  gorev,
-  onKapat,
-  surukle,
-}: {
-  gorev: TodoistGorev;
-  onKapat: () => void;
-  surukle: Surukle;
-}) {
+/**
+ * Opens a task's detail panel (issue #52). Clicking a task on the calendar
+ * used to complete it, which is how tasks got completed by accident (#44);
+ * completing is now the panel's (or the day list's circle's) job.
+ */
+const GorevAc = createContext<(g: TodoistGorev) => void>(() => undefined);
+
+function GorevCipi({ gorev, surukle }: { gorev: TodoistGorev; surukle: Surukle }) {
   const saat = gorevSaati(gorev);
-  const ipucu = gorev.tekrarli ? SURUKLENMEZ : "tamamlamak için tıkla, taşımak için sürükle";
+  const ac = useContext(GorevAc);
+  const ipucu = gorev.tekrarli ? `ayrıntı için tıkla — ${SURUKLENMEZ}` : "ayrıntı için tıkla, taşımak için sürükle";
   return (
     <button
       type="button"
       className={gorev.tekrarli ? `${s.gorevCip} ${s.gorevCipTekrarli}` : s.gorevCip}
-      onClick={onKapat}
+      onClick={() => ac(gorev)}
       title={`${gorev.icerik}${saat ? ` · ${saat}` : ""} — ${ipucu}`}
       {...kaynakOzellikleri(gorev, surukle)}
     >
@@ -204,6 +206,7 @@ function EksenSutunu({
     }
   }
 
+  const gorevAc = useContext(GorevAc);
   const saatliGorevler = gorevler.filter((g) => gorevSaati(g) !== null);
 
   // Sürüklenen görevin düşeceği dakika. Bırakmadan önce görünsün: 15 dakikalık
@@ -328,7 +331,8 @@ function EksenSutunu({
           key={g.id}
           className={`${s.blok} ${s.gorevBlok}${dar ? ` ${s.blokKucuk}` : ""}`}
           style={{ top: yerDk(dakika(gorevSaati(g)!)), height: 24 }}
-          title={`${gorevSaati(g)} · ${g.icerik}${g.tekrarli ? ` — ${SURUKLENMEZ}` : ""}`}
+          title={`${gorevSaati(g)} · ${g.icerik} — ayrıntı için tıkla${g.tekrarli ? ` · ${SURUKLENMEZ}` : ""}`}
+          onClick={() => gorevAc(g)}
           {...gorevKaynagi(g, surukle)}
         >
           <span className={s.blokBas}>{g.icerik}</span>
@@ -414,6 +418,11 @@ export function Takvim() {
 
   // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
   const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1));
+  // The task detail panel (issue #52): the same panel as Yapılacaklar, on the right.
+  const pano = useTaskBoard();
+  const [acikGorev, setAcikGorev] = useState<string | null>(null);
+  const gorevAc = useCallback((g: TodoistGorev) => setAcikGorev(`${g.source === "local" ? "local" : "todoist"}:${g.id}`), []);
+  const acikTask = acikGorev ? pano.tasks.find((t) => t.key === acikGorev) ?? null : null;
   const gorevHedefi = useTaskComposerTarget();
   const { tazele: tdTazele } = td;
   const ekleHost = useMemo(
@@ -686,6 +695,7 @@ export function Takvim() {
         </p>
       )}
 
+      <GorevAc.Provider value={gorevAc}>
       <div className={`${s.duzen} ${s.duzenPanelli}`}>
         <Kart dolgulu={false}>
           {gorunum === "ay" && (
@@ -720,7 +730,6 @@ export function Takvim() {
               onSec={setSecili}
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
-              onKapat={td.kapat}
               duzen={duzen}
             />
           )}
@@ -736,13 +745,15 @@ export function Takvim() {
               surukle={surukle}
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
-              onKapat={td.kapat}
               duzen={duzen}
             />
           )}
         </Kart>
 
-        {seciliKayit ? (
+        {acikTask ? (
+          // A completed or deleted task leaves the board: the day panel comes back by itself.
+          <TaskPanel key={acikTask.key} task={acikTask} board={pano} onClose={() => setAcikGorev(null)} />
+        ) : seciliKayit ? (
           <GunPaneliDosyali
             kod={seciliKayit.kod}
             gunNo={seciliKayit.gunNo}
@@ -766,6 +777,7 @@ export function Takvim() {
           />
         )}
       </div>
+      </GorevAc.Provider>
     </>
   );
 }
@@ -931,7 +943,6 @@ function HaftaEkseni({
   onSec,
   seciliSlot,
   onSlotSec,
-  onKapat,
   duzen,
 }: {
   bas: string;
@@ -945,7 +956,6 @@ function HaftaEkseni({
   onSec: (iso: string) => void;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
-  onKapat: (g: TodoistGorev) => Promise<void>;
   duzen: EksenDuzeni;
 }) {
   const gunler = Array.from({ length: 7 }, (_, i) => gunEkle(bas, i));
@@ -993,7 +1003,6 @@ function HaftaEkseni({
                   <GorevCipi
                     key={g.id}
                     gorev={g}
-                    onKapat={() => void onKapat(g)}
                     surukle={surukle}
                   />
                 ))}
@@ -1042,7 +1051,6 @@ function GunEkseni({
   surukle,
   seciliSlot,
   onSlotSec,
-  onKapat,
   duzen,
 }: {
   iso: string;
@@ -1054,7 +1062,6 @@ function GunEkseni({
   surukle: Surukle;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
-  onKapat: (g: TodoistGorev) => Promise<void>;
   duzen: EksenDuzeni;
 }) {
   const kutu = useEksenKaydirma(
@@ -1078,7 +1085,7 @@ function GunEkseni({
           <span className={s.gunBoyuEtiket}>gün boyu</span>
           <div className={s.gunBoyuIcerik}>
             {gunBoyu.map((g) => (
-              <GorevCipi key={g.id} gorev={g} onKapat={() => void onKapat(g)} surukle={surukle} />
+              <GorevCipi key={g.id} gorev={g} surukle={surukle} />
             ))}
           </div>
         </div>
@@ -1179,6 +1186,7 @@ function GunListesi({
   onKapat: (g: TodoistGorev) => Promise<void>;
   surukle: Surukle;
 }) {
+  const gorevAc = useContext(GorevAc);
   const gunBoyu = gorevler.filter((g) => !gorevSaati(g));
   const saatli: GunOgesi[] = [
     ...gorevler
@@ -1201,7 +1209,9 @@ function GunListesi({
         title="Tamamla"
         aria-label={`${g.icerik} görevini tamamla`}
       />
-      <span className={s.gunSatirAd}>{g.icerik}</span>
+      <button type="button" className={s.gunSatirAc} onClick={() => gorevAc(g)} title="Ayrıntı">
+        {g.icerik}
+      </button>
     </div>
   );
 

@@ -3,7 +3,7 @@ import { useRef, useState, type MouseEvent } from "react";
 import { LIST_COLORS } from "@ortak/local-tasks";
 import { TODOIST_COLOR_LABELS, TODOIST_COLORS, todoistColorName, type TaskList } from "@ortak/task";
 import { MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
-import type { TaskBoard } from "./useTaskBoard";
+import type { TaskBoard } from "@/veri/task-board";
 import s from "./board.module.css";
 
 /**
