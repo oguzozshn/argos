@@ -54,7 +54,13 @@ eq("narrower than a quarter is widened", sinirla({ id: "a", tur: "a", x: 0, y: 0
 console.log("\nAdding, removing, settings");
 eq("removing a card", kartKaldir(d, "asistan:ozet").map((k) => k.id), ["yapilacak:ust", "yapilacak:ozet", "hobiler:ozet"]);
 const without = kartKaldir(d, "hobiler:ozet");
-eq("adding it back goes below everything", kartEkle(without, kartlar[3]!).at(-1), { id: "hobiler:ozet", tur: "hobiler:ozet", x: 0, y: altSinir(without), w: 6, h: 9 });
+eq("adding it back fills the gap it left in the last row", kartEkle(without, kartlar[3]!).at(-1), d.find((k) => k.id === "hobiler:ozet"));
+const sira = [kartlar[2]!, liste, liste, liste].reduce(
+  (acc, k, i) => kartEkle(acc, k, `${k.id}#${i}`),
+  [] as ReturnType<typeof kartKaldir>,
+);
+eq("cards added one after another fill a row, then go below", sira.map((k) => [k.x, k.y]), [[0, 0], [6, 0], [0, 9], [4, 10]]);
+eq("a full-width card goes below everything", kartEkle(sira, kartlar[0]!).at(-1)?.y, altSinir(sira));
 eq("adding a strip back: full width", kartEkle(kartKaldir(d, "yapilacak:ust"), kartlar[0]!).at(-1)?.w, 12);
 eq("a one-of-a-kind card already there is not added twice", kartEkle(d, kartlar[1]!), d);
 const iki = kartEkle(kartEkle(d, liste, "hobiler:liste#a", { liste: "dizi" }), liste, "hobiler:liste#b", { liste: "oyunlar" });

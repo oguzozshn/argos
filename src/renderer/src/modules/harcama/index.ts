@@ -10,6 +10,7 @@ import { Kategoriler } from "./Kategoriler";
 import { Ekstre } from "./Ekstre";
 import { Ayarlar } from "./Ayarlar";
 import { HarcamaOzet } from "./Ozet";
+import { harcamaKartlari } from "./Kartlar";
 
 export const harcamaModulu: Modul = {
   id: "harcama",
@@ -29,4 +30,5 @@ export const harcamaModulu: Modul = {
   ],
   Ozet: HarcamaOzet,
   ozetAd: "Harcama özeti",
+  kartlar: harcamaKartlari,
 };

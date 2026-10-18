@@ -114,16 +114,32 @@ export function varsayilanDuzen(kartlar: KartTanimi[]): KartYeri[] {
 export const altSinir = (duzen: KartYeri[]): number => duzen.reduce((m, k) => Math.max(m, k.y + k.h), 0);
 
 /**
- * Adds a card at the bottom. A one-of-a-kind type already on the screen is
- * not added again; a type that can repeat gets the given copy id and
- * settings.
+ * Where a new w×h card goes: beside the cards of the last row when there is
+ * room, else below everything. Adding several cards then fills the row
+ * instead of stacking them in one column.
+ */
+function bosYer(duzen: KartYeri[], w: number, h: number): { x: number; y: number } {
+  const alt = altSinir(duzen);
+  const sonSatir = duzen.reduce((m, k) => Math.max(m, k.y), 0);
+  const cakisir = (x: number, y: number) =>
+    duzen.some((k) => x < k.x + k.w && k.x < x + w && y < k.y + k.h && k.y < y + h);
+  for (let y = sonSatir; y < alt; y++) {
+    for (let x = 0; x + w <= KOLON; x++) if (!cakisir(x, y)) return { x, y };
+  }
+  return { x: 0, y: alt };
+}
+
+/**
+ * Adds a card in the first free place of the last row (see `bosYer`). A
+ * one-of-a-kind type already on the screen is not added again; a type that
+ * can repeat gets the given copy id and settings.
  */
 export function kartEkle(duzen: KartYeri[], kart: KartTanimi, kopyaId?: string, ayar?: KartAyari): KartYeri[] {
   if (!kart.coklu && duzen.some((k) => k.tur === kart.id)) return duzen;
   const id = kart.coklu ? (kopyaId ?? `${kart.id}#${duzen.length + 1}`) : kart.id;
   if (duzen.some((k) => k.id === id)) return duzen;
   const { w, h } = boyut(kart);
-  return [...duzen, { id, tur: kart.id, ...(ayar && Object.keys(ayar).length ? { ayar } : {}), x: 0, y: altSinir(duzen), w, h }];
+  return [...duzen, { id, tur: kart.id, ...(ayar && Object.keys(ayar).length ? { ayar } : {}), ...bosYer(duzen, w, h), w, h }];
 }
 
 export const kartKaldir = (duzen: KartYeri[], id: string): KartYeri[] => duzen.filter((k) => k.id !== id);
