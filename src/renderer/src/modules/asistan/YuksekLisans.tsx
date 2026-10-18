@@ -6,6 +6,8 @@ import {
   DERS_RENKLERI,
   VARSAYILAN_SAYFA_DK,
   YL_YOLU,
+  araHedefEkle,
+  araHedefSil,
   dersSil,
   eforDk,
   haftaBasi,
@@ -18,6 +20,7 @@ import {
   planEkle,
   planIsaretle,
   planSil,
+  type AraHedef,
   type Ders,
   type HedefTuru,
   type YlDosyasi,
@@ -83,10 +86,16 @@ export function YuksekLisans() {
 
   const dersler = veri.dersler.filter((x) => !x.arsiv);
   const tumHedefler = dersler.flatMap((ders) => ders.hedefler.map((hedef) => ({ ders, hedef })));
-  // Deadlines on the calendar.
+  // Deadlines and checkpoints (vize) on the calendar.
   const sonTarihler = useMemo(() => {
-    const m = new Map<string, { ders: Ders; hedef: YlHedef }[]>();
-    for (const x of tumHedefler) (m.get(x.hedef.sonTarih) ?? m.set(x.hedef.sonTarih, []).get(x.hedef.sonTarih)!).push(x);
+    type Isaret = { id: string; ders: Ders; ad: string; ipucu: string };
+    const m = new Map<string, Isaret[]>();
+    const ekle = (gun: string, x: Isaret) => (m.get(gun) ?? m.set(gun, []).get(gun)!).push(x);
+    for (const { ders, hedef } of tumHedefler) {
+      ekle(hedef.sonTarih, { id: hedef.id, ders, ad: hedef.ad, ipucu: `Son tarih: ${hedef.ad}` });
+      for (const a of hedef.araHedefler ?? [])
+        ekle(a.tarih, { id: a.id, ders, ad: a.ad, ipucu: `${a.ad}: ${hedef.ad} · ${miktarMetni(hedef.tur, a.miktar)}` });
+    }
     return m;
   }, [tumHedefler]);
 
@@ -196,9 +205,9 @@ export function YuksekLisans() {
                       }}
                     >
                       <span className={s.gunNo}>{gunAl(gun)}</span>
-                      {(sonTarihler.get(gun) ?? []).map(({ ders, hedef }) => (
-                        <span key={hedef.id} className={s.sonTarih} style={{ color: ders.renk }} title={`Son tarih: ${hedef.ad}`}>
-                          <Flag size={10} /> <span className={s.cipMetin}>{hedef.ad}</span>
+                      {(sonTarihler.get(gun) ?? []).map(({ id, ders, ad, ipucu }) => (
+                        <span key={id} className={s.sonTarih} style={{ color: ders.renk }} title={ipucu}>
+                          <Flag size={10} /> <span className={s.cipMetin}>{ad}</span>
                         </span>
                       ))}
                       {plan.map((o) => {
@@ -372,6 +381,9 @@ function DersKarti({
             <span className={s.cubuk}>
               <span className={s.cubukPlanli} style={{ width: yuzde(durum.planli) }} />
               <span className={s.cubukYapilan} style={{ width: yuzde(durum.yapilan) }} />
+              {durum.araHedefler.map((a) => (
+                <span key={a.id} className={s.cubukIsaret} style={{ left: yuzde(a.miktar) }} title={`${a.ad}: ${miktarMetni(h.tur, a.miktar)}`} />
+              ))}
             </span>
             <span className={s.durum}>
               <span>{miktarMetni(h.tur, durum.yapilan)} yapıldı</span>
@@ -384,10 +396,16 @@ function DersKarti({
             </span>
             {durum.yapilan < h.miktar && durum.kalanGun > 0 && (
               <span className={s.soluk}>
-                Bitirmek için günde ~{miktarMetni(h.tur, durum.gunluk)}
+                {durum.siradakiAra ? `${durum.siradakiAra.ad} için` : "Bitirmek için"} günde ~{miktarMetni(h.tur, durum.gunluk)}
                 {h.tur === "sayfa" ? ` (≈ ${saatMetni(eforDk(h, durum.gunluk))})` : ""}
               </span>
             )}
+            <AraHedefler
+              hedef={h}
+              durum={durum.araHedefler}
+              onEkle={(a) => void degistir((d) => araHedefEkle(d, h.id, a))}
+              onSil={(id) => void degistir((d) => araHedefSil(d, h.id, id))}
+            />
           </div>
         );
       })}
@@ -623,5 +641,90 @@ export function YlHaftaKarti({ bas }: { bas: string }) {
         </div>
       ))}
     </Kart>
+  );
+}
+
+/* --- checkpoints (vize) ---------------------------------------------------------- */
+
+/**
+ * A goal's checkpoints: "Vize · 5 Kas · 10 sa", each saying whether the
+ * calendar has enough planned by then. Optional: a goal shows only the
+ * small "+ Ara hedef" link until one is added.
+ */
+function AraHedefler({
+  hedef,
+  durum,
+  onEkle,
+  onSil,
+}: {
+  hedef: YlHedef;
+  durum: ReturnType<typeof hedefDurumu>["araHedefler"];
+  onEkle: (a: AraHedef) => void;
+  onSil: (id: string) => void;
+}) {
+  const [acik, setAcik] = useState(false);
+  const [ad, setAd] = useState("Vize");
+  const [tarih, setTarih] = useState("");
+  const [miktar, setMiktar] = useState("");
+  const n = miktarOku(hedef.tur, miktar);
+  const gecerli = Boolean(ad.trim() && /^\d{4}-\d{2}-\d{2}$/.test(tarih) && n > 0);
+  const ekle = () => {
+    if (!gecerli) return;
+    onEkle({ id: yeniId("ara"), ad: ad.trim(), tarih, miktar: n });
+    setAcik(false);
+    setTarih("");
+    setMiktar("");
+  };
+  return (
+    // Clicks here must not select or unselect the goal around it.
+    <div className={s.aralar} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      {durum.map((a) => (
+        <div key={a.id} className={s.ara}>
+          <Flag size={11} />
+          <span className={s.araAd}>{a.ad}</span>
+          <span className={s.soluk}>
+            {kisaTarih(a.tarih)} · {miktarMetni(hedef.tur, a.miktar)}
+          </span>
+          {a.ulasildi ? (
+            <span className={s.iyi}>ulaşıldı</span>
+          ) : a.yetisir ? (
+            <span className={s.iyi}>planı yetiyor</span>
+          ) : (
+            <span className={a.gecti ? s.hata : s.uyari}>
+              {a.gecti ? "kaçtı" : `${miktarMetni(hedef.tur, a.miktar - a.planli)} eksik planlı`}
+            </span>
+          )}
+          <button type="button" className={s.ikon} aria-label={`${a.ad} ara hedefini sil`} onClick={() => onSil(a.id)}>
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+      {acik ? (
+        <div className={s.satir}>
+          <input className={`${s.giris} ${s.orta}`} value={ad} aria-label="Ara hedefin adı" onChange={(e) => setAd(e.target.value)} />
+          <input type="date" className={s.giris} value={tarih} aria-label="Ara hedefin tarihi" onChange={(e) => setTarih(e.target.value)} />
+          <input
+            className={`${s.giris} ${s.dar}`}
+            inputMode="decimal"
+            value={miktar}
+            placeholder={hedef.tur === "saat" ? "10" : "300"}
+            aria-label={hedef.tur === "saat" ? "O tarihe kadar kaç saat" : "O tarihe kadar kaçıncı sayfa"}
+            onChange={(e) => setMiktar(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && ekle()}
+          />
+          <span className={s.soluk}>{birim(hedef.tur)}</span>
+          <button type="button" className={s.ikon} aria-label="Ara hedefi ekle" disabled={!gecerli} onClick={ekle}>
+            <Plus size={14} />
+          </button>
+          <button type="button" className={s.ikon} aria-label="Vazgeç" onClick={() => setAcik(false)}>
+            <X size={13} />
+          </button>
+        </div>
+      ) : (
+        <button type="button" className={s.araEkle} onClick={() => setAcik(true)}>
+          <Plus size={12} /> Ara hedef (vize, ödev…)
+        </button>
+      )}
+    </div>
   );
 }

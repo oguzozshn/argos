@@ -5,6 +5,8 @@
 
 import {
   BOS_YL,
+  araHedefEkle,
+  araHedefSil,
   dersSil,
   eforDk,
   haftaBasi,
@@ -68,6 +70,20 @@ const s = hedefDurumu(d, d.dersler[0]!.hedefler[0]!, bugun);
 eq("goal: planned, done, not on the calendar yet", [s.planli, s.yapilan, s.plansiz], [180, 120, 1020]);
 eq("goal: days left and a day's share", [s.kalanGun, s.gunluk], [34, 32]);
 eq("a passed deadline: all that is left in one day", hedefDurumu(d, d.dersler[0]!.hedefler[0]!, "2026-12-01").gunluk, 1080);
+
+console.log("\nCheckpoints (vize)");
+let m = araHedefEkle(d, "saat", { id: "f", ad: "Final", tarih: "2026-11-18", miktar: 1080 });
+m = araHedefEkle(m, "saat", { id: "v", ad: "Vize", tarih: "2026-10-30", miktar: 600 });
+const mh = () => m.dersler[0]!.hedefler[0]!;
+const ms = hedefDurumu(m, mh(), bugun);
+eq("checkpoints kept in date order", mh().araHedefler!.map((a) => a.ad), ["Vize", "Final"]);
+eq("next checkpoint and how it stands", [ms.siradakiAra?.ad, ms.siradakiAra?.planli, ms.siradakiAra?.yetisir], ["Vize", 180, false]);
+eq("a day's share heads for the checkpoint first", ms.gunluk, Math.ceil((600 - 120) / 13));
+eq("a goal without checkpoints is as before", [s.siradakiAra, s.gunluk], [null, 32]);
+const q = araHedefEkle(d, "saat", { id: "k", ad: "Quiz", tarih: "2026-10-25", miktar: 100 });
+eq("a reached checkpoint is skipped", hedefDurumu(q, q.dersler[0]!.hedefler[0]!, bugun).siradakiAra, null);
+eq("removing the last checkpoint drops the field", "araHedefler" in araHedefSil(araHedefSil(m, "saat", "v"), "saat", "f").dersler[0]!.hedefler[0]!, false);
+eq("checkpoints survive reading the file", normalizeYl(m).dersler[0]!.hedefler[0]!.araHedefler!.length, 2);
 
 console.log("\nWeekly effort");
 eq("Monday of the week", [haftaBasi("2026-10-18"), haftaBasi("2026-10-19"), haftaBasi("2026-10-25")], ["2026-10-12", "2026-10-19", "2026-10-19"]);

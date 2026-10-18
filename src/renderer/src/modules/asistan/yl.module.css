@@ -460,3 +460,67 @@
   font-size: var(--y5);
   font-variant-numeric: tabular-nums;
 }
+
+/* --- checkpoints (vize) ------------------------------------------------------------- */
+
+/* A checkpoint's place on the goal's bar. */
+.cubukIsaret {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--metin);
+}
+
+.aralar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: default;
+}
+
+.ara {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--y5);
+  color: var(--metin-orta);
+}
+
+.araAd {
+  font-weight: var(--sik-orta);
+  color: var(--metin);
+}
+
+.ara .ikon {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+}
+
+.hata {
+  color: var(--hata);
+}
+
+.orta {
+  width: 90px;
+}
+
+.araEkle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--metin-soluk);
+  font: inherit;
+  font-size: var(--y5);
+  cursor: pointer;
+}
+
+.araEkle:hover {
+  color: var(--metin);
+}
