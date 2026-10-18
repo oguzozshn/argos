@@ -533,3 +533,24 @@ details[open] > .ozet::before {
   color: var(--metin);
   cursor: pointer;
 }
+
+/* --- Abonelikler (issue #43) ------------------------------------------------ */
+
+.abonelikToplam {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--b6);
+}
+
+.abonelikToplam > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.abonelikTutar {
+  font-size: 20px;
+  font-weight: var(--sik-kalin);
+  font-variant-numeric: tabular-nums;
+  color: var(--metin);
+}

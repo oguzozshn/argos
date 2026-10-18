@@ -68,6 +68,13 @@ const KOPRU_YOK = "Uygulama köprüsü yüklenmedi — veri okunamıyor.";
  * kullanabilir; her biri ayrı ayrı üretmeye kalksa aynı kaydı iki kez yazardı.
  */
 let kurulumYapildi = false;
+/**
+ * Due payments written in this session, as "rule|date". The ledger state
+ * catches up only after its re-read; until then this keeps a second check
+ * from writing the same payment again.
+ */
+const yazilanTekrarlar = new Set<string>();
+let tekrarYaziliyor = false;
 
 export function useHarcama(kurulum = false): HarcamaVerisi {
   const [tanimlar, setTanimlar] = useState<Tanimlar>(VARSAYILAN_TANIMLAR);
@@ -97,7 +104,23 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
 
   const bugun = useBugun();
 
-  const tazele = useCallback(async () => {
+  /**
+   * Writes of tanimlar.json still under way. A re-read that ran alongside one
+   * read the file before it, set the screen to that older state, and, since
+   * our own write's change event is skipped, kept it: the next write then
+   * wrote the older rules back and lost the one just added (a subscription
+   * saved while its first payment was being written, issue #43).
+   */
+  const tanimYazmalari = useRef(new Set<Promise<unknown>>());
+  const yazmaIzle = useCallback(<T,>(p: Promise<T>): Promise<T> => {
+    tanimYazmalari.current.add(p);
+    void p.finally(() => tanimYazmalari.current.delete(p));
+    return p;
+  }, []);
+
+  /** Re-reads everything. Waits for definition writes under way, unless called from inside one. */
+  const tazele = useCallback(async (yazmaBekleme = true) => {
+    if (yazmaBekleme) await Promise.allSettled([...tanimYazmalari.current]);
     const k = kopru();
     if (!k) {
       setOkumaHatasi(KOPRU_YOK);
@@ -144,54 +167,60 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
   }, [tazele]);
 
   const tanimlariYaz = useCallback(
-    async (yeni: Tanimlar): Promise<boolean> => {
-      const k = kopru();
-      if (!k) {
-        setYazmaHatasi(KOPRU_YOK);
-        return false;
-      }
-      setTanimlar(yeni);
-      kendiYazdik(TANIM_YOLU);
-      const mevcut = await k.veri.oku(TANIM_YOLU);
-      const sonuc = await k.veri.yaz(TANIM_YOLU, yeni, mevcut.mtime);
-      if (!sonuc.ok) {
-        kendiYazmalarimiz.current.delete(TANIM_YOLU);
-        setYazmaHatasi(cakismaMetni(sonuc.sebep));
-        await tazele();
-        return false;
-      }
-      setKurulu(true);
-      setYazmaHatasi(null);
-      return true;
-    },
-    [tazele, kendiYazdik],
+    (yeni: Tanimlar): Promise<boolean> =>
+      yazmaIzle(
+        (async (): Promise<boolean> => {
+          const k = kopru();
+          if (!k) {
+            setYazmaHatasi(KOPRU_YOK);
+            return false;
+          }
+          setTanimlar(yeni);
+          kendiYazdik(TANIM_YOLU);
+          const mevcut = await k.veri.oku(TANIM_YOLU);
+          const sonuc = await k.veri.yaz(TANIM_YOLU, yeni, mevcut.mtime);
+          if (!sonuc.ok) {
+            kendiYazmalarimiz.current.delete(TANIM_YOLU);
+            setYazmaHatasi(cakismaMetni(sonuc.sebep));
+            await tazele(false);
+            return false;
+          }
+          setKurulu(true);
+          setYazmaHatasi(null);
+          return true;
+        })(),
+      ),
+    [tazele, kendiYazdik, yazmaIzle],
   );
 
   const tanimlariDegistir = useCallback(
-    async (f: (mevcut: Tanimlar) => Tanimlar): Promise<boolean> => {
-      const k = kopru();
-      if (!k) {
-        setYazmaHatasi(KOPRU_YOK);
-        return false;
-      }
-      const okuma = await k.veri.oku(TANIM_YOLU);
-      const mevcut = okuma.veri === null ? VARSAYILAN_TANIMLAR : normalizeTanimlar(okuma.veri);
-      const yeni = f(mevcut);
-      if (yeni === mevcut) return true;
-      setTanimlar(yeni);
-      kendiYazdik(TANIM_YOLU);
-      const sonuc = await k.veri.yaz(TANIM_YOLU, yeni, okuma.mtime);
-      if (!sonuc.ok) {
-        kendiYazmalarimiz.current.delete(TANIM_YOLU);
-        setYazmaHatasi(cakismaMetni(sonuc.sebep));
-        await tazele();
-        return false;
-      }
-      setKurulu(true);
-      setYazmaHatasi(null);
-      return true;
-    },
-    [tazele, kendiYazdik],
+    (f: (mevcut: Tanimlar) => Tanimlar): Promise<boolean> =>
+      yazmaIzle(
+        (async (): Promise<boolean> => {
+          const k = kopru();
+          if (!k) {
+            setYazmaHatasi(KOPRU_YOK);
+            return false;
+          }
+          const okuma = await k.veri.oku(TANIM_YOLU);
+          const mevcut = okuma.veri === null ? VARSAYILAN_TANIMLAR : normalizeTanimlar(okuma.veri);
+          const yeni = f(mevcut);
+          if (yeni === mevcut) return true;
+          setTanimlar(yeni);
+          kendiYazdik(TANIM_YOLU);
+          const sonuc = await k.veri.yaz(TANIM_YOLU, yeni, okuma.mtime);
+          if (!sonuc.ok) {
+            kendiYazmalarimiz.current.delete(TANIM_YOLU);
+            setYazmaHatasi(cakismaMetni(sonuc.sebep));
+            await tazele(false);
+            return false;
+          }
+          setKurulu(true);
+          setYazmaHatasi(null);
+          return true;
+        })(),
+      ),
+    [tazele, kendiYazdik, yazmaIzle],
   );
 
   /** Bir ay dosyasını oku → değiştir → yaz. Dosya yoksa `mtime` null olur, yenisi açılır. */
@@ -394,12 +423,28 @@ export function useHarcama(kurulum = false): HarcamaVerisi {
     // dosyası okunamadıysa o ayın düzenli kayıtları yeniden üretilirdi.
     if (!kurulum || yukleniyor || !yuklendi || kurulumYapildi || !kopru()) return;
     kurulumYapildi = true;
-    void (async () => {
-      if (!kurulu) await tanimlariYaz(VARSAYILAN_TANIMLAR);
-      const bekleyen = vadesiGelenler(tanimlar.duzenliler, islemler, bugun);
-      if (bekleyen.length > 0) await islemlerEkle(bekleyen);
-    })();
-  }, [kurulum, yukleniyor, yuklendi, kurulu, tanimlar.duzenliler, islemler, bugun, tanimlariYaz, islemlerEkle]);
+    if (!kurulu) void tanimlariYaz(VARSAYILAN_TANIMLAR);
+  }, [kurulum, yukleniyor, yuklendi, kurulu, tanimlariYaz]);
+
+  /**
+   * Due payments go into the ledger not only once per launch but whenever the
+   * rules change or the day turns (Argos stays in the tray for days): a
+   * subscription added for today, or one whose day comes while Argos is open,
+   * is written then (issue #43). Same rule as before: only after a complete
+   * read, and `(rule, date)` already in the ledger is never written twice.
+   */
+  useEffect(() => {
+    if (!kurulum || yukleniyor || !yuklendi || !kurulu || tekrarYaziliyor || !kopru()) return;
+    const bekleyen = vadesiGelenler(tanimlar.duzenliler, islemler, bugun).filter(
+      (b) => !yazilanTekrarlar.has(`${b.duzenliId}|${b.tarih}`),
+    );
+    if (bekleyen.length === 0) return;
+    tekrarYaziliyor = true;
+    for (const b of bekleyen) yazilanTekrarlar.add(`${b.duzenliId}|${b.tarih}`);
+    void islemlerEkle(bekleyen).finally(() => {
+      tekrarYaziliyor = false;
+    });
+  }, [kurulum, yukleniyor, yuklendi, kurulu, tanimlar.duzenliler, islemler, bugun, islemlerEkle]);
 
   return {
     tanimlar,
