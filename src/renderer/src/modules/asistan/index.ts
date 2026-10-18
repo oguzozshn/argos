@@ -7,6 +7,7 @@ import { Hedefler } from "./Hedefler";
 import { asistanKartlari } from "./Kartlar";
 import { asistanKomutlari } from "./komutlar";
 import { OdakArkaPlan } from "./OdakArkaPlan";
+import { Planlar } from "./Planlar";
 import { Odak } from "./Odak";
 import { AsistanOzet } from "./Ozet";
 import { Yetenekler } from "./Yetenekler";
@@ -31,6 +32,7 @@ export const asistanModulu: Modul = {
     { yol: "odak", ad: "Odak", Ekran: Odak },
     { yol: "hatirla", ad: "Hatırla", Ekran: Hatirla },
     { yol: "arsiv", ad: "Arşiv", Ekran: Arsiv },
+    { yol: "planlar", ad: "Planlar", Ekran: Planlar },
     { yol: "hedefler", ad: "Hedefler", Ekran: Hedefler },
     { yol: "yetenekler", ad: "Yetenekler", Ekran: Yetenekler },
     { yol: "roadmap", ad: "Yol haritaları", Ekran: YolHaritalari },
