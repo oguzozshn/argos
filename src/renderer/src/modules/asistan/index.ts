@@ -3,11 +3,13 @@ import type { Modul } from "@/modules";
 import { Arsiv } from "./Arsiv";
 import { Hafta } from "./Hafta";
 import { Hatirla } from "./Hatirla";
+import { Hedefler } from "./Hedefler";
 import { asistanKartlari } from "./Kartlar";
 import { asistanKomutlari } from "./komutlar";
 import { OdakArkaPlan } from "./OdakArkaPlan";
 import { Odak } from "./Odak";
 import { AsistanOzet } from "./Ozet";
+import { Yetenekler } from "./Yetenekler";
 import { YolHaritalari } from "./YolHaritalari";
 
 /**
@@ -28,6 +30,8 @@ export const asistanModulu: Modul = {
     { yol: "odak", ad: "Odak", Ekran: Odak },
     { yol: "hatirla", ad: "Hatırla", Ekran: Hatirla },
     { yol: "arsiv", ad: "Arşiv", Ekran: Arsiv },
+    { yol: "hedefler", ad: "Hedefler", Ekran: Hedefler },
+    { yol: "yetenekler", ad: "Yetenekler", Ekran: Yetenekler },
     { yol: "roadmap", ad: "Yol haritaları", Ekran: YolHaritalari },
   ],
   Ozet: AsistanOzet,

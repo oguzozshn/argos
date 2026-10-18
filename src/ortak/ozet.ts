@@ -63,6 +63,8 @@ export interface Kurallar extends Partial<KuralSeti> {
   gunlukAliskanliklar?: { ad: string; hedefId?: string }[];
   rotasyonHavuzu?: string[];
   rotasyonAdedi?: number;
+  /** Areas planned every week, outside the rotation (K02). */
+  sabitAlanlar?: string[];
 }
 
 /* --- sıklık ------------------------------------------------------------- */
