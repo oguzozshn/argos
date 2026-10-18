@@ -1,0 +1,251 @@
+/*
+ * The task add box and the reminder menu, shared by Yapılacaklar and Takvim
+ * (issue #45). Moved here from yapilacak/board.module.css.
+ */
+
+.dot {
+  width: 9px;
+  height: 9px;
+  margin: 0 3px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.moveMenu {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.composer {
+  margin: 12px 16px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r2);
+  background: var(--kart);
+  box-shadow: var(--golge2);
+}
+
+.composerInput {
+  width: 100%;
+  padding: 12px 14px 8px;
+  border: 0;
+  background: none;
+  font-weight: var(--sik-orta);
+  outline: none;
+}
+
+.composerDescription {
+  width: 100%;
+  padding: 0 14px 8px;
+  border: 0;
+  background: none;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  resize: none;
+  outline: none;
+}
+
+.composerChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+
+.chipButton {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: 7px;
+  color: var(--metin-orta);
+  font-size: var(--y4);
+  overflow: hidden;
+}
+
+.chipButton button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chipButton button:hover {
+  background: var(--kart-hover);
+}
+
+.chipOn {
+  border-color: transparent;
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+}
+
+.chipDangerOn {
+  border-color: transparent;
+  background: var(--hata-yumusak);
+  color: var(--hata);
+}
+
+.chipImportantOn {
+  border-color: transparent;
+  background: var(--uyari-yumusak);
+  color: var(--uyari);
+}
+
+.chipOn button:hover,
+.chipDangerOn button:hover,
+.chipImportantOn button:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.chipButton .chipClear {
+  padding: 4px 6px 4px 2px;
+}
+
+.composerFoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 10px 8px;
+  border-top: 1px solid var(--cizgi);
+}
+
+.listPick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listPick:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.hint {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.grow {
+  flex: 1;
+}
+
+.reminderMenu {
+  width: 290px;
+}
+
+.reminderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: var(--y4);
+  color: var(--vurgu);
+}
+
+.reminderText {
+  color: var(--metin);
+}
+
+.reminderWhen {
+  flex: 1;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  text-align: right;
+}
+
+.reminderRow button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.reminderRow button:hover {
+  background: var(--hata-yumusak);
+  color: var(--hata);
+}
+
+.reminderFixed {
+  display: flex;
+  gap: 6px;
+  padding: 2px 10px 6px;
+}
+
+.reminderFixed input {
+  min-width: 0;
+  flex: 1;
+  padding: 5px 6px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: 7px;
+  background: var(--zemin);
+  font-size: var(--y5);
+}
+
+.reminderFixed button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+  font: inherit;
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  cursor: pointer;
+}
+
+.reminderFixed button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+
+/* --- the box in narrow places (Takvim's day panel, issue #45) ---------------- */
+
+.composer {
+  container-type: inline-size;
+}
+
+/* The box itself stands out; the global focus ring around its bare fields doubled it. */
+.composerInput:focus-visible,
+.composerDescription:focus-visible {
+  outline: none;
+}
+
+.listPick {
+  flex-shrink: 0;
+}
+
+.hint {
+  white-space: nowrap;
+}
+
+/* Too narrow for the key hint: the list name keeps its room instead. */
+@container (max-width: 440px) {
+  .hint {
+    display: none;
+  }
+}

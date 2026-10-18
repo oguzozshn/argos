@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { NewReminder, Reminder } from "@ortak/local-tasks";
 import { REMINDER_PRESETS, describeReminder, reminderMoment } from "@ortak/reminders";
 import { MenuItem, MenuLabel, MenuSeparator, Popover } from "@/ui/Popover";
-import s from "./board.module.css";
+import s from "./gorev.module.css";
 
 /**
  * Reminders of one task: the current ones with a remove button, quick

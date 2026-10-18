@@ -6,8 +6,8 @@ import { describeReminder } from "@ortak/reminders";
 import { dueLabel } from "@ortak/task-dates";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, Popover } from "@/ui/Popover";
-import { ReminderMenu } from "./ReminderMenu";
-import { PRIORITY_COLOR } from "./TaskRow";
+import { PRIORITY_COLOR } from "@/ui/gorev/priority";
+import { ReminderMenu } from "@/ui/gorev/ReminderMenu";
 import type { TaskBoard } from "./useTaskBoard";
 import s from "./board.module.css";
 

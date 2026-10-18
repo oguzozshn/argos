@@ -5,7 +5,7 @@ import { groupByDate } from "@ortak/task-dates";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { kopru } from "@/veri/kanca";
-import { Composer } from "./Composer";
+import { Composer } from "@/ui/gorev/Composer";
 import { ListSidebar } from "./ListSidebar";
 import { TaskPanel } from "./TaskPanel";
 import { TaskRow } from "./TaskRow";
@@ -173,7 +173,7 @@ function TaskListCard({
         ]}
       />
       {composing ? (
-        <Composer list={list} board={board} onClose={() => setComposing(false)} />
+        <Composer list={list} host={board} onClose={() => setComposing(false)} />
       ) : (
         <button type="button" className={s.addRow} onClick={() => setComposing(true)}>
           <span className={s.addPlus}>

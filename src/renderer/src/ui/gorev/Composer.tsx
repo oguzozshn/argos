@@ -9,10 +9,10 @@ import { dueLabel } from "@ortak/task-dates";
 import { Dugme } from "@/ui/bilesenler";
 import { DatePicker, type Schedule } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, MenuItem, MenuLabel, Popover } from "@/ui/Popover";
+import type { TaskComposerTarget } from "@/veri/task-create";
+import { PRIORITY_COLOR } from "./priority";
 import { ReminderMenu } from "./ReminderMenu";
-import { PRIORITY_COLOR } from "./TaskRow";
-import type { TaskBoard } from "./useTaskBoard";
-import s from "./board.module.css";
+import s from "./gorev.module.css";
 
 /**
  * Todoist-style add box. The title line understands dates, p1–p4 and
@@ -21,11 +21,16 @@ import s from "./board.module.css";
  */
 export function Composer({
   list,
-  board,
+  host,
+  defaultDate,
   onClose,
 }: {
+  /** The list the box adds to unless another is picked. */
   list: TaskList;
-  board: TaskBoard;
+  /** The screen it is open on: Yapılacaklar's board or Takvim (issue #45). */
+  host: TaskComposerTarget;
+  /** A day the task gets when the text names none (Takvim's selected day). */
+  defaultDate?: string;
   onClose: () => void;
 }) {
   const [text, setText] = useState("");
@@ -40,27 +45,31 @@ export function Composer({
   const [busy, setBusy] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
-  const target = board.lists.find((l) => l.key === targetKey) ?? list;
+  const target = host.lists.find((l) => l.key === targetKey) ?? list;
 
   const parsed = useMemo(() => {
-    const q = splitQuickAdd(text, board.today);
-    const date = q.dateText ? parseDateText(q.dateText, board.today) : null;
+    const q = splitQuickAdd(text, host.today);
+    const date = q.dateText ? parseDateText(q.dateText, host.today) : null;
     return { ...q, date };
-  }, [text, board.today]);
+  }, [text, host.today]);
 
+  // On a day of the calendar, a bare time ("18:00") means that day, not today.
+  const onlyTime = !!parsed.dateText && /^(saat\s+)?\d{1,2}([:.]\d{2})?$/i.test(parsed.dateText.trim());
   const schedule: Schedule | null = pickedSchedule
     ? pickedSchedule.date
       ? pickedSchedule
       : null
-    : parsed.date
+    : parsed.date && !(defaultDate && onlyTime)
       ? { date: parsed.date.date, time: parsed.date.time, repeat: parsed.date.rule ? { kind: "rule", rule: parsed.date.rule } : { kind: "none" } }
-      : null;
+      : defaultDate
+        ? { date: defaultDate, time: parsed.date?.time ?? null, repeat: { kind: "none" } }
+        : null;
   const priority: Priority = pickedPriority ?? parsed.priority ?? 4;
   const important = importantOverride ?? parsed.important;
   const rule = schedule?.repeat.kind === "rule" ? schedule.repeat.rule : null;
 
   const dateText = schedule?.date
-    ? `${rule ? `${describeRule(rule)} · ` : ""}${dueLabel(dueValue({ date: schedule.date, time: schedule.time }), board.today).label}`
+    ? `${rule ? `${describeRule(rule)} · ` : ""}${dueLabel(dueValue({ date: schedule.date, time: schedule.time }), host.today).label}`
     : null;
 
   const below = (e: MouseEvent) => {
@@ -80,7 +89,7 @@ export function Composer({
   const submit = async () => {
     if (!parsed.title || busy) return;
     setBusy(true);
-    const ok = await board.createTask(target, {
+    const ok = await host.createTask(target, {
       title: parsed.title,
       description: description.trim() || undefined,
       schedule,
@@ -185,7 +194,7 @@ export function Composer({
         <DatePicker
           x={popup.x}
           y={popup.y}
-          today={board.today}
+          today={host.today}
           value={{
             date: schedule?.date ?? null,
             time: schedule?.time ?? null,
@@ -210,7 +219,7 @@ export function Composer({
         <ReminderMenu
           x={popup.x}
           y={popup.y}
-          today={board.today}
+          today={host.today}
           due={schedule?.date ? dueValue({ date: schedule.date, time: schedule.time }) : null}
           reminders={reminders}
           onAdd={(rem) => setReminders((list) => [...list, { ...rem, id: newLocalId("r") }])}
@@ -247,7 +256,7 @@ export function Composer({
       {popup?.kind === "list" && (
         <Popover x={popup.x} y={popup.y} onClose={() => setPopup(null)} label="Liste" className={s.moveMenu}>
           {(["todoist", "local"] as const).map((source) => {
-            const lists = board.lists.filter((l) => l.source === source);
+            const lists = host.lists.filter((l) => l.source === source);
             if (lists.length === 0) return null;
             return (
               <div key={source}>
