@@ -1,4 +1,4 @@
-import { Coffee, Pause, Play, RotateCcw, Square, Trash2 } from "lucide-react";
+import { Coffee, Pause, PictureInPicture2, Play, RotateCcw, Square, Trash2 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { Hafta as HaftaTipi, Seans } from "@ortak/plan";
 import {
@@ -18,7 +18,7 @@ import {
 } from "@ortak/odak";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
-import { useDosya } from "@/veri/kanca";
+import { KOPRU_VAR, kopru, useDosya } from "@/veri/kanca";
 import { odakBaslat, odakDuraklat, useOdak } from "./odak-store";
 import { saatMetni, usePlanVerisi } from "@/veri/plan";
 import s from "./odak.module.css";
@@ -408,6 +408,13 @@ function OdakIcerik({
       <EkranBasi
         baslik="Odak"
         altyazi={`Seanslar ${kod} dosyasına yazılır · ${odakAyarlari.pomodoroDk} dk çalışma, ${odakAyarlari.kisaMolaDk}/${odakAyarlari.uzunMolaDk} dk mola`}
+        sag={
+          KOPRU_VAR && (
+            <Dugme tur="cizgili" ikon={<PictureInPicture2 size={15} />} onClick={() => void kopru()?.odakMini.ac()} title="Ekranda süzülen küçük sayaç">
+              Mini pencere
+            </Dugme>
+          )
+        }
       />
 
       <div className={s.duzen}>

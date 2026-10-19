@@ -212,6 +212,18 @@ export interface ArgosApi {
   bildirimGoster(baslik: string, govde: string): Promise<void>;
   /** Tepsi ipucundaki kalan süre; null ipucunu sadeye döndürür. */
   odakTepsi(metin: string | null): Promise<void>;
+  /**
+   * Odak's floating mini window. The timer lives in the main window: it sends
+   * its state every second, the mini window shows it and sends back commands.
+   */
+  odakMini: {
+    ac(): Promise<void>;
+    kapat(): Promise<void>;
+    durumGonder(d: OdakMiniDurum): void;
+    durumDinle(geriCagri: (d: OdakMiniDurum) => void): () => void;
+    komut(k: OdakMiniKomut): void;
+    komutDinle(geriCagri: (k: OdakMiniKomut) => void): () => void;
+  };
   /** Yalnızca hızlı yakalama penceresinde anlamlı. */
   yakala: {
     gizle(): Promise<void>;
@@ -219,6 +231,24 @@ export interface ArgosApi {
     acildiDinle(geriCagri: () => void): () => void;
   };
 }
+
+/** What the mini window shows. */
+export interface OdakMiniDurum {
+  /** "24:13" */
+  sayac: string;
+  /** "çalışma · tur 2", "kısa mola", "kronometre" */
+  faz: string;
+  mola: boolean;
+  calisiyor: boolean;
+  doldu: boolean;
+  /** 0–1 of the phase's target; 0 without one. */
+  oran: number;
+  /** What the session is for, when said. */
+  konu: string;
+}
+
+/** "ac" brings the main window up on the Odak screen. */
+export type OdakMiniKomut = "baslat" | "duraklat" | "ac";
 
 export const KANAL = {
   veriOku: "veri:oku",
@@ -261,6 +291,10 @@ export const KANAL = {
   yedekAc: "yedek:ac",
   bildirim: "bildirim:goster",
   odakTepsi: "odak:tepsi",
+  odakMiniAc: "odak-mini:ac",
+  odakMiniKapat: "odak-mini:kapat",
+  odakMiniDurum: "odak-mini:durum",
+  odakMiniKomut: "odak-mini:komut",
 } as const;
 
 /**

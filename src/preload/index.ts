@@ -3,6 +3,8 @@ import {
   KANAL,
   type DegisimOlayi,
   type ArgosApi,
+  type OdakMiniDurum,
+  type OdakMiniKomut,
   type Okuma,
   type Ortam,
   type TodoistDurum,
@@ -90,6 +92,27 @@ const argos: ArgosApi = {
     return () => {
       ipcRenderer.off(KANAL.botAktarildi, sarmal);
     };
+  },
+
+  odakMini: {
+    ac: (): Promise<void> => ipcRenderer.invoke(KANAL.odakMiniAc),
+    kapat: (): Promise<void> => ipcRenderer.invoke(KANAL.odakMiniKapat),
+    durumGonder: (d: OdakMiniDurum) => ipcRenderer.send(KANAL.odakMiniDurum, d),
+    durumDinle: (geriCagri: (d: OdakMiniDurum) => void) => {
+      const sarmal = (_o: unknown, d: OdakMiniDurum) => geriCagri(d);
+      ipcRenderer.on(KANAL.odakMiniDurum, sarmal);
+      return () => {
+        ipcRenderer.off(KANAL.odakMiniDurum, sarmal);
+      };
+    },
+    komut: (k: OdakMiniKomut) => ipcRenderer.send(KANAL.odakMiniKomut, k),
+    komutDinle: (geriCagri: (k: OdakMiniKomut) => void) => {
+      const sarmal = (_o: unknown, k: OdakMiniKomut) => geriCagri(k);
+      ipcRenderer.on(KANAL.odakMiniKomut, sarmal);
+      return () => {
+        ipcRenderer.off(KANAL.odakMiniKomut, sarmal);
+      };
+    },
   },
 
   yakala: {

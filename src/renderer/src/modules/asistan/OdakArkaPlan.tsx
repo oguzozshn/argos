@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
-import { VARSAYILAN_ODAK, gecenSn, gosterSn, hedefSn, sayacMetni } from "@ortak/odak";
+import { VARSAYILAN_ODAK, gecenSn, gosterSn, hedefSn, oran, sayacMetni, type OdakAyarlari, type OdakDurumu } from "@ortak/odak";
 import type { Kurallar } from "@ortak/ozet";
 import { useDosya } from "@/veri/kanca";
 import { kopru } from "@/veri/kanca";
-import { useOdak } from "./odak-store";
+import { odakBaslat, odakDuraklat, useOdak } from "./odak-store";
 
 /**
  * Odak sayacının ekrandan bağımsız parçası: süre dolunca fazı çevirir,
@@ -41,6 +41,13 @@ function cal(): void {
   }
 }
 
+/** The phase as the Odak screen names it. */
+export function fazAdi(d: OdakDurumu, k: OdakAyarlari): string {
+  if (d.mod === "kronometre") return "kronometre";
+  if (d.faz === "mola") return d.tur % k.uzunMolaHerKacTur === 0 ? "uzun mola" : "kısa mola";
+  return `çalışma · tur ${d.tur + 1}`;
+}
+
 export function OdakArkaPlan() {
   const { veri: kurallar } = useDosya<Kurallar>("kurallar.json");
   const ayar = useMemo(() => ({ ...VARSAYILAN_ODAK, ...kurallar?.odak }), [kurallar]);
@@ -73,6 +80,18 @@ export function OdakArkaPlan() {
         }
       }
 
+      // The floating mini window shows this; the main process drops it while that is closed.
+      const o = useOdak.getState();
+      kopru()?.odakMini.durumGonder({
+        sayac: sayacMetni(gosterSn(o.d, ayar, simdi)),
+        faz: fazAdi(o.d, ayar),
+        mola: o.d.faz === "mola",
+        calisiyor: o.d.calisiyor,
+        doldu: o.d.doldu,
+        oran: oran(o.d, ayar, simdi),
+        konu: o.odakMetin,
+      });
+
       // Tepsi ipucu: her saniye değil, 15 saniyede bir ve durum değişince.
       const metin = d.calisiyor
         ? `${d.faz === "mola" ? "mola" : "odak"} ${sayacMetni(gosterSn(useOdak.getState().d, ayar, simdi))}`
@@ -86,8 +105,16 @@ export function OdakArkaPlan() {
 
     const t = window.setInterval(bak, 1000);
     bak();
+    // The mini window's buttons.
+    const birak = kopru()?.odakMini.komutDinle((k) => {
+      if (k === "baslat") odakBaslat();
+      else if (k === "duraklat") odakDuraklat();
+      else location.hash = "#/asistan/odak";
+      bak();
+    });
     return () => {
       window.clearInterval(t);
+      birak?.();
       void kopru()?.odakTepsi(null);
     };
   }, [ayar]);

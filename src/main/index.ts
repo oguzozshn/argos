@@ -8,6 +8,7 @@ import { yedekBaslat, yedekDurdur, yedekKlasorunuAc } from "./yedek";
 import { izlemeyeBasla, izlemeyiDurdur } from "./izle";
 import { durumuDogrula, type PencereDurumu } from "./pencere-durumu";
 import { gezinmeyiKilitle, sayfayiYukle, webAyarlari } from "./sayfa";
+import { odakMiniKur } from "./odak-mini";
 import { anaPencereyiGoster, tepsiIpucu, tepsiKapat, tepsiKullanilabilir, tepsiKur, tepsiYedekAcici } from "./tepsi";
 import { dataDir, ortam } from "./veri";
 
@@ -140,6 +141,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcKur();
     pencereKur();
     tepsiKur(() => pencere, anaPencereyiAc);
+    odakMiniKur(() => pencere, () => void anaPencereyiAc());
     botBaslat(() => pencere);
     tepsiYedekAcici(() => void yedekKlasorunuAc().catch((e) => console.error("[yedek] açılamadı:", e)));
     yedekBaslat();

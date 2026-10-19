@@ -48,7 +48,7 @@ export function gezinmeyiKilitle(pencere: BrowserWindow): void {
 }
 
 /** Arayüzü yükler; `tur` verilirse o pencere türünün bileşeni çizilir. */
-export function sayfayiYukle(pencere: BrowserWindow, tur?: "yakala"): void {
+export function sayfayiYukle(pencere: BrowserWindow, tur?: "yakala" | "odak"): void {
   const dev = devSunucu();
   if (dev) void pencere.loadURL(tur ? `${dev}?pencere=${tur}` : dev);
   else void pencere.loadFile(sayfaDosyasi(), tur ? { query: { pencere: tur } } : undefined);

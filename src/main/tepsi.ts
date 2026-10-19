@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { bugunIso } from "../ortak/plan";
 import { KANAL } from "../ortak/tipler";
 import { gezinmeyiKilitle, sayfayiYukle, webAyarlari } from "./sayfa";
+import { odakMiniAc } from "./odak-mini";
 
 /**
  * Tepsi simgesi, genel kısayol ve hızlı yakalama penceresi.
@@ -126,6 +127,7 @@ function menuKur(): void {
         label: kisayolVar ? `Hızlı görev ekle\t${KISAYOL_METNI}` : "Hızlı görev ekle (kısayol alınamadı)",
         click: yakalamayiGoster,
       },
+      { label: "Odak mini penceresi", click: odakMiniAc },
       ...yedekSatiri(),
       { type: "separator" },
       { label: "Çıkış", click: () => app.quit() },
