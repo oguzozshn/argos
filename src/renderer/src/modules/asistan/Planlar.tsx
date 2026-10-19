@@ -24,6 +24,7 @@ import {
   otomatikPlanla,
   oturumEkle,
   oturumIsaretle,
+  oturumKismen,
   oturumSil,
   planBul,
   planDurumu,
@@ -913,11 +914,26 @@ function OturumListesi({ gun, veri, degistir }: { gun: string; veri: CpDosyasi; 
         if (!b) return null;
         return (
           <div key={o.id} className={s.panelSatir}>
-            <input type="checkbox" checked={Boolean(o.yapildi)} aria-label={`${b.ad} ${saatMetni(o.dk)}: yapıldı`} onChange={(e) => void degistir((d) => oturumIsaretle(d, gun, o.id, e.target.checked))} />
+            <input type="checkbox" checked={Boolean(o.yapildi)} aria-label={`${b.ad} ${saatMetni(o.planlananDk ?? o.dk)}: yapıldı`} onChange={(e) => void degistir((d) => oturumIsaretle(d, gun, o.id, e.target.checked))} />
             <span className={s.renk} style={{ background: b.plan.renk }} />
             <span className={s.panelAd}>
-              {saatMetni(o.dk)} · {b.ad}
+              {saatMetni(o.planlananDk ?? o.dk)} · {b.ad}
             </span>
+            <input
+              key={`${o.dk}-${o.yapildi}`}
+              className={`${s.giris} ${s.gunSaatGiris}`}
+              inputMode="decimal"
+              defaultValue={o.yapildi ? saatYaz(o.dk) : ""}
+              placeholder="yapılan"
+              title="Ne kadarı yapıldı (saat). Kalanı sonraki otomatik planlamada ileri dağıtılır."
+              aria-label={`${b.ad}: yapılan saat`}
+              onBlur={(e) => {
+                const y = e.target.value.trim() ? saatOku(e.target.value) : 0;
+                if (y !== (o.yapildi ? o.dk : 0)) void degistir((d) => oturumKismen(d, gun, o.id, y));
+              }}
+              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            />
+            {o.planlananDk && <span className={s.soluk}>/{saatMetni(o.planlananDk)}</span>}
             {o.oto && <Sparkles size={11} className={s.soluk} aria-label="otomatik" />}
             <button type="button" className={s.ikon} aria-label={`${b.ad} oturumunu kaldır`} onClick={() => void degistir((d) => oturumSil(d, gun, o.id))}>
               <X size={13} />
@@ -996,7 +1012,7 @@ function GunIcerigi({ gun, veri, sonTarihler, gorevler, enCok }: Pick<GorunumOrt
         const b = oturumAdi(veri, o);
         if (!b) return null;
         return (
-          <span key={o.id} className={o.yapildi ? `${s.cip} ${s.cipYapildi}` : s.cip} style={{ borderLeftColor: b.plan.renk }} title={`${b.ad} · ${saatMetni(o.dk)}`}>
+          <span key={o.id} className={o.yapildi ? `${s.cip} ${s.cipYapildi}` : s.cip} style={{ borderLeftColor: b.plan.renk }} title={`${b.ad} · ${o.planlananDk ? `${saatMetni(o.dk)}/${saatMetni(o.planlananDk)} yapıldı` : saatMetni(o.dk)}`}>
             {o.yapildi && <Check size={10} />}
             {/* The colour tells the plan; the chip names the sub-plan when there is one. */}
             <span className={s.cipMetin}>

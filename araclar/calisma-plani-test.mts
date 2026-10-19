@@ -17,6 +17,7 @@ import {
   otomatikPlanla,
   oturumEkle,
   oturumIsaretle,
+  oturumKismen,
   planDurumu,
   planEkle,
   planSil,
@@ -200,6 +201,18 @@ eq("no old file: nothing", ylDenTasi(null), BOS_CP);
     ["2026-10-19", 60], ["2026-10-24", 120], ["2026-10-25", 120],
     ["2026-10-26", 60], ["2026-10-31", 120], ["2026-11-01", 120],
   ]);
+}
+
+// Part of a session done: 1.5 of 2 h counts as done, half an hour goes back to planning.
+{
+  const p: CalismaPlani = { id: "k", ad: "Kısmi", tur: "ders", renk: "#000", hedefDk: sa(4), haftalikDk: 0, gunler: [], altlar: [] };
+  let k = oturumEkle(planEkle(BOS_CP, p), "2026-10-19", { id: "s", planId: "k", dk: sa(2) });
+  k = oturumKismen(k, "2026-10-19", "s", 90);
+  eq("part: what was done stays, with what was set", k.takvim["2026-10-19"], [{ id: "s", planId: "k", dk: 90, yapildi: true, planlananDk: 120 }]);
+  eq("part: done 1.5 h, 2.5 h left to plan", [planDurumu(k, p, bugun).yapilanDk, planDurumu(k, p, bugun).eksikDk], [90, 150]);
+  eq("part survives normalize", normalizeCp(k).takvim["2026-10-19"], k.takvim["2026-10-19"]);
+  eq("unticking brings the whole session back", oturumIsaretle(k, "2026-10-19", "s", false).takvim["2026-10-19"], [{ id: "s", planId: "k", dk: 120 }]);
+  eq("ticking marks all of it done", oturumIsaretle(k, "2026-10-19", "s", true).takvim["2026-10-19"], [{ id: "s", planId: "k", dk: 120, yapildi: true }]);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

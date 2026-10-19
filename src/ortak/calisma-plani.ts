@@ -69,6 +69,11 @@ export interface Oturum {
   altId?: string;
   dk: number;
   yapildi?: boolean;
+  /**
+   * What was set for it when only part was done; `dk` is then what was
+   * done, and the rest is left for planning again.
+   */
+  planlananDk?: number;
   /** Put there by the automatic planning, which may redo it. */
   oto?: boolean;
 }
@@ -135,6 +140,7 @@ export function normalizeCp(ham: unknown): CpDosyasi {
         ...(o.altId ? { altId: o.altId } : {}),
         dk: pozitif(o.dk),
         ...(o.yapildi ? { yapildi: true } : {}),
+        ...(o.yapildi && pozitif(o.planlananDk) > pozitif(o.dk) ? { planlananDk: pozitif(o.planlananDk) } : {}),
         ...(o.oto ? { oto: true } : {}),
       }));
     if (ogeler.length) takvim[gun] = ogeler;
@@ -500,11 +506,23 @@ export const oturumEkle = (d: CpDosyasi, gun: string, o: Oturum): CpDosyasi =>
 export const oturumSil = (d: CpDosyasi, gun: string, id: string): CpDosyasi => takvimSuz(d, (o, g) => (g === gun && o.id === id ? null : o));
 
 /** Ticks a session; a ticked one is the user's now, the planning leaves it. */
+/** Marks a session done or not done, all of it. */
 export const oturumIsaretle = (d: CpDosyasi, gun: string, id: string, yapildi: boolean): CpDosyasi =>
+  oturumKismen(d, gun, id, yapildi ? Number.POSITIVE_INFINITY : 0);
+
+/**
+ * Marks how much of a session was done: all of it, none, or a part. A part
+ * keeps only what was done on the day (with what was set, to show it), so
+ * what is left goes back to the plan's undone hours.
+ */
+export const oturumKismen = (d: CpDosyasi, gun: string, id: string, yapilanDk: number): CpDosyasi =>
   takvimSuz(d, (o, g) => {
     if (g !== gun || o.id !== id) return o;
-    const { yapildi: _, ...y } = o;
-    return yapildi ? { ...y, yapildi: true } : y;
+    const { yapildi: _, planlananDk: __, ...y } = o;
+    const tam = o.planlananDk ?? o.dk;
+    if (yapilanDk <= 0) return { ...y, dk: tam };
+    if (yapilanDk >= tam) return { ...y, dk: tam, yapildi: true };
+    return { ...y, dk: yapilanDk, yapildi: true, planlananDk: tam };
   });
 
 /** Days left to a deadline, today included; 0 once it has passed. */
