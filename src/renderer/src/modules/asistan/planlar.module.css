@@ -699,3 +699,22 @@
   font-size: var(--y5);
   font-variant-numeric: tabular-nums;
 }
+
+.gunSaat {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.gunSaatSutun {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.gunSaatGiris {
+  width: 38px;
+  padding: 2px 4px;
+  text-align: center;
+}

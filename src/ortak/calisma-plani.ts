@@ -53,6 +53,11 @@ export interface CalismaPlani {
   haftalikDk: number;
   /** Days to work on: 0 Monday … 6 Sunday. */
   gunler: number[];
+  /**
+   * Minutes for each weekday, 0 Monday … 6 Sunday ("Pzt 1 sa, Cmt 2 sa").
+   * When given, it sets the working days and the weekly hours.
+   */
+  gunDk?: number[];
   altlar: AltPlan[];
 }
 
@@ -84,6 +89,12 @@ const tarihMi = (x: unknown): x is string => typeof x === "string" && ISO.test(x
 /** Rounds to a quarter of an hour, the step of planning. */
 export const ceyrek = (dk: number): number => Math.round(dk / 15) * 15;
 
+function gunDkOku(x: unknown): { gunDk?: number[] } {
+  if (!Array.isArray(x)) return {};
+  const l = Array.from({ length: 7 }, (_, i) => pozitif(x[i]));
+  return l.some((dk) => dk > 0) ? { gunDk: l } : {};
+}
+
 /* --- reading the file ------------------------------------------------------------- */
 
 export function normalizeCp(ham: unknown): CpDosyasi {
@@ -99,6 +110,7 @@ export function normalizeCp(ham: unknown): CpDosyasi {
       ...(tarihMi(p.sonTarih) ? { sonTarih: p.sonTarih } : {}),
       haftalikDk: pozitif(p.haftalikDk),
       gunler: [...new Set((Array.isArray(p.gunler) ? p.gunler : []).filter((g) => Number.isInteger(g) && g >= 0 && g <= 6))].sort(),
+      ...gunDkOku(p.gunDk),
       altlar: (Array.isArray(p.altlar) ? p.altlar : [])
         .filter((a): a is AltPlan => Boolean(a) && typeof a.id === "string" && typeof a.ad === "string")
         .map((a) => ({ id: a.id, ad: a.ad, hedefDk: pozitif(a.hedefDk), ...(tarihMi(a.sonTarih) ? { sonTarih: a.sonTarih } : {}) })),
@@ -312,7 +324,18 @@ export interface PlanlamaRaporu {
 const UFUK_GUN = 365;
 
 /** The plan's working days; none chosen means every day. */
-export const calismaGunleri = (p: CalismaPlani): number[] => (p.gunler.length ? p.gunler : [0, 1, 2, 3, 4, 5, 6]);
+export const calismaGunleri = (p: CalismaPlani): number[] =>
+  p.gunDk ? [0, 1, 2, 3, 4, 5, 6].filter((g) => p.gunDk![g]! > 0) : p.gunler.length ? p.gunler : [0, 1, 2, 3, 4, 5, 6];
+
+/** The weekly hours asked for: the days' own hours added up, else the weekly figure; 0 when not said. */
+export const haftalikHedef = (p: CalismaPlani): number => (p.gunDk ? p.gunDk.reduce((t, dk) => t + dk, 0) : p.haftalikDk);
+
+/** A working day's share on the given weekday, when the plan says it. */
+export function gunPayi(p: CalismaPlani, haftaGunu: number): number | null {
+  if (p.gunDk) return p.gunDk[haftaGunu] ?? 0;
+  if (!p.haftalikDk) return null;
+  return Math.max(15, ceyrek(p.haftalikDk / calismaGunleri(p).length));
+}
 
 /** Working days from `bas` to `son`, both included. */
 function isGunu(bas: string, son: string, gunler: number[]): number {
@@ -366,8 +389,8 @@ export function gerekenGunluk(d: CpDosyasi, p: CalismaPlani, bugun: string): num
 
 /**
  * Spreads what is left of a plan over its working days from today, the
- * part with the earliest deadline first. A day gets its share of the
- * weekly hours, and a week never more than them; with no weekly hours
+ * part with the earliest deadline first. A day gets its own hours when
+ * the plan gives them day by day, else its share of the weekly hours, and a week never more than them; with no weekly hours
  * given, the share is what the deadlines need (`gerekenGunluk`). Undone
  * sessions it put on today or later are taken back and planned again;
  * sessions placed by hand and done ones stay and count.
@@ -382,9 +405,9 @@ export function otomatikPlanla(d: CpDosyasi, planId: string, bugun: string, yeni
   const gunler = calismaGunleri(p);
   let gunluk: number;
   let haftalik: number;
-  if (p.haftalikDk) {
-    gunluk = Math.max(15, ceyrek(p.haftalikDk / gunler.length));
-    haftalik = p.haftalikDk;
+  if (haftalikHedef(p)) {
+    gunluk = gunPayi(p, haftaninGunu(bugun)) ?? 0;
+    haftalik = haftalikHedef(p);
   } else {
     const gereken = gerekenGunluk(d, p, bugun);
     if (gereken === null) return { dosya: d, rapor: { ...rapor, ayarYok: true } };
@@ -403,7 +426,8 @@ export function otomatikPlanla(d: CpDosyasi, planId: string, bugun: string, yeni
     const hafta = haftaBasi(gun);
     let haftada = 0;
     for (let i = 0; i < 7; i++) haftada += planinGunu(gunEkle(hafta, i));
-    let bos = Math.min(gunluk - planinGunu(gun), haftalik - haftada);
+    const pay = p.gunDk ? p.gunDk[haftaninGunu(gun)]! : gunluk;
+    let bos = Math.min(pay - planinGunu(gun), haftalik - haftada);
     while (bos >= 15) {
       // The earliest part still open whose deadline has not passed.
       const x = parcalar.find((y) => y.kalan > 0 && (!y.sonTarih || y.sonTarih >= gun));

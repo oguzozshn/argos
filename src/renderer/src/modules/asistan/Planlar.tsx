@@ -16,7 +16,9 @@ import {
   ceyrek,
   eforu,
   gerekenGunluk,
+  gunPayi,
   haftaBasi,
+  haftalikHedef,
   kalanGun,
   normalizeCp,
   otomatikPlanla,
@@ -375,6 +377,55 @@ function GunSecimi({ gunler, onDegis, etiket }: { gunler: number[]; onDegis: (g:
   );
 }
 
+/**
+ * Hours for each weekday ("Pzt 1 sa, Cmt 2 sa, Paz 2 sa"): a day picked
+ * gets a field below it; a day left empty or at 0 is not worked.
+ */
+function GunSaatleri({ dk, onDegis, etiket }: { dk: number[]; onDegis: (dk: number[]) => void; etiket: string }) {
+  const [acik, setAcik] = useState(() => GUN_KISA.map((_, i) => dk[i]! > 0));
+  const yaz = (i: number, y: number) => onDegis(dk.map((x, j) => (j === i ? y : x)));
+  return (
+    <div className={s.gunSaat} role="group" aria-label={etiket}>
+      {GUN_KISA.map((ad, i) => {
+        const var_ = acik[i] || dk[i]! > 0;
+        return (
+          <div key={ad} className={s.gunSaatSutun}>
+            <button
+              type="button"
+              aria-pressed={var_}
+              className={var_ ? `${s.gunKutu} ${s.gunKutuSecili}` : s.gunKutu}
+              onClick={() => {
+                setAcik((l) => l.map((x, j) => (j === i ? !var_ : x)));
+                if (var_ && dk[i]) yaz(i, 0);
+              }}
+            >
+              {ad}
+            </button>
+            {var_ && (
+              <input
+                key={dk[i]}
+                className={`${s.giris} ${s.gunSaatGiris}`}
+                inputMode="decimal"
+                autoFocus={!dk[i]}
+                defaultValue={dk[i] ? saatYaz(dk[i]!) : ""}
+                placeholder="sa"
+                aria-label={`${GUN_ADLARI[i]}: saat`}
+                onBlur={(e) => {
+                  const y = saatOku(e.target.value);
+                  if (y !== dk[i]) yaz(i, y);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const BOS_GUNLER = [0, 0, 0, 0, 0, 0, 0];
+
 /** An hours field that saves on blur or Enter. With `bosOlabilir`, emptying it saves 0. */
 function SaatAlani({
   dk,
@@ -434,6 +485,8 @@ function YeniPlan({
   const [sonTarih, setSonTarih] = useState("");
   const [haftalik, setHaftalik] = useState("");
   const [gunler, setGunler] = useState<number[]>([]);
+  const [gunGun, setGunGun] = useState(false);
+  const [gunDk, setGunDk] = useState<number[]>(BOS_GUNLER);
   const [altlar, setAltlar] = useState<YeniAlt[]>([]);
   const [oto, setOto] = useState(true);
 
@@ -448,16 +501,17 @@ function YeniPlan({
     renk,
     hedefDk: toplamDk,
     ...(sonTarih ? { sonTarih } : {}),
-    haftalikDk: saatOku(haftalik),
-    gunler,
+    haftalikDk: gunGun ? 0 : saatOku(haftalik),
+    gunler: gunGun ? [] : gunler,
+    ...(gunGun && gunDk.some((x) => x > 0) ? { gunDk } : {}),
     altlar: altlar.map((a) => ({ id: `alt-${a.anahtar}`, ad: a.ad.trim(), hedefDk: saatOku(a.saat), ...(a.sonTarih ? { sonTarih: a.sonTarih } : {}) })),
   });
   // Weekly hours, or else a deadline to work the pace out from.
-  const otoOlur = saatOku(haftalik) > 0 || Boolean(sonTarih) || altlar.some((a) => a.sonTarih);
+  const otoOlur = haftalikHedef(taslak()) > 0 || Boolean(sonTarih) || altlar.some((a) => a.sonTarih);
   const gunlukOnizleme = !toplamDk
     ? 0
-    : saatOku(haftalik)
-      ? Math.max(15, ceyrek(saatOku(haftalik) / calismaGunleri(taslak()).length))
+    : haftalikHedef(taslak())
+      ? Math.round(haftalikHedef(taslak()) / calismaGunleri(taslak()).length)
       : (gerekenGunluk(planEkle(BOS_CP, taslak()), taslak(), bugun) ?? 0);
 
   const olustur = () => {
@@ -511,13 +565,28 @@ function YeniPlan({
         )}
 
         <div className={s.bolumAd}>Çalışma düzeni</div>
-        <div className={s.satir}>
-          <span className={s.soluk}>Haftada</span>
-          <input className={`${s.giris} ${s.dar}`} inputMode="decimal" value={haftalik} placeholder="oto" aria-label="Haftada kaç saat" onChange={(e) => setHaftalik(e.target.value)} />
-          <span className={s.soluk}>saat · boş bırakırsan son tarihe göre hesaplanır</span>
-        </div>
-        <GunSecimi gunler={gunler} onDegis={setGunler} etiket="Çalışma günleri" />
-        <span className={s.soluk}>{gunler.length ? "Yalnızca seçili günlerde çalışılır." : "Gün seçmezsen her gün çalışılır."}</span>
+        <label className={s.onay}>
+          <input type="checkbox" checked={gunGun} onChange={(e) => setGunGun(e.target.checked)} />
+          Her güne ayrı saat (Pzt 1 sa, Cmt 2 sa…)
+        </label>
+        {gunGun ? (
+          <>
+            <GunSaatleri dk={gunDk} onDegis={setGunDk} etiket="Günlere göre saat" />
+            <span className={s.soluk}>
+              {gunDk.some((x) => x > 0) ? `Haftada ${saatMetni(haftalikHedef(taslak()))}; hedef tamamlanana kadar her hafta böyle.` : "Bir gün seç, altına saatini yaz."}
+            </span>
+          </>
+        ) : (
+          <>
+            <div className={s.satir}>
+              <span className={s.soluk}>Haftada</span>
+              <input className={`${s.giris} ${s.dar}`} inputMode="decimal" value={haftalik} placeholder="oto" aria-label="Haftada kaç saat" onChange={(e) => setHaftalik(e.target.value)} />
+              <span className={s.soluk}>saat · boş bırakırsan son tarihe göre hesaplanır</span>
+            </div>
+            <GunSecimi gunler={gunler} onDegis={setGunler} etiket="Çalışma günleri" />
+            <span className={s.soluk}>{gunler.length ? "Yalnızca seçili günlerde çalışılır." : "Gün seçmezsen her gün çalışılır."}</span>
+          </>
+        )}
         <label className={s.onay}>
           <input type="checkbox" checked={oto && otoOlur} disabled={!otoOlur} onChange={(e) => setOto(e.target.checked)} />
           Takvime otomatik planla
@@ -525,7 +594,7 @@ function YeniPlan({
             <span className={s.soluk}>
               {" "}
               (günde ~{saatMetni(gunlukOnizleme)}
-              {saatOku(haftalik) ? "" : ", son tarihe göre"}, en yakın son tarih önce)
+              {haftalikHedef(taslak()) ? "" : ", son tarihe göre"}, en yakın son tarih önce)
             </span>
           )}
         </label>
@@ -719,23 +788,53 @@ function PlanKarti({
       </div>
 
       <div className={s.duzenSatiri}>
-        <div className={s.satir}>
-          <span className={s.soluk}>Haftada</span>
-          <SaatAlani
-            dk={plan.haftalikDk}
-            etiket="Haftada kaç saat"
-            placeholder="oto"
-            bosOlabilir
-            onKaydet={(haftalikDk) => guncelle((p) => ({ ...p, haftalikDk }))}
+        {plan.gunDk ? (
+          <GunSaatleri
+            dk={plan.gunDk}
+            etiket={`${plan.ad}: günlere göre saat`}
+            onDegis={(gunDk) =>
+              guncelle((p) => {
+                const { gunDk: _, ...y } = p;
+                return gunDk.some((x) => x > 0) ? { ...y, gunDk } : y;
+              })
+            }
           />
-          <span className={s.soluk}>sa</span>
-          <GunSecimi gunler={plan.gunler} onDegis={(gunler) => guncelle((p) => ({ ...p, gunler }))} etiket={`${plan.ad}: çalışma günleri`} />
-        </div>
+        ) : (
+          <div className={s.satir}>
+            <span className={s.soluk}>Haftada</span>
+            <SaatAlani
+              dk={plan.haftalikDk}
+              etiket="Haftada kaç saat"
+              placeholder="oto"
+              bosOlabilir
+              onKaydet={(haftalikDk) => guncelle((p) => ({ ...p, haftalikDk }))}
+            />
+            <span className={s.soluk}>sa</span>
+            <GunSecimi gunler={plan.gunler} onDegis={(gunler) => guncelle((p) => ({ ...p, gunler }))} etiket={`${plan.ad}: çalışma günleri`} />
+          </div>
+        )}
+        <button
+          type="button"
+          className={s.metinDugme}
+          onClick={() =>
+            guncelle((p) => {
+              if (p.gunDk) {
+                const { gunDk: _, ...y } = p;
+                return { ...y, haftalikDk: haftalikHedef(p), gunler: calismaGunleri(p) };
+              }
+              // Starts from the current weekly hours, shared over the working days.
+              const gunDk = BOS_GUNLER.map((_, g) => (calismaGunleri(p).includes(g) ? (gunPayi(p, g) ?? 0) : 0));
+              return gunDk.some((x) => x > 0) ? { ...p, gunDk } : { ...p, gunDk: BOS_GUNLER.map((_, g) => (g === 0 ? 60 : 0)) };
+            })
+          }
+        >
+          {plan.gunDk ? "Haftalık toplam saate dön" : "Her güne ayrı saat"}
+        </button>
         <TempoNotu plan={plan} veri={veri} bugun={bugun} />
         <Dugme
           tur="cizgili"
           ikon={<Sparkles size={14} />}
-          disabled={!plan.haftalikDk && gerekenGunluk(veri, plan, bugun) === null}
+          disabled={!haftalikHedef(plan) && gerekenGunluk(veri, plan, bugun) === null}
           onClick={onOtoPlanla}
           title="Kalanı çalışma günlerine yay; en yakın son tarih önce. Elle konan ve yapılmış oturumlar kalır."
         >
@@ -753,8 +852,9 @@ function PlanKarti({
 function TempoNotu({ plan, veri, bugun }: { plan: CalismaPlani; veri: CpDosyasi; bugun: string }) {
   const gereken = gerekenGunluk(veri, plan, bugun);
   const gunSayisi = calismaGunleri(plan).length;
-  const gunler = plan.gunler.length ? "çalışma gününde" : "her gün";
-  if (!plan.haftalikDk) {
+  const gunler = plan.gunler.length || plan.gunDk ? "çalışma gününde" : "her gün";
+  const haftalik = haftalikHedef(plan);
+  if (!haftalik) {
     if (gereken === null) return <span className={s.soluk}>Otomatik planlama için bir son tarih ya da haftalık saat gir.</span>;
     if (!gereken) return null;
     return (
@@ -763,10 +863,11 @@ function TempoNotu({ plan, veri, bugun }: { plan: CalismaPlani; veri: CpDosyasi;
       </span>
     );
   }
-  if (gereken && gereken * gunSayisi > plan.haftalikDk) {
+  if (gereken && gereken * gunSayisi > haftalik) {
     return (
       <span className={s.uyari}>
-        Haftada {saatMetni(plan.haftalikDk)} ile son tarihe yetişmez; en az ~{saatMetni(gereken * gunSayisi)} gerekiyor. Boş bırakırsan Argos hesaplar.
+        Haftada {saatMetni(haftalik)} ile son tarihe yetişmez; en az ~{saatMetni(gereken * gunSayisi)} gerekiyor.
+        {plan.gunDk ? "" : " Boş bırakırsan Argos hesaplar."}
       </span>
     );
   }
@@ -832,7 +933,7 @@ function OturumEkle({ gun, veri, secili, degistir, odak }: { gun: string; veri: 
   const ilk = secili && planBul(veri, secili.planId) ? secili : veri.planlar[0] ? { planId: veri.planlar[0].id } : null;
   const [hedef, setHedef] = useState<Hedef | null>(ilk);
   const plan = hedef ? planBul(veri, hedef.planId) : null;
-  const pay = plan && plan.haftalikDk && plan.gunler.length ? Math.max(15, ceyrek(plan.haftalikDk / plan.gunler.length)) : 60;
+  const pay = (plan && (plan.gunDk || plan.gunler.length) && gunPayi(plan, haftaninGunu(gun))) || 60;
   const [saat, setSaat] = useState(saatYaz(pay));
   const dk = saatOku(saat);
   if (veri.planlar.length === 0) return <p className={s.soluk}>Önce soldan bir plan oluştur.</p>;

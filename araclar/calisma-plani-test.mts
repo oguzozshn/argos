@@ -187,5 +187,20 @@ eq("…and the total is their sum", t3.planlar[0]!.hedefDk, 900);
 eq("a book session in minutes, on its sub-plan", t3.takvim["2026-10-20"], [{ id: "x", planId: "d", altId: "k", dk: 60, yapildi: true }]);
 eq("no old file: nothing", ylDenTasi(null), BOS_CP);
 
+// Hours day by day: Pzt 1 sa, Cmt 2 sa, Paz 2 sa until the goal is met.
+{
+  const p: CalismaPlani = { id: "g", ad: "Gün gün", tur: "ders", renk: "#000", hedefDk: sa(10), haftalikDk: 0, gunler: [], gunDk: [60, 0, 0, 0, 0, 120, 120], altlar: [] };
+  const n1 = normalizeCp(planEkle(BOS_CP, p));
+  eq("gunDk survives normalize", n1.planlar[0]!.gunDk, [60, 0, 0, 0, 0, 120, 120]);
+  eq("all-zero gunDk dropped", normalizeCp({ planlar: [{ ...p, gunDk: [0, 0, 0, 0, 0, 0, 0] }] }).planlar[0]!.gunDk, undefined);
+  const { dosya, rapor } = otomatikPlanla(n1, "g", bugun, id);
+  eq("gunDk: all 10 h planned", rapor.eklenenDk, sa(10));
+  const gunler = Object.entries(dosya.takvim).sort().map(([g, l]) => [g, l.reduce((t, o) => t + o.dk, 0)]);
+  eq("gunDk: Mon 1 h, Sat 2 h, Sun 2 h, repeated", gunler, [
+    ["2026-10-19", 60], ["2026-10-24", 120], ["2026-10-25", 120],
+    ["2026-10-26", 60], ["2026-10-31", 120], ["2026-11-01", 120],
+  ]);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exitCode = 1;
