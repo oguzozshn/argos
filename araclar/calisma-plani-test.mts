@@ -11,6 +11,7 @@ import {
   altlarTasiyor,
   ceyrek,
   eforu,
+  gerekenGunluk,
   haftaBasi,
   normalizeCp,
   otomatikPlanla,
@@ -119,7 +120,21 @@ eq("planning again keeps hand-placed and done sessions", [tekrar.takvim["2026-10
 eq("planning again: still 25 hours in all", Object.values(tekrar.takvim).flat().reduce((t, o) => t + o.dk, 0), sa(25));
 eq("the hand-placed hour fills the day's share", tekrar.takvim["2026-10-19"]!.reduce((t, o) => t + o.dk, 0), 120);
 eq("past sessions are not taken back", otomatikPlanla(oto, "a", "2026-11-02", id).dosya.takvim["2026-10-19"]?.length, 1);
-eq("no weekly hours or days: nothing to do", otomatikPlanla(planEkle(BOS_CP, { ...ders, haftalikDk: 0 }), "a", bugun, id).rapor.ayarYok, true);
+
+console.log("\nPlanning by the deadline (no weekly hours)");
+// The user's case: 150 h by 18 Aralık, every day: 61 days → 150 h / 61 ≈ 2 sa 27 dk → 2 sa 30 dk a day.
+const tek: CalismaPlani = { id: "sre", ad: "SRE", tur: "ders", renk: "#7c8cf8", hedefDk: sa(150), sonTarih: "2026-12-18", haftalikDk: 0, gunler: [], altlar: [] };
+const tekD = planEkle(BOS_CP, tek);
+eq("a day's share worked out from the deadline", gerekenGunluk(tekD, tek, bugun), 150);
+const r3 = otomatikPlanla(tekD, "sre", bugun, id);
+eq("planned over every day, all of it, nothing missing", [r3.rapor.hesaplandi, r3.rapor.gunlukDk, r3.rapor.eklenenDk / 60, r3.rapor.yetismeyen, Object.keys(r3.dosya.takvim).length], [true, 150, 150, [], 60]);
+eq("weekdays only: a bigger share", gerekenGunluk(tekD, { ...tek, gunler: [0, 1, 2, 3, 4] }, bugun), 210);
+// Each deadline is checked: Vize 10 h in 33 days needs 18 dk a day, all 25 h in 63 days 24 dk; the tighter one, rounded up, is the pace.
+eq("the tightest deadline sets the pace", gerekenGunluk(planEkle(BOS_CP, { ...ders, haftalikDk: 0, gunler: [] }), { ...ders, haftalikDk: 0, gunler: [] }, bugun), 30);
+const r4 = otomatikPlanla(planEkle(BOS_CP, { ...ders, haftalikDk: 0, gunler: [] }), "a", bugun, id).rapor;
+eq("…and every part fits", [r4.eklenenDk / 60, r4.yetismeyen], [25, []]);
+eq("no weekly hours and no deadline: nothing to plan by", otomatikPlanla(planEkle(BOS_CP, { ...tek, sonTarih: undefined }), "sre", bugun, id).rapor.ayarYok, true);
+eq("its own planned sessions do not count: planning again gives the same share", gerekenGunluk(r3.dosya, tek, bugun), 150);
 
 console.log("\nEdits");
 const altsiz = altSil(d, "a", "vize");

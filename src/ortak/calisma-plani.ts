@@ -300,17 +300,75 @@ export interface PlanlamaRaporu {
   oturum: number;
   /** Parts that do not fit before their deadline, with what is left. */
   yetismeyen: { ad: string; eksikDk: number }[];
-  /** The plan has no weekly hours or days. */
+  /** Neither weekly hours nor any deadline: nothing to plan by. */
   ayarYok?: boolean;
+  /** A working day's share that was used. */
+  gunlukDk?: number;
+  /** The share was worked out from the deadlines (no weekly hours given). */
+  hesaplandi?: boolean;
 }
 
 /** How far ahead planning goes when a part has no deadline. */
 const UFUK_GUN = 365;
 
+/** The plan's working days; none chosen means every day. */
+export const calismaGunleri = (p: CalismaPlani): number[] => (p.gunler.length ? p.gunler : [0, 1, 2, 3, 4, 5, 6]);
+
+/** Working days from `bas` to `son`, both included. */
+function isGunu(bas: string, son: string, gunler: number[]): number {
+  let n = 0;
+  for (let g = bas; g <= son; g = gunEkle(g, 1)) if (gunler.includes(haftaninGunu(g))) n += 1;
+  return n;
+}
+
 /**
- * Spreads what is left of a plan over its days: from today, on its
- * weekdays, a day's share of its weekly hours (never more than the week's
- * total for the plan), the part with the earliest deadline first. Undone
+ * What planning starts from: the file without the plan's own undone
+ * sessions from today on (planning puts them again), and what is left of
+ * each part, the earliest deadline first.
+ */
+function planlanacaklar(d: CpDosyasi, p: CalismaPlani, bugun: string) {
+  const takvim: Record<string, Oturum[]> = {};
+  for (const [gun, l] of Object.entries(d.takvim)) {
+    const kalan = l.filter((o) => !(o.planId === p.id && o.oto && !o.yapildi && gun >= bugun));
+    if (kalan.length) takvim[gun] = kalan;
+  }
+  const dosya: CpDosyasi = { ...d, takvim };
+  const parcalar = planDurumu(dosya, p, bugun)
+    .parcalar.map((x) => ({ altId: x.altId, ad: x.ad, sonTarih: x.sonTarih, kalan: x.eksikDk }))
+    .filter((x) => x.kalan > 0)
+    .sort((a, b) => tarihSirasi(a.sonTarih, b.sonTarih));
+  return { dosya, parcalar };
+}
+
+/**
+ * The least a working day needs so that every deadline is met: for each
+ * deadline, all that is due by it over the working days up to it; the
+ * largest of these, rounded up to a quarter hour. Null when no part has a
+ * deadline to work it out from; 0 when nothing is left.
+ */
+export function gerekenGunluk(d: CpDosyasi, p: CalismaPlani, bugun: string): number | null {
+  const { parcalar } = planlanacaklar(d, p, bugun);
+  if (parcalar.length === 0) return 0;
+  const gunler = calismaGunleri(p);
+  let birikmis = 0;
+  let en = 0;
+  let tarihli = false;
+  for (const x of parcalar) {
+    birikmis += x.kalan;
+    if (!x.sonTarih) continue;
+    tarihli = true;
+    const n = isGunu(bugun, x.sonTarih, gunler);
+    if (n > 0) en = Math.max(en, birikmis / n);
+  }
+  if (!tarihli) return null;
+  return Math.max(15, Math.ceil(en / 15) * 15);
+}
+
+/**
+ * Spreads what is left of a plan over its working days from today, the
+ * part with the earliest deadline first. A day gets its share of the
+ * weekly hours, and a week never more than them; with no weekly hours
+ * given, the share is what the deadlines need (`gerekenGunluk`). Undone
  * sessions it put on today or later are taken back and planned again;
  * sessions placed by hand and done ones stay and count.
  */
@@ -318,32 +376,34 @@ export function otomatikPlanla(d: CpDosyasi, planId: string, bugun: string, yeni
   const p = planBul(d, planId);
   const rapor: PlanlamaRaporu = { eklenenDk: 0, oturum: 0, yetismeyen: [] };
   if (!p) return { dosya: d, rapor };
-  if (!p.haftalikDk || p.gunler.length === 0) return { dosya: d, rapor: { ...rapor, ayarYok: true } };
 
-  // Take back its own future, undone sessions.
-  const takvim: Record<string, Oturum[]> = {};
-  for (const [gun, l] of Object.entries(d.takvim)) {
-    const kalan = l.filter((o) => !(o.planId === planId && o.oto && !o.yapildi && gun >= bugun));
-    if (kalan.length) takvim[gun] = kalan;
+  const { parcalar, dosya: temiz } = planlanacaklar(d, p, bugun);
+  let dosya = temiz;
+  const gunler = calismaGunleri(p);
+  let gunluk: number;
+  let haftalik: number;
+  if (p.haftalikDk) {
+    gunluk = Math.max(15, ceyrek(p.haftalikDk / gunler.length));
+    haftalik = p.haftalikDk;
+  } else {
+    const gereken = gerekenGunluk(d, p, bugun);
+    if (gereken === null) return { dosya: d, rapor: { ...rapor, ayarYok: true } };
+    gunluk = gereken;
+    haftalik = Number.POSITIVE_INFINITY;
+    rapor.hesaplandi = true;
   }
-  let dosya: CpDosyasi = { ...d, takvim };
-
-  const parcalar = planDurumu(dosya, p, bugun)
-    .parcalar.map((x) => ({ altId: x.altId, ad: x.ad, sonTarih: x.sonTarih, kalan: x.eksikDk }))
-    .filter((x) => x.kalan > 0)
-    .sort((a, b) => tarihSirasi(a.sonTarih, b.sonTarih));
+  rapor.gunlukDk = gunluk;
   if (parcalar.length === 0) return { dosya, rapor };
 
-  const gunluk = Math.max(15, ceyrek(p.haftalikDk / p.gunler.length));
   const sonGun = parcalar.every((x) => x.sonTarih) ? parcalar.map((x) => x.sonTarih!).sort().at(-1)! : gunEkle(bugun, UFUK_GUN);
   const planinGunu = (gun: string) => (dosya.takvim[gun] ?? []).filter((o) => o.planId === planId).reduce((t, o) => t + o.dk, 0);
 
   for (let gun = bugun; gun <= sonGun && parcalar.some((x) => x.kalan > 0); gun = gunEkle(gun, 1)) {
-    if (!p.gunler.includes(haftaninGunu(gun))) continue;
+    if (!gunler.includes(haftaninGunu(gun))) continue;
     const hafta = haftaBasi(gun);
     let haftada = 0;
     for (let i = 0; i < 7; i++) haftada += planinGunu(gunEkle(hafta, i));
-    let bos = Math.min(gunluk - planinGunu(gun), p.haftalikDk - haftada);
+    let bos = Math.min(gunluk - planinGunu(gun), haftalik - haftada);
     while (bos >= 15) {
       // The earliest part still open whose deadline has not passed.
       const x = parcalar.find((y) => y.kalan > 0 && (!y.sonTarih || y.sonTarih >= gun));
