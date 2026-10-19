@@ -1,0 +1,289 @@
+/* Planlar (issue #69): the plan list on the left, the open plan's outline on the right. */
+
+.duzen {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: var(--b5);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .duzen {
+    grid-template-columns: 1fr;
+  }
+}
+
+.soluk {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+}
+
+.yeni {
+  display: flex;
+  gap: var(--b2);
+}
+
+.yeni > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.listeSatir {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px var(--b2);
+  padding: var(--b2) var(--b3);
+  border: none;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin-orta);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.listeSatir:hover {
+  background: var(--zemin-alt);
+}
+
+.listeSecili,
+.listeSecili:hover {
+  background: var(--vurgu-yumusak);
+  color: var(--metin);
+}
+
+.listeBitti .listeAd {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.listeAd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--sik-orta);
+}
+
+.ince,
+.cubuk {
+  display: block;
+  height: 3px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  overflow: hidden;
+}
+
+.ince {
+  grid-column: 1 / -1;
+}
+
+.cubuk {
+  flex: 1;
+  height: 6px;
+  max-width: 320px;
+}
+
+.ince > span,
+.cubuk > span {
+  display: block;
+  height: 100%;
+  background: var(--vurgu);
+  border-radius: var(--r-tam);
+  transition: width var(--sure) var(--egri);
+}
+
+/* --- the open plan --------------------------------------------------------------- */
+
+.bas {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b4) var(--b5) 0 var(--b6);
+}
+
+.baslik {
+  font-size: var(--y2);
+  font-weight: var(--sik-kalin);
+}
+
+.ozet {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b2) var(--b6);
+}
+
+.not {
+  padding: 0 var(--b6) var(--b3);
+}
+
+.agac {
+  padding: var(--b2) 0 var(--b3);
+  border-top: 1px solid var(--cizgi);
+}
+
+.satir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  min-height: 36px;
+  padding-right: var(--b4);
+}
+
+.satir:hover {
+  background: var(--kart-hover);
+}
+
+.satir input[type="checkbox"] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--vurgu);
+}
+
+.ad {
+  flex: 1;
+}
+
+.adDal {
+  font-weight: var(--sik-orta);
+}
+
+.satirBitti .ad {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.katla {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.eylemler {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.satir:hover .eylemler,
+.satir:focus-within .eylemler {
+  opacity: 1;
+}
+
+.ikon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: none;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.ikon:hover:not(:disabled) {
+  background: var(--zemin-alt);
+  color: var(--metin);
+}
+
+.ikon:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.tehlike:hover:not(:disabled) {
+  color: var(--hata);
+}
+
+.tarih {
+  flex: none;
+  width: 128px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin-orta);
+  font: inherit;
+  font-size: var(--y5);
+  color-scheme: inherit;
+}
+
+.tarih:hover,
+.tarih:focus {
+  border-color: var(--cizgi);
+  outline: none;
+}
+
+/* An undated step shows its date field only on hover. */
+.tarihBos {
+  opacity: 0;
+}
+
+.satir:hover .tarihBos,
+.bas .tarihBos,
+.tarihBos:focus {
+  opacity: 0.7;
+}
+
+.tarihGecti {
+  color: var(--hata);
+}
+
+.yeniSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  min-height: 34px;
+  padding-right: var(--b4);
+}
+
+.yeniGiris {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin);
+  font: inherit;
+}
+
+.yeniGiris:focus {
+  outline: none;
+  border-color: var(--vurgu);
+  background: var(--zemin-alt);
+}
+
+.yeniGiris::placeholder {
+  color: var(--metin-soluk);
+}
