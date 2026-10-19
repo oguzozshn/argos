@@ -15,6 +15,7 @@ import {
   calismaGunleri,
   ceyrek,
   eforu,
+  etiketDuzelt,
   gerekenGunluk,
   gunPayi,
   haftaBasi,
@@ -31,6 +32,7 @@ import {
   planEkle,
   planGuncelle,
   planSil,
+  tumEtiketler,
   ylDenTasi,
   type AltPlan,
   type CalismaPlani,
@@ -261,7 +263,7 @@ export function Planlar() {
       <div className={s.duzen}>
         <div className={s.sol}>
           {yeniAcik && (
-            <YeniPlan renk={PLAN_RENKLERI[veri.planlar.length % PLAN_RENKLERI.length]!} bugun={bugun} onOlustur={olustur} onVazgec={() => setYeniAcik(false)} />
+            <YeniPlan renk={PLAN_RENKLERI[veri.planlar.length % PLAN_RENKLERI.length]!} bugun={bugun} oneriler={tumEtiketler(veri)} onOlustur={olustur} onVazgec={() => setYeniAcik(false)} />
           )}
           {veri.planlar.length === 0 && !yeniAcik && (
             <Kart>
@@ -427,6 +429,55 @@ function GunSaatleri({ dk, onDegis, etiket }: { dk: number[]; onDegis: (dk: numb
 
 const BOS_GUNLER = [0, 0, 0, 0, 0, 0, 0];
 
+/**
+ * A plan's tags: chips with a cross, and a field that adds one on Enter
+ * or a comma, offering the tags other plans already use.
+ */
+function EtiketAlani({ etiketler, oneriler, onDegis }: { etiketler: string[]; oneriler: string[]; onDegis: (l: string[]) => void }) {
+  const [metin, setMetin] = useState("");
+  const ekle = () => {
+    const e = etiketDuzelt(metin);
+    if (e && !etiketler.includes(e)) onDegis([...etiketler, e]);
+    setMetin("");
+  };
+  const liste = `etiket-onerileri-${useRef(Math.random().toString(36).slice(2)).current}`;
+  return (
+    <div className={s.etiketler}>
+      {etiketler.map((e) => (
+        <span key={e} className={s.etiket}>
+          #{e}
+          <button type="button" aria-label={`${e} etiketini kaldır`} onClick={() => onDegis(etiketler.filter((x) => x !== e))}>
+            <X size={10} />
+          </button>
+        </span>
+      ))}
+      <input
+        className={s.etiketGiris}
+        value={metin}
+        list={liste}
+        placeholder={etiketler.length ? "+ etiket" : "Etiket ekle: okul, dönem-1…"}
+        aria-label="Etiket ekle"
+        onChange={(e) => setMetin(e.target.value.replace(",", ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            ekle();
+          }
+          if (e.key === "Backspace" && !metin && etiketler.length) onDegis(etiketler.slice(0, -1));
+        }}
+        onBlur={() => metin.trim() && ekle()}
+      />
+      <datalist id={liste}>
+        {oneriler
+          .filter((e) => !etiketler.includes(e))
+          .map((e) => (
+            <option key={e} value={e} />
+          ))}
+      </datalist>
+    </div>
+  );
+}
+
 /** An hours field that saves on blur or Enter. With `bosOlabilir`, emptying it saves 0. */
 function SaatAlani({
   dk,
@@ -472,11 +523,13 @@ interface YeniAlt {
 function YeniPlan({
   renk,
   bugun,
+  oneriler,
   onOlustur,
   onVazgec,
 }: {
   renk: string;
   bugun: string;
+  oneriler: string[];
   onOlustur: (p: CalismaPlani, oto: boolean) => void;
   onVazgec: () => void;
 }) {
@@ -484,6 +537,7 @@ function YeniPlan({
   const [tur, setTur] = useState<PlanTuru>("ders");
   const [toplam, setToplam] = useState("");
   const [baslangic, setBaslangic] = useState("");
+  const [etiketler, setEtiketler] = useState<string[]>([]);
   const [sonTarih, setSonTarih] = useState("");
   const [haftalik, setHaftalik] = useState("");
   const [gunler, setGunler] = useState<number[]>([]);
@@ -503,6 +557,7 @@ function YeniPlan({
     renk,
     hedefDk: toplamDk,
     ...(baslangic && baslangic > bugun ? { baslangic } : {}),
+    ...(etiketler.length ? { etiketler } : {}),
     ...(sonTarih ? { sonTarih } : {}),
     haftalikDk: gunGun ? 0 : saatOku(haftalik),
     gunler: gunGun ? [] : gunler,
@@ -546,6 +601,7 @@ function YeniPlan({
           <input type="date" className={s.giris} value={baslangic || bugun} min={bugun} aria-label="Başlangıç tarihi" onChange={(e) => setBaslangic(e.target.value)} />
           <span className={s.soluk}>{baslangic && baslangic > bugun ? "bu günden önce çalışma planlanmaz" : "bugünden başlar"}</span>
         </div>
+        <EtiketAlani etiketler={etiketler} oneriler={oneriler} onDegis={setEtiketler} />
 
         <div className={s.bolumAd}>Alt planlar</div>
         {altlar.map((a) => (
@@ -707,6 +763,16 @@ function PlanKarti({
           />
           {!plan.baslangic && <span className={s.soluk}>boş: bugünden</span>}
         </div>
+        <EtiketAlani
+          etiketler={plan.etiketler ?? []}
+          oneriler={tumEtiketler(veri)}
+          onDegis={(l) =>
+            guncelle((p) => {
+              const { etiketler: _, ...y } = p;
+              return l.length ? { ...y, etiketler: l } : y;
+            })
+          }
+        />
         <span className={s.cubuk}>
           <span className={s.cubukPlanli} style={{ width: yuzde(durum.planliDk) }} />
           <span className={s.cubukYapilan} style={{ width: yuzde(durum.yapilanDk) }} />

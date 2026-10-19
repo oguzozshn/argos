@@ -60,6 +60,8 @@ export interface CalismaPlani {
    * When given, it sets the working days and the weekly hours.
    */
   gunDk?: number[];
+  /** Tags of the user's own ("okul", "dönem-1"); the calendar filters by them. */
+  etiketler?: string[];
   altlar: AltPlan[];
 }
 
@@ -96,6 +98,19 @@ const tarihMi = (x: unknown): x is string => typeof x === "string" && ISO.test(x
 /** Rounds to a quarter of an hour, the step of planning. */
 export const ceyrek = (dk: number): number => Math.round(dk / 15) * 15;
 
+/** A tag as kept: trimmed, without a leading "#" or "@", lower case. */
+export const etiketDuzelt = (x: string): string => x.trim().replace(/^[#@]+/, "").trim().toLocaleLowerCase("tr-TR");
+
+function etiketOku(x: unknown): { etiketler?: string[] } {
+  if (!Array.isArray(x)) return {};
+  const l = [...new Set(x.filter((e): e is string => typeof e === "string").map(etiketDuzelt).filter(Boolean))];
+  return l.length ? { etiketler: l } : {};
+}
+
+/** Every tag used by some plan, in alphabetical order. */
+export const tumEtiketler = (d: CpDosyasi): string[] =>
+  [...new Set(d.planlar.flatMap((p) => p.etiketler ?? []))].sort((a, b) => a.localeCompare(b, "tr"));
+
 function gunDkOku(x: unknown): { gunDk?: number[] } {
   if (!Array.isArray(x)) return {};
   const l = Array.from({ length: 7 }, (_, i) => pozitif(x[i]));
@@ -119,6 +134,7 @@ export function normalizeCp(ham: unknown): CpDosyasi {
       haftalikDk: pozitif(p.haftalikDk),
       gunler: [...new Set((Array.isArray(p.gunler) ? p.gunler : []).filter((g) => Number.isInteger(g) && g >= 0 && g <= 6))].sort(),
       ...gunDkOku(p.gunDk),
+      ...etiketOku(p.etiketler),
       altlar: (Array.isArray(p.altlar) ? p.altlar : [])
         .filter((a): a is AltPlan => Boolean(a) && typeof a.id === "string" && typeof a.ad === "string")
         .map((a) => ({ id: a.id, ad: a.ad, hedefDk: pozitif(a.hedefDk), ...(tarihMi(a.sonTarih) ? { sonTarih: a.sonTarih } : {}) })),

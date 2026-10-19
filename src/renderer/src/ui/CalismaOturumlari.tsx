@@ -61,9 +61,9 @@ function OturumSatiri({ x, gunGoster, isaretle }: { x: GunOturumu; gunGoster?: b
 }
 
 /** The day's sessions, for the calendar's day panel. Nothing when there are none. */
-export function GununCalismasi({ gun }: { gun: string }) {
+export function GununCalismasi({ gun, suz }: { gun: string; suz?: (x: GunOturumu) => boolean }) {
   const c = useCalisma();
-  const liste = c.gunun(gun);
+  const liste = suz ? c.gunun(gun).filter(suz) : c.gunun(gun);
   if (liste.length === 0) return null;
   return (
     <div className={s.liste}>

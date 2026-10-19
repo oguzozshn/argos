@@ -718,3 +718,42 @@
   padding: 2px 4px;
   text-align: center;
 }
+
+.etiketler {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.etiket {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px 1px 7px;
+  border-radius: var(--r-tam);
+  background: var(--vurgu-yumusak);
+  color: var(--metin);
+  font-size: var(--y5);
+}
+
+.etiket button {
+  display: flex;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.etiketGiris {
+  flex: 1;
+  min-width: 120px;
+  padding: 3px 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--y5);
+  outline: none;
+}

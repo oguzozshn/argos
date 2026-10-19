@@ -929,3 +929,84 @@
   text-decoration: line-through;
   opacity: 0.6;
 }
+
+.filtre {
+  width: 260px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--b3);
+}
+
+.filtreBaslik {
+  margin: var(--b2) 0 4px;
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-soluk);
+}
+
+.filtreBaslik:first-child {
+  margin-top: 0;
+}
+
+.filtreSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: 3px 0;
+  font-size: var(--y4);
+  cursor: pointer;
+}
+
+.filtreRenk {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-tam);
+  flex-shrink: 0;
+}
+
+.filtreAd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filtreCipler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.filtreCip {
+  padding: 2px 8px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r-tam);
+  background: transparent;
+  color: var(--metin-orta);
+  font: inherit;
+  font-size: var(--y5);
+  cursor: pointer;
+}
+
+.filtreCipSecili {
+  border-color: var(--vurgu);
+  background: var(--vurgu-yumusak);
+  color: var(--metin);
+}
+
+.filtreBos {
+  margin: 2px 0;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.filtreTemizle {
+  margin-top: var(--b3);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--vurgu);
+  font: inherit;
+  font-size: var(--y5);
+  cursor: pointer;
+}

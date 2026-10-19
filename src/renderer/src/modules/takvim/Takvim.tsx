@@ -12,6 +12,7 @@ import { Kisayollar } from "@/ui/Kisayollar";
 import { Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { SlotPaneli } from "@/ui/SlotPaneli";
 import { GununCalismasi, useCalisma, type GunOturumu } from "@/ui/CalismaOturumlari";
+import { FiltreBaglam, FiltreDugmesi, oturumGorunur, useTakvimFiltresi } from "./Filtre";
 import {
   hedefOzellikleri,
   hedefSinifi,
@@ -150,6 +151,8 @@ function CalismaCipi({ x }: { x: GunOturumu }) {
     </span>
   );
 }
+
+const BOS_GOREVLER = new Map<string, TodoistGorev[]>();
 
 function GorevCipi({ gorev, surukle }: { gorev: TodoistGorev; surukle: Surukle }) {
   const saat = gorevSaati(gorev);
@@ -435,6 +438,9 @@ export function Takvim() {
   const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1));
   // Planlar's study sessions, shown on the days they are put on.
   const calisma = useCalisma();
+  const [filtre, setFiltre] = useTakvimFiltresi();
+  const calismaGunun = (iso: string) => calisma.gunun(iso).filter((x) => oturumGorunur(filtre, x));
+  const gunlere = filtre.gorevlerGizli ? BOS_GOREVLER : td.gunlere;
   // The task detail panel (issue #52): the same panel as Yapılacaklar, on the right.
   const pano = useTaskBoard();
   const [acikGorev, setAcikGorev] = useState<string | null>(null);
@@ -645,6 +651,7 @@ export function Takvim() {
         }
         sag={
           <div className={s.gez}>
+            <FiltreDugmesi f={filtre} onDegis={setFiltre} veri={calisma.veri} />
             <div className={s.gorunumler}>
               {(["ay", "hafta", "gun"] as Gorunum[]).map((g) => (
                 <button
@@ -714,6 +721,7 @@ export function Takvim() {
       )}
 
       <GorevAc.Provider value={gorevAc}>
+      <FiltreBaglam.Provider value={filtre}>
       <div className={`${s.duzen} ${s.duzenPanelli}`}>
         <Kart dolgulu={false}>
           {gorunum === "ay" && (
@@ -725,8 +733,8 @@ export function Takvim() {
               tk={tk}
               gunHaritasi={gunHaritasi}
               kurallar={kuralSeti}
-              gorevler={td.gunlere}
-              calisma={calisma.gunun}
+              gorevler={gunlere}
+              calisma={calismaGunun}
               surukle={surukle}
               onSec={setSecili}
               onGunGorunumu={(iso) => {
@@ -744,8 +752,8 @@ export function Takvim() {
               simdiDk={simdiDk}
               gunHaritasi={gunHaritasi}
               kurallar={kuralSeti}
-              gorevler={td.gunlere}
-              calisma={calisma.gunun}
+              gorevler={gunlere}
+              calisma={calismaGunun}
               surukle={surukle}
               onSec={setSecili}
               seciliSlot={seciliSlot}
@@ -761,8 +769,8 @@ export function Takvim() {
               simdiDk={simdiDk}
               kayit={seciliKayit}
               kurallar={kuralSeti}
-              gorevler={td.gunlere.get(secili) ?? []}
-              calisma={calisma.gunun(secili)}
+              gorevler={gunlere.get(secili) ?? []}
+              calisma={calismaGunun(secili)}
               surukle={surukle}
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
@@ -780,7 +788,7 @@ export function Takvim() {
             gunNo={seciliKayit.gunNo}
             iso={secili}
             kurallar={kuralSeti}
-            gorevler={td.gunlere.get(secili) ?? []}
+            gorevler={gunlere.get(secili) ?? []}
             onGorevKapat={td.kapat}
             ekleHost={ekleHost}
             surukle={surukle}
@@ -791,13 +799,14 @@ export function Takvim() {
         ) : (
           <GunPaneliPlansiz
             iso={secili}
-            gorevler={td.gunlere.get(secili) ?? []}
+            gorevler={gunlere.get(secili) ?? []}
             onGorevKapat={td.kapat}
             ekleHost={ekleHost}
             surukle={surukle}
           />
         )}
       </div>
+      </FiltreBaglam.Provider>
       </GorevAc.Provider>
       {buyuk && acikTask && <TaskModal task={acikTask} board={pano} onClose={() => setBuyuk(false)} />}
     </>
@@ -1351,12 +1360,14 @@ function GunPaneliPlansiz({
   ekleHost: TaskComposerTarget & { inbox: TaskList | null };
   surukle: Surukle;
 }) {
-  const calismaVar = useCalisma().gunun(iso).length > 0;
+  const filtre = useContext(FiltreBaglam);
+  const suz = (x: GunOturumu) => oturumGorunur(filtre, x);
+  const calismaVar = useCalisma().gunun(iso).some(suz);
   return (
     <aside className={s.panel}>
       <PanelBasi iso={iso} />
       <GunListesi gorevler={gorevler} slotlar={[]} onKapat={onGorevKapat} surukle={surukle} calismaVar={calismaVar} />
-      <GununCalismasi gun={iso} />
+      <GununCalismasi gun={iso} suz={suz} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
       <p className={s.aciklama}>Bu haftanın planı kurulmamış; slot eklemek için önce hafta kurulur.</p>
     </aside>
@@ -1389,7 +1400,9 @@ function GunPaneliDosyali({
   yazim: number;
 }) {
   const { veri, yukleniyor, yaz, tazele } = useDosya<HaftaTipi>(`${kod}.json`);
-  const calismaVar = useCalisma().gunun(iso).length > 0;
+  const filtre = useContext(FiltreBaglam);
+  const suz = (x: GunOturumu) => oturumGorunur(filtre, x);
+  const calismaVar = useCalisma().gunun(iso).some(suz);
   // Eksen aynı dosyayı başka yoldan yazdı: eski hâl üzerine yazılmasın, hemen oku.
   useEffect(() => {
     if (yazim > 0) void tazele();
@@ -1491,7 +1504,7 @@ function GunPaneliDosyali({
         surukle={surukle}
         calismaVar={calismaVar}
       />
-      <GununCalismasi gun={iso} />
+      <GununCalismasi gun={iso} suz={suz} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
     </aside>
   );

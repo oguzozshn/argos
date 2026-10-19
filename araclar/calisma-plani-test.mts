@@ -21,6 +21,7 @@ import {
   planDurumu,
   planEkle,
   planSil,
+  tumEtiketler,
   ylDenTasi,
   type CalismaPlani,
   type CpDosyasi,
@@ -222,6 +223,14 @@ eq("no old file: nothing", ylDenTasi(null), BOS_CP);
   eq("baslangic survives normalize", n1.planlar[0]!.baslangic, "2026-11-02");
   const gunler = Object.keys(otomatikPlanla(n1, "b", bugun, id).dosya.takvim).sort();
   eq("planned from the start date on", gunler, ["2026-11-02", "2026-11-03", "2026-11-04"]);
+}
+
+// Tags: kept trimmed and lower case, once each; listed across plans.
+{
+  const n1 = normalizeCp({ planlar: [{ id: "e", ad: "E", hedefDk: 60, etiketler: [" #Okul", "okul", "Dönem-1", "", 3] }, { id: "f", ad: "F", hedefDk: 60, etiketler: [] }] });
+  eq("tags cleaned", n1.planlar[0]!.etiketler, ["okul", "dönem-1"]);
+  eq("no tags: no field", n1.planlar[1]!.etiketler, undefined);
+  eq("all tags", tumEtiketler(n1), ["dönem-1", "okul"]);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
