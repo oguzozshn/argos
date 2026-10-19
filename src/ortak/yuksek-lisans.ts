@@ -27,6 +27,21 @@ export interface YlHedef {
   sonTarih: string;
   /** Book only: minutes a page takes, for the effort total. */
   sayfaDk?: number;
+  /**
+   * Optional checkpoints on the way: "Vize, 5 Kasım'a kadar 10 saat" or
+   * "page 300 by the midterm". Amounts are cumulative, in the goal's unit.
+   */
+  araHedefler?: AraHedef[];
+}
+
+export interface AraHedef {
+  id: string;
+  /** "Vize", "Ödev 1"… */
+  ad: string;
+  /** "YYYY-MM-DD". */
+  tarih: string;
+  /** How much of the goal is done by then (cumulative). */
+  miktar: number;
 }
 
 export interface Ders {
@@ -80,6 +95,7 @@ export function normalizeYl(ham: unknown): YlDosyasi {
           miktar: sayi(h.miktar),
           sonTarih: h.sonTarih,
           ...(h.tur === "sayfa" ? { sayfaDk: sayi(h.sayfaDk) || VARSAYILAN_SAYFA_DK } : {}),
+          ...araHedefOku(h.araHedefler),
         })),
     }));
   const hedefVar = new Set(dersler.flatMap((x) => x.hedefler.map((h) => h.id)));
@@ -93,6 +109,17 @@ export function normalizeYl(ham: unknown): YlDosyasi {
     if (ogeler.length) plan[gun] = ogeler;
   }
   return { version: 1, dersler, plan };
+}
+
+function araHedefOku(ham: unknown): { araHedefler?: AraHedef[] } {
+  const liste = (Array.isArray(ham) ? ham : [])
+    .filter(
+      (a): a is AraHedef =>
+        Boolean(a) && typeof a.id === "string" && typeof a.tarih === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.tarih) && sayi(a.miktar) > 0,
+    )
+    .map((a) => ({ id: a.id, ad: typeof a.ad === "string" ? a.ad : "", tarih: a.tarih, miktar: a.miktar }))
+    .sort((a, b) => (a.tarih < b.tarih ? -1 : a.tarih > b.tarih ? 1 : 0));
+  return liste.length ? { araHedefler: liste } : {};
 }
 
 /* --- lookups ------------------------------------------------------------------------ */
@@ -128,28 +155,59 @@ export interface HedefDurumu {
   plansiz: number;
   /** Days left until the deadline, today included; 0 when it has passed. */
   kalanGun: number;
-  /** What a day needs from today to finish what is not done yet. */
+  /**
+   * What a day needs from today: toward the next checkpoint when there is
+   * one (it comes first), else toward the deadline.
+   */
   gunluk: number;
+  /** The goal's checkpoints with how each stands. */
+  araHedefler: AraHedefDurumu[];
+  /** The first checkpoint not yet passed, if any. */
+  siradakiAra: AraHedefDurumu | null;
+}
+
+export interface AraHedefDurumu extends AraHedef {
+  /** Planned on days up to and including its date. */
+  planli: number;
+  /** Planned on the calendar in time: planned by then ≥ its amount. */
+  yetisir: boolean;
+  /** Done so far ≥ its amount. */
+  ulasildi: boolean;
+  gecti: boolean;
 }
 
 export function hedefDurumu(d: YlDosyasi, hedef: YlHedef, bugun: string): HedefDurumu {
   let planli = 0;
   let yapilan = 0;
-  for (const ogeler of Object.values(d.plan)) {
+  const gunlere: [string, number][] = [];
+  for (const [gun, ogeler] of Object.entries(d.plan)) {
     for (const o of ogeler) {
       if (o.hedefId !== hedef.id) continue;
       planli += o.miktar;
+      gunlere.push([gun, o.miktar]);
       if (o.yapildi) yapilan += o.miktar;
     }
   }
+  const pay = (miktar: number, son: string) => {
+    const gun = Math.max(0, gunFarki(son, bugun) + 1);
+    const kalan = Math.max(0, miktar - yapilan);
+    return gun ? Math.ceil(kalan / gun) : kalan;
+  };
+  const araHedefler = (hedef.araHedefler ?? []).map((a) => {
+    const zamaninda = gunlere.filter(([g]) => g <= a.tarih).reduce((t, [, m]) => t + m, 0);
+    return { ...a, planli: zamaninda, yetisir: zamaninda >= a.miktar, ulasildi: yapilan >= a.miktar, gecti: a.tarih < bugun };
+  });
+  const siradakiAra = araHedefler.find((a) => !a.gecti && !a.ulasildi) ?? null;
   const kalanGun = Math.max(0, gunFarki(hedef.sonTarih, bugun) + 1);
-  const kalan = Math.max(0, hedef.miktar - yapilan);
+  const genel = pay(hedef.miktar, hedef.sonTarih);
   return {
     planli,
     yapilan,
     plansiz: Math.max(0, hedef.miktar - planli),
     kalanGun,
-    gunluk: kalanGun ? Math.ceil(kalan / kalanGun) : kalan,
+    gunluk: siradakiAra ? Math.max(genel, pay(siradakiAra.miktar, siradakiAra.tarih)) : genel,
+    araHedefler,
+    siradakiAra,
   };
 }
 
@@ -207,6 +265,20 @@ export function planTasi(d: YlDosyasi, gun: string, id: string, yeniGun: string)
   const o = (d.plan[gun] ?? []).find((x) => x.id === id);
   if (!o || gun === yeniGun) return d;
   return planDegistir(planDegistir(d, gun, (l) => l.filter((x) => x.id !== id)), yeniGun, (l) => [...l, o]);
+}
+
+export const araHedefEkle = (d: YlDosyasi, hedefId: string, a: AraHedef): YlDosyasi =>
+  a.miktar > 0 ? hedefDegistir(d, hedefId, (h) => ({ ...h, araHedefler: [...(h.araHedefler ?? []), a].sort((x, y) => (x.tarih < y.tarih ? -1 : x.tarih > y.tarih ? 1 : 0)) })) : d;
+
+export const araHedefSil = (d: YlDosyasi, hedefId: string, id: string): YlDosyasi =>
+  hedefDegistir(d, hedefId, (h) => {
+    const kalan = (h.araHedefler ?? []).filter((a) => a.id !== id);
+    const { araHedefler: _, ...geri } = h;
+    return kalan.length ? { ...geri, araHedefler: kalan } : geri;
+  });
+
+function hedefDegistir(d: YlDosyasi, hedefId: string, f: (h: YlHedef) => YlHedef): YlDosyasi {
+  return { ...d, dersler: d.dersler.map((x) => ({ ...x, hedefler: x.hedefler.map((h) => (h.id === hedefId ? f(h) : h)) })) };
 }
 
 /** Removing a goal also removes its days from the plan. */
