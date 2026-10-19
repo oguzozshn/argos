@@ -48,6 +48,8 @@ export interface CalismaPlani {
   renk: string;
   /** The whole plan, sub-plans included. */
   hedefDk: number;
+  /** "YYYY-MM-DD": no work is planned before it; absent means from today. */
+  baslangic?: string;
   sonTarih?: string;
   /** Hours a week wanted, in minutes; 0 when not said. */
   haftalikDk: number;
@@ -112,6 +114,7 @@ export function normalizeCp(ham: unknown): CpDosyasi {
       tur: PLAN_TURLERI.some((t) => t.id === p.tur) ? p.tur : ("diger" as PlanTuru),
       renk: typeof p.renk === "string" ? p.renk : PLAN_RENKLERI[i % PLAN_RENKLERI.length]!,
       hedefDk: pozitif(p.hedefDk),
+      ...(tarihMi(p.baslangic) ? { baslangic: p.baslangic } : {}),
       ...(tarihMi(p.sonTarih) ? { sonTarih: p.sonTarih } : {}),
       haftalikDk: pozitif(p.haftalikDk),
       gunler: [...new Set((Array.isArray(p.gunler) ? p.gunler : []).filter((g) => Number.isInteger(g) && g >= 0 && g <= 6))].sort(),
@@ -343,6 +346,9 @@ export function gunPayi(p: CalismaPlani, haftaGunu: number): number | null {
   return Math.max(15, ceyrek(p.haftalikDk / calismaGunleri(p).length));
 }
 
+/** The first day planning may use: the plan's start, or today when that is later. */
+export const planBaslangici = (p: CalismaPlani, bugun: string): string => (p.baslangic && p.baslangic > bugun ? p.baslangic : bugun);
+
 /** Working days from `bas` to `son`, both included. */
 function isGunu(bas: string, son: string, gunler: number[]): number {
   let n = 0;
@@ -386,7 +392,7 @@ export function gerekenGunluk(d: CpDosyasi, p: CalismaPlani, bugun: string): num
     birikmis += x.kalan;
     if (!x.sonTarih) continue;
     tarihli = true;
-    const n = isGunu(bugun, x.sonTarih, gunler);
+    const n = isGunu(planBaslangici(p, bugun), x.sonTarih, gunler);
     if (n > 0) en = Math.max(en, birikmis / n);
   }
   if (!tarihli) return null;
@@ -412,7 +418,7 @@ export function otomatikPlanla(d: CpDosyasi, planId: string, bugun: string, yeni
   let gunluk: number;
   let haftalik: number;
   if (haftalikHedef(p)) {
-    gunluk = gunPayi(p, haftaninGunu(bugun)) ?? 0;
+    gunluk = gunPayi(p, haftaninGunu(planBaslangici(p, bugun))) ?? 0;
     haftalik = haftalikHedef(p);
   } else {
     const gereken = gerekenGunluk(d, p, bugun);
@@ -424,10 +430,10 @@ export function otomatikPlanla(d: CpDosyasi, planId: string, bugun: string, yeni
   rapor.gunlukDk = gunluk;
   if (parcalar.length === 0) return { dosya, rapor };
 
-  const sonGun = parcalar.every((x) => x.sonTarih) ? parcalar.map((x) => x.sonTarih!).sort().at(-1)! : gunEkle(bugun, UFUK_GUN);
+  const sonGun = parcalar.every((x) => x.sonTarih) ? parcalar.map((x) => x.sonTarih!).sort().at(-1)! : gunEkle(planBaslangici(p, bugun), UFUK_GUN);
   const planinGunu = (gun: string) => (dosya.takvim[gun] ?? []).filter((o) => o.planId === planId).reduce((t, o) => t + o.dk, 0);
 
-  for (let gun = bugun; gun <= sonGun && parcalar.some((x) => x.kalan > 0); gun = gunEkle(gun, 1)) {
+  for (let gun = planBaslangici(p, bugun); gun <= sonGun && parcalar.some((x) => x.kalan > 0); gun = gunEkle(gun, 1)) {
     if (!gunler.includes(haftaninGunu(gun))) continue;
     const hafta = haftaBasi(gun);
     let haftada = 0;

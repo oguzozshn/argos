@@ -483,6 +483,7 @@ function YeniPlan({
   const [ad, setAd] = useState("");
   const [tur, setTur] = useState<PlanTuru>("ders");
   const [toplam, setToplam] = useState("");
+  const [baslangic, setBaslangic] = useState("");
   const [sonTarih, setSonTarih] = useState("");
   const [haftalik, setHaftalik] = useState("");
   const [gunler, setGunler] = useState<number[]>([]);
@@ -501,6 +502,7 @@ function YeniPlan({
     tur,
     renk,
     hedefDk: toplamDk,
+    ...(baslangic && baslangic > bugun ? { baslangic } : {}),
     ...(sonTarih ? { sonTarih } : {}),
     haftalikDk: gunGun ? 0 : saatOku(haftalik),
     gunler: gunGun ? [] : gunler,
@@ -538,6 +540,11 @@ function YeniPlan({
           <input className={`${s.giris} ${s.dar}`} inputMode="decimal" value={toplam} placeholder="25" aria-label="Toplam saat" onChange={(e) => setToplam(e.target.value)} />
           <span className={s.soluk}>saat · son tarih</span>
           <input type="date" className={s.giris} value={sonTarih} aria-label="Son tarih" onChange={(e) => setSonTarih(e.target.value)} />
+        </div>
+        <div className={s.satir}>
+          <span className={s.soluk}>Başlangıç</span>
+          <input type="date" className={s.giris} value={baslangic || bugun} min={bugun} aria-label="Başlangıç tarihi" onChange={(e) => setBaslangic(e.target.value)} />
+          <span className={s.soluk}>{baslangic && baslangic > bugun ? "bu günden önce çalışma planlanmaz" : "bugünden başlar"}</span>
         </div>
 
         <div className={s.bolumAd}>Alt planlar</div>
@@ -682,6 +689,23 @@ function PlanKarti({
             }
           />
           {plan.sonTarih && <span className={s.soluk}>{kalanGun(plan.sonTarih, bugun)} gün</span>}
+        </div>
+        <div className={s.satir}>
+          <span className={s.soluk}>Başlangıç</span>
+          <input
+            type="date"
+            className={s.giris}
+            value={plan.baslangic ?? ""}
+            aria-label="Planın başlangıç tarihi"
+            title="Bu günden önce çalışma planlanmaz; boşsa bugünden başlar."
+            onChange={(e) =>
+              guncelle((p) => {
+                const { baslangic: _, ...y } = p;
+                return e.target.value ? { ...y, baslangic: e.target.value } : y;
+              })
+            }
+          />
+          {!plan.baslangic && <span className={s.soluk}>boş: bugünden</span>}
         </div>
         <span className={s.cubuk}>
           <span className={s.cubukPlanli} style={{ width: yuzde(durum.planliDk) }} />

@@ -215,5 +215,14 @@ eq("no old file: nothing", ylDenTasi(null), BOS_CP);
   eq("ticking marks all of it done", oturumIsaretle(k, "2026-10-19", "s", true).takvim["2026-10-19"], [{ id: "s", planId: "k", dk: 120, yapildi: true }]);
 }
 
+// A start date: nothing is planned before it (issue #79).
+{
+  const p: CalismaPlani = { id: "b", ad: "Baş", tur: "ders", renk: "#000", hedefDk: sa(3), baslangic: "2026-11-02", haftalikDk: sa(7), gunler: [], altlar: [] };
+  const n1 = normalizeCp(planEkle(BOS_CP, p));
+  eq("baslangic survives normalize", n1.planlar[0]!.baslangic, "2026-11-02");
+  const gunler = Object.keys(otomatikPlanla(n1, "b", bugun, id).dosya.takvim).sort();
+  eq("planned from the start date on", gunler, ["2026-11-02", "2026-11-03", "2026-11-04"]);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exitCode = 1;
