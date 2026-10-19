@@ -138,6 +138,19 @@ const gorevKaynagi = (g: TodoistGorev, sr: Surukle) =>
  */
 const GorevAc = createContext<(g: TodoistGorev) => void>(() => undefined);
 
+/** A Planlar session as a chip: the plan's colour, crossed out when done. */
+function CalismaCipi({ x }: { x: GunOturumu }) {
+  return (
+    <span
+      className={x.oturum.yapildi ? `${s.gorevRozet} ${s.calismaRozetBitti}` : s.gorevRozet}
+      style={{ borderLeft: `3px solid ${x.plan.renk}` }}
+      title={`${x.ad} · ${String(x.oturum.dk / 60).replace(".", ",")} sa${x.oturum.yapildi ? " · yapıldı" : ""}`}
+    >
+      {x.ad}
+    </span>
+  );
+}
+
 function GorevCipi({ gorev, surukle }: { gorev: TodoistGorev; surukle: Surukle }) {
   const saat = gorevSaati(gorev);
   const ac = useContext(GorevAc);
@@ -732,6 +745,7 @@ export function Takvim() {
               gunHaritasi={gunHaritasi}
               kurallar={kuralSeti}
               gorevler={td.gunlere}
+              calisma={calisma.gunun}
               surukle={surukle}
               onSec={setSecili}
               seciliSlot={seciliSlot}
@@ -748,6 +762,7 @@ export function Takvim() {
               kayit={seciliKayit}
               kurallar={kuralSeti}
               gorevler={td.gunlere.get(secili) ?? []}
+              calisma={calisma.gunun(secili)}
               surukle={surukle}
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
@@ -920,14 +935,7 @@ function AyIzgarasi({
                   <span className={s.gorevRozet}>+{gunGorevleri.length - 2}</span>
                 )}
                 {calisma(iso).map((x) => (
-                  <span
-                    key={x.oturum.id}
-                    className={x.oturum.yapildi ? `${s.gorevRozet} ${s.calismaRozetBitti}` : s.gorevRozet}
-                    style={{ borderLeft: `3px solid ${x.plan.renk}` }}
-                    title={`${x.ad} · ${String(x.oturum.dk / 60).replace(".", ",")} sa${x.oturum.yapildi ? " · yapıldı" : ""}`}
-                  >
-                    {x.ad}
-                  </span>
+                  <CalismaCipi key={x.oturum.id} x={x} />
                 ))}
               </span>
 
@@ -958,6 +966,7 @@ function HaftaEkseni({
   gunHaritasi,
   kurallar,
   gorevler,
+  calisma,
   surukle,
   onSec,
   seciliSlot,
@@ -971,6 +980,7 @@ function HaftaEkseni({
   gunHaritasi: Map<string, GunKaydi>;
   kurallar: KuralSeti;
   gorevler: Map<string, TodoistGorev[]>;
+  calisma: (iso: string) => GunOturumu[];
   surukle: Surukle;
   onSec: (iso: string) => void;
   seciliSlot: string | null;
@@ -1025,6 +1035,9 @@ function HaftaEkseni({
                     surukle={surukle}
                   />
                 ))}
+              {calisma(iso).map((x) => (
+                <CalismaCipi key={x.oturum.id} x={x} />
+              ))}
             </div>
           ))}
         </div>
@@ -1067,6 +1080,7 @@ function GunEkseni({
   kayit,
   kurallar,
   gorevler,
+  calisma,
   surukle,
   seciliSlot,
   onSlotSec,
@@ -1078,6 +1092,7 @@ function GunEkseni({
   kayit: GunKaydi | null;
   kurallar: KuralSeti;
   gorevler: TodoistGorev[];
+  calisma: GunOturumu[];
   surukle: Surukle;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
@@ -1099,12 +1114,15 @@ function GunEkseni({
         <span className={s.sutunBasiOlcum}>ölçülen</span>
       </div>
 
-      {gunBoyu.length > 0 && (
+      {(gunBoyu.length > 0 || calisma.length > 0) && (
         <div className={s.gunBoyu}>
           <span className={s.gunBoyuEtiket}>gün boyu</span>
           <div className={s.gunBoyuIcerik}>
             {gunBoyu.map((g) => (
               <GorevCipi key={g.id} gorev={g} surukle={surukle} />
+            ))}
+            {calisma.map((x) => (
+              <CalismaCipi key={x.oturum.id} x={x} />
             ))}
           </div>
         </div>
@@ -1197,9 +1215,12 @@ function GunListesi({
   onSlotSec,
   onKapat,
   surukle,
+  calismaVar,
 }: {
   gorevler: TodoistGorev[];
   slotlar: Slot[];
+  /** The day has Planlar sessions, listed under the list: the day is not empty. */
+  calismaVar?: boolean;
   seciliSlot?: string | null;
   onSlotSec?: (id: string | null) => void;
   onKapat: (g: TodoistGorev) => Promise<void>;
@@ -1215,7 +1236,7 @@ function GunListesi({
   ].sort((a, b) => (a.saat! < b.saat! ? -1 : a.saat! > b.saat! ? 1 : 0));
 
   if (gunBoyu.length === 0 && saatli.length === 0) {
-    return <p className={s.aciklama}>Bu gün boş.</p>;
+    return calismaVar ? null : <p className={s.aciklama}>Bu gün boş.</p>;
   }
 
   const gorevSatiri = (g: TodoistGorev, saat: string | null) => (
@@ -1330,10 +1351,11 @@ function GunPaneliPlansiz({
   ekleHost: TaskComposerTarget & { inbox: TaskList | null };
   surukle: Surukle;
 }) {
+  const calismaVar = useCalisma().gunun(iso).length > 0;
   return (
     <aside className={s.panel}>
       <PanelBasi iso={iso} />
-      <GunListesi gorevler={gorevler} slotlar={[]} onKapat={onGorevKapat} surukle={surukle} />
+      <GunListesi gorevler={gorevler} slotlar={[]} onKapat={onGorevKapat} surukle={surukle} calismaVar={calismaVar} />
       <GununCalismasi gun={iso} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
       <p className={s.aciklama}>Bu haftanın planı kurulmamış; slot eklemek için önce hafta kurulur.</p>
@@ -1367,6 +1389,7 @@ function GunPaneliDosyali({
   yazim: number;
 }) {
   const { veri, yukleniyor, yaz, tazele } = useDosya<HaftaTipi>(`${kod}.json`);
+  const calismaVar = useCalisma().gunun(iso).length > 0;
   // Eksen aynı dosyayı başka yoldan yazdı: eski hâl üzerine yazılmasın, hemen oku.
   useEffect(() => {
     if (yazim > 0) void tazele();
@@ -1466,6 +1489,7 @@ function GunPaneliDosyali({
         onSlotSec={onSlotSec}
         onKapat={onGorevKapat}
         surukle={surukle}
+        calismaVar={calismaVar}
       />
       <GununCalismasi gun={iso} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
