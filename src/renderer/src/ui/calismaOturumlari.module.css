@@ -1,0 +1,53 @@
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--b2) 0;
+}
+
+.baslik {
+  margin: 0 0 4px;
+  font-size: var(--y5, 12px);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-soluk);
+}
+
+.baslik span {
+  margin-left: 4px;
+  font-weight: normal;
+}
+
+.satir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: 5px 0;
+  font-size: var(--y4);
+  cursor: pointer;
+}
+
+.bitti .ad {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.renk {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-tam);
+  flex-shrink: 0;
+}
+
+.ad {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sure {
+  color: var(--metin-soluk);
+  font-size: var(--y5, 12px);
+  white-space: nowrap;
+}

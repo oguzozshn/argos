@@ -924,3 +924,8 @@
 .gunSatirAc:hover {
   color: var(--vurgu);
 }
+
+.calismaRozetBitti {
+  text-decoration: line-through;
+  opacity: 0.6;
+}

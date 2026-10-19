@@ -11,6 +11,7 @@ import type { TodoistGorev } from "@ortak/tipler";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { SlotPaneli } from "@/ui/SlotPaneli";
+import { GununCalismasi, useCalisma, type GunOturumu } from "@/ui/CalismaOturumlari";
 import {
   hedefOzellikleri,
   hedefSinifi,
@@ -419,6 +420,8 @@ export function Takvim() {
 
   // Todoist süzgeci uç değerleri dışlar; bir gün pay bırakılıyor.
   const td = useTodoistAralik(gunEkle(bas, -1), gunEkle(son, 1));
+  // Planlar's study sessions, shown on the days they are put on.
+  const calisma = useCalisma();
   // The task detail panel (issue #52): the same panel as Yapılacaklar, on the right.
   const pano = useTaskBoard();
   const [acikGorev, setAcikGorev] = useState<string | null>(null);
@@ -710,6 +713,7 @@ export function Takvim() {
               gunHaritasi={gunHaritasi}
               kurallar={kuralSeti}
               gorevler={td.gunlere}
+              calisma={calisma.gunun}
               surukle={surukle}
               onSec={setSecili}
               onGunGorunumu={(iso) => {
@@ -796,6 +800,7 @@ function AyIzgarasi({
   gunHaritasi,
   kurallar,
   gorevler,
+  calisma,
   surukle,
   onSec,
   onGunGorunumu,
@@ -808,6 +813,7 @@ function AyIzgarasi({
   gunHaritasi: Map<string, GunKaydi>;
   kurallar: KuralSeti;
   gorevler: Map<string, TodoistGorev[]>;
+  calisma: (iso: string) => GunOturumu[];
   surukle: Surukle;
   onSec: (iso: string) => void;
   onGunGorunumu: (iso: string) => void;
@@ -913,6 +919,16 @@ function AyIzgarasi({
                 {gunGorevleri.length > 2 && (
                   <span className={s.gorevRozet}>+{gunGorevleri.length - 2}</span>
                 )}
+                {calisma(iso).map((x) => (
+                  <span
+                    key={x.oturum.id}
+                    className={x.oturum.yapildi ? `${s.gorevRozet} ${s.calismaRozetBitti}` : s.gorevRozet}
+                    style={{ borderLeft: `3px solid ${x.plan.renk}` }}
+                    title={`${x.ad} · ${String(x.oturum.dk / 60).replace(".", ",")} sa${x.oturum.yapildi ? " · yapıldı" : ""}`}
+                  >
+                    {x.ad}
+                  </span>
+                ))}
               </span>
 
               <span className={s.hucreDip}>
@@ -1318,6 +1334,7 @@ function GunPaneliPlansiz({
     <aside className={s.panel}>
       <PanelBasi iso={iso} />
       <GunListesi gorevler={gorevler} slotlar={[]} onKapat={onGorevKapat} surukle={surukle} />
+      <GununCalismasi gun={iso} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
       <p className={s.aciklama}>Bu haftanın planı kurulmamış; slot eklemek için önce hafta kurulur.</p>
     </aside>
@@ -1450,6 +1467,7 @@ function GunPaneliDosyali({
         onKapat={onGorevKapat}
         surukle={surukle}
       />
+      <GununCalismasi gun={iso} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
     </aside>
   );
