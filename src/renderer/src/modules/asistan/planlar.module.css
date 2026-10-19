@@ -1,206 +1,97 @@
-/* Planlar (issue #69): the plan list on the left, the open plan's outline on the right. */
+/* Planlar (issue #73): plans on the left, the calendar (day, week, month) on the right. */
 
 .duzen {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 380px minmax(0, 1fr);
   gap: var(--b5);
   align-items: start;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1150px) {
   .duzen {
     grid-template-columns: 1fr;
   }
 }
 
-.soluk {
-  color: var(--metin-soluk);
-  font-size: var(--y5);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .sol {
   display: flex;
   flex-direction: column;
-  gap: var(--b3);
+  gap: var(--b4);
 }
 
-.yeni {
-  display: flex;
-  gap: var(--b2);
-}
-
-.yeni > :first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-.liste {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.listeSatir {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 4px var(--b2);
-  padding: var(--b2) var(--b3);
-  border: none;
-  border-radius: var(--r2);
-  background: transparent;
-  color: var(--metin-orta);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.listeSatir:hover {
-  background: var(--zemin-alt);
-}
-
-.listeSecili,
-.listeSecili:hover {
-  background: var(--vurgu-yumusak);
-  color: var(--metin);
-}
-
-.listeBitti .listeAd {
+.soluk {
   color: var(--metin-soluk);
-  text-decoration: line-through;
+  font-size: var(--y5);
 }
 
-.listeAd {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: var(--sik-orta);
+.uyari {
+  color: var(--uyari);
+  font-size: var(--y5);
 }
 
-.ince,
-.cubuk {
-  display: block;
-  height: 3px;
-  border-radius: var(--r-tam);
-  background: var(--zemin-alt);
-  overflow: hidden;
+.iyi {
+  color: var(--iyi);
 }
 
-.ince {
-  grid-column: 1 / -1;
-}
-
-.cubuk {
-  flex: 1;
-  height: 6px;
-  max-width: 320px;
-}
-
-.ince > span,
-.cubuk > span {
-  display: block;
-  height: 100%;
-  background: var(--vurgu);
-  border-radius: var(--r-tam);
-  transition: width var(--sure) var(--egri);
-}
-
-/* --- the open plan --------------------------------------------------------------- */
-
-.bas {
-  display: flex;
-  align-items: center;
-  gap: var(--b2);
-  padding: var(--b4) var(--b5) 0 var(--b6);
-}
-
-.baslik {
-  font-size: var(--y2);
-  font-weight: var(--sik-kalin);
-}
-
-.ozet {
-  display: flex;
-  align-items: center;
-  gap: var(--b3);
-  padding: var(--b2) var(--b6);
-}
-
-.not {
-  padding: 0 var(--b6) var(--b3);
-}
-
-.agac {
-  padding: var(--b2) 0 var(--b3);
-  border-top: 1px solid var(--cizgi);
+.hata {
+  color: var(--hata);
 }
 
 .satir {
   display: flex;
   align-items: center;
   gap: var(--b2);
-  min-height: 36px;
-  padding-right: var(--b4);
+  flex-wrap: wrap;
 }
 
-.satir:hover {
-  background: var(--kart-hover);
+.bolumAd {
+  margin-top: var(--b2);
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-soluk);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.satir input[type="checkbox"] {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  accent-color: var(--vurgu);
+.giris {
+  height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--kart);
+  color: var(--metin);
+  font: inherit;
+  font-size: var(--y5);
 }
 
-.ad {
+.giris:focus {
+  outline: none;
+  border-color: var(--vurgu);
+}
+
+.dar {
+  width: 64px;
+}
+
+.cokDar {
+  width: 52px;
+}
+
+.genis {
   flex: 1;
 }
 
-.adDal {
-  font-weight: var(--sik-orta);
-}
-
-.satirBitti .ad {
-  color: var(--metin-soluk);
-  text-decoration: line-through;
-}
-
-.katla {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  flex: none;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--metin-soluk);
-  cursor: pointer;
-}
-
-.eylemler {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity var(--sure-hizli) var(--egri);
-}
-
-.satir:hover .eylemler,
-.satir:focus-within .eylemler {
-  opacity: 1;
+.tarihKucuk {
+  width: 122px;
 }
 
 .ikon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   flex: none;
   border: none;
   border-radius: var(--r2);
@@ -223,67 +114,579 @@
   color: var(--hata);
 }
 
-.tarih {
+.renk {
+  width: 9px;
+  height: 9px;
   flex: none;
-  width: 128px;
-  height: 26px;
-  padding: 0 6px;
-  border: 1px solid transparent;
-  border-radius: var(--r2);
+  border-radius: var(--r-tam);
+}
+
+.metinDugme {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--metin-soluk);
+  font: inherit;
+  font-size: var(--y5);
+  cursor: pointer;
+}
+
+.metinDugme:hover {
+  color: var(--metin);
+}
+
+/* --- new plan form ------------------------------------------------------------------ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b2);
+  padding: var(--b3) var(--b5) var(--b4);
+}
+
+.turSecim {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tur {
+  padding: 3px 11px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r-tam);
   background: transparent;
   color: var(--metin-orta);
   font: inherit;
   font-size: var(--y5);
-  color-scheme: inherit;
+  cursor: pointer;
 }
 
-.tarih:hover,
-.tarih:focus {
+.turSecili {
+  border-color: var(--vurgu);
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}
+
+.gunSecim {
+  display: flex;
+  gap: 3px;
+}
+
+.gunKutu {
+  min-width: 34px;
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin-soluk);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.gunKutuSecili {
+  border-color: var(--vurgu);
+  background: var(--vurgu-yumusak);
+  color: var(--metin);
+  font-weight: var(--sik-kalin);
+}
+
+.onay {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  margin-top: var(--b2);
+  font-size: var(--y5);
+  cursor: pointer;
+}
+
+.onay input {
+  accent-color: var(--vurgu);
+}
+
+.altSerit {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--b2);
+  padding: var(--b3) var(--b5);
+  border-top: 1px solid var(--cizgi);
+}
+
+/* --- a plan card ------------------------------------------------------------------- */
+
+.planBas {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b3) var(--b4) 0 var(--b5);
+}
+
+.planAd {
+  font-weight: var(--sik-kalin);
+  font-size: var(--y4);
+}
+
+.turSec {
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin-soluk);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.turSec:hover,
+.turSec:focus {
   border-color: var(--cizgi);
   outline: none;
 }
 
-/* An undated step shows its date field only on hover. */
-.tarihBos {
-  opacity: 0;
+.planGovde {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--b2) var(--b5) var(--b3);
 }
 
-.satir:hover .tarihBos,
-.bas .tarihBos,
-.tarihBos:focus {
-  opacity: 0.7;
+/* Planned (light) under done (full). */
+.cubuk {
+  position: relative;
+  height: 6px;
+  border-radius: var(--r-tam);
+  background: var(--zemin-alt);
+  overflow: hidden;
 }
 
-.tarihGecti {
-  color: var(--hata);
+.cubukPlanli,
+.cubukYapilan {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--r-tam);
 }
 
-.yeniSatir {
+.cubukPlanli {
+  background: color-mix(in srgb, var(--vurgu) 35%, transparent);
+}
+
+.cubukYapilan {
+  background: var(--vurgu);
+}
+
+.durum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: var(--y5);
+  color: var(--metin-orta);
+}
+
+.parcalar {
+  border-top: 1px solid var(--cizgi);
+}
+
+.parca {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--b2) var(--b5);
+  border-bottom: 1px solid var(--cizgi);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+}
+
+.parca:hover {
+  background: var(--kart-hover);
+}
+
+.parcaSecili,
+.parcaSecili:hover {
+  border-left-color: var(--vurgu);
+  background: var(--vurgu-yumusak);
+}
+
+.parcaBas {
   display: flex;
   align-items: center;
   gap: var(--b2);
-  min-height: 34px;
-  padding-right: var(--b4);
 }
 
-.yeniGiris {
+.parcaAdKutu {
   flex: 1;
   min-width: 0;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid transparent;
-  border-radius: var(--r2);
-  background: transparent;
-  color: var(--metin);
-  font: inherit;
 }
 
-.yeniGiris:focus {
-  outline: none;
-  border-color: var(--vurgu);
+.parcaAd {
+  font-weight: var(--sik-orta);
+}
+
+.parcaAna {
+  flex: 1;
+  color: var(--metin-orta);
+}
+
+.parcaDurum {
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.altEkleDugme {
+  margin: var(--b2) var(--b5);
+}
+
+.yeniAlt {
+  padding: var(--b2) var(--b5);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.duzenSatiri {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--b2);
+  padding: var(--b3) var(--b5) var(--b4);
+}
+
+/* --- calendar ----------------------------------------------------------------------- */
+
+.takvimKart {
+  min-width: 0;
+}
+
+.takvimBas {
+  display: flex;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b4) var(--b5) var(--b2);
+}
+
+.takvimBaslik {
+  font-size: var(--y3);
+  font-weight: var(--sik-kalin);
+  white-space: nowrap;
+}
+
+.gorunumler {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-tam);
   background: var(--zemin-alt);
 }
 
-.yeniGiris::placeholder {
+.gorunum {
+  padding: 3px 12px;
+  border: none;
+  border-radius: var(--r-tam);
+  background: transparent;
+  color: var(--metin-orta);
+  font: inherit;
+  font-size: var(--y5);
+  cursor: pointer;
+}
+
+.gorunumSecili {
+  background: var(--kart);
+  color: var(--metin);
+  font-weight: var(--sik-kalin);
+  box-shadow: var(--golge1);
+}
+
+.gez {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.ipucu {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 var(--b5) var(--b2);
+  font-size: var(--y5);
   color: var(--metin-soluk);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.ipucu b {
+  color: var(--metin);
+}
+
+.izgara {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) 92px;
+}
+
+.izgaraBaslik {
+  padding: 6px 8px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.haftaBaslik {
+  text-align: right;
+}
+
+.gun {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 104px;
+  min-width: 0;
+  padding: 5px 6px 8px;
+  border-right: 1px solid var(--cizgi);
+  border-bottom: 1px solid var(--cizgi);
+  cursor: pointer;
+}
+
+.gun:hover,
+.haftaGun:hover {
+  background: var(--kart-hover);
+}
+
+.gunDisi {
+  opacity: 0.4;
+}
+
+.gecmis .gunNo {
+  color: var(--metin-soluk);
+}
+
+.gunNo {
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  font-variant-numeric: tabular-nums;
+}
+
+.bugun .gunNo {
+  align-self: flex-start;
+  padding: 0 6px;
+  border-radius: var(--r-tam);
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}
+
+.cip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 2px 5px;
+  border-left: 3px solid;
+  border-radius: 3px;
+  background: var(--zemin-alt);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.cipMetin {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cipYapildi {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.gorev {
+  min-width: 0;
+  padding-left: 9px;
+  position: relative;
+  font-size: 11px;
+  color: var(--metin-soluk);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gorev::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: var(--r-tam);
+  background: var(--metin-soluk);
+}
+
+.sonTarih {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: var(--sik-kalin);
+}
+
+.haftaToplam {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--cizgi);
+  background: var(--zemin-alt);
+  text-align: right;
+}
+
+.haftaPlanli {
+  font-weight: var(--sik-kalin);
+  font-variant-numeric: tabular-nums;
+}
+
+/* week view */
+.haftaOzet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: var(--b2) var(--b5);
+  font-size: var(--y5);
+  color: var(--metin-orta);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.haftaOzet b {
+  color: var(--metin);
+}
+
+.haftaPlan {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--metin-soluk);
+}
+
+.hafta {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 420px;
+}
+
+.haftaGun {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 6px 10px;
+  border-right: 1px solid var(--cizgi);
+  cursor: pointer;
+}
+
+.haftaGun:last-child {
+  border-right: none;
+}
+
+.haftaGunBas {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px;
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.haftaGun.bugun .haftaGunBas {
+  color: var(--vurgu);
+}
+
+.haftaGun .cip {
+  white-space: normal;
+}
+
+.haftaGun .cipMetin {
+  white-space: normal;
+}
+
+/* day view */
+.gunGorunum {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b2);
+  padding-bottom: var(--b4);
+}
+
+.gunGorunum > :not(.haftaOzet) {
+  margin: 0 var(--b5);
+}
+
+.gunGorunum .gorev {
+  font-size: var(--y5);
+}
+
+.gunGorunum .gorev::before {
+  top: 8px;
+}
+
+/* --- a day's sessions (popover and day view) ------------------------------------------ */
+
+.panel {
+  width: 320px;
+  padding: var(--b3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--b2);
+}
+
+.panelBas {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--b2);
+}
+
+.panelSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  font-size: var(--y5);
+}
+
+.panelSatir input[type="checkbox"] {
+  accent-color: var(--vurgu);
+}
+
+.panelAd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panelEkle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b2);
+  padding-top: var(--b2);
+  border-top: 1px solid var(--cizgi);
+}
+
+/* --- Hafta screen card ------------------------------------------------------------------ */
+
+.haftaDers {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: var(--b3) var(--b6);
+  border-top: 1px solid var(--cizgi);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
 }

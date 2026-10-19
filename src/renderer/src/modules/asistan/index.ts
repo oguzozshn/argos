@@ -12,7 +12,6 @@ import { Odak } from "./Odak";
 import { AsistanOzet } from "./Ozet";
 import { Yetenekler } from "./Yetenekler";
 import { YolHaritalari } from "./YolHaritalari";
-import { YuksekLisans } from "./YuksekLisans";
 
 /**
  * Asistan modülü. Faz 5 adım adım ilerliyor.
@@ -32,11 +31,10 @@ export const asistanModulu: Modul = {
     { yol: "odak", ad: "Odak", Ekran: Odak },
     { yol: "hatirla", ad: "Hatırla", Ekran: Hatirla },
     { yol: "arsiv", ad: "Arşiv", Ekran: Arsiv },
-    { yol: "planlar", ad: "Planlar", Ekran: Planlar },
     { yol: "hedefler", ad: "Hedefler", Ekran: Hedefler },
     { yol: "yetenekler", ad: "Yetenekler", Ekran: Yetenekler },
     { yol: "roadmap", ad: "Yol haritaları", Ekran: YolHaritalari },
-    { yol: "yuksek-lisans", ad: "Yüksek Lisans", Ekran: YuksekLisans, genis: true },
+    { yol: "planlar", ad: "Planlar", Ekran: Planlar, genis: true },
   ],
   Ozet: AsistanOzet,
   ozetAd: "Bugünün planı · Aklında tut",
