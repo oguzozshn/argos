@@ -289,6 +289,35 @@
   color: var(--hata);
 }
 
+/* The group title folds and unfolds its tasks. */
+.groupToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -19px;
+  padding: 2px 4px;
+  border: none;
+  border-radius: var(--r2);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.groupToggle:hover {
+  background: var(--zemin-alt);
+}
+
+.groupToggle svg {
+  opacity: 0.6;
+}
+
+.groupToggle:hover svg {
+  opacity: 1;
+}
+
 /* --- add row / composer ----------------------------------------------------------- */
 
 .addRow {
