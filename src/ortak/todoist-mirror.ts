@@ -48,14 +48,17 @@ export interface MirrorItem {
   parentId: string | null;
   /** Todoist's `child_order` within the project. */
   order: number;
+  /** When it was added (Todoist's `added_at`, ISO); null when not known. */
+  addedAt?: string | null;
 }
 
 /**
- * 2 added the fields the screens read (order, sub-tasks). A copy of an older
- * version keeps its data but loses its token, so the next sync is a full one
- * that refills every field and still checks what vanished meanwhile.
+ * 2 added the fields the screens read (order, sub-tasks); 3 added when a
+ * task was added. A copy of an older version keeps its data but loses its
+ * token, so the next sync is a full one that refills every field and still
+ * checks what vanished meanwhile.
  */
-export const MIRROR_VERSION = 2;
+export const MIRROR_VERSION = 3;
 
 export interface MirrorFile {
   version: typeof MIRROR_VERSION;
@@ -106,6 +109,7 @@ export interface SyncItem {
   is_deleted?: boolean;
   parent_id?: string | null;
   child_order?: number;
+  added_at?: string | null;
 }
 
 export interface SyncResponse {
@@ -136,6 +140,7 @@ const itemOf = (i: SyncItem): MirrorItem => ({
   labels: i.labels ?? [],
   parentId: i.parent_id ?? null,
   order: i.child_order ?? 0,
+  addedAt: i.added_at ?? null,
 });
 
 /* --- applying a sync -------------------------------------------------------------- */
@@ -356,7 +361,7 @@ export function keepDeleted(
     }
     for (const i of items) {
       if (hasTask(keptTaskId(i.id))) continue;
-      tasks = addTask(tasks, { listId, ...taskInput(i) }, keptTaskId(i.id), now);
+      tasks = addTask(tasks, { listId, ...taskInput(i) }, keptTaskId(i.id), i.addedAt ?? now);
       summary.tasks++;
     }
     // Tasks kept earlier in this Todoist list move into its new Argos list.
@@ -367,7 +372,7 @@ export function keepDeleted(
 
   for (const i of outcome.deletedItems) {
     if (hasTask(keptTaskId(i.id))) continue;
-    tasks = addTask(tasks, { listId: i.projectId, listSource: "todoist", ...taskInput(i) }, keptTaskId(i.id), now);
+    tasks = addTask(tasks, { listId: i.projectId, listSource: "todoist", ...taskInput(i) }, keptTaskId(i.id), i.addedAt ?? now);
     summary.tasks++;
   }
 

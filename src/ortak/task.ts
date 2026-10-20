@@ -37,6 +37,8 @@ export interface Task {
   isSubtask: boolean;
   /** Todoist's raw due string (recurring tasks keep their rule through it); null for local tasks. */
   todoistDueString: string | null;
+  /** When it was added (ISO); null when not known. */
+  createdAt: string | null;
 }
 
 export interface TaskList {
@@ -75,6 +77,7 @@ export function fromTodoist(g: TodoistGorev, reminders: Reminder[] = []): Task {
     reminders,
     isSubtask: g.altGorev,
     todoistDueString: g.dueString ?? null,
+    createdAt: g.eklendi ?? null,
   };
 }
 
@@ -97,6 +100,7 @@ export function fromLocal(t: LocalTask): Task {
     reminders: t.reminders,
     isSubtask: false,
     todoistDueString: null,
+    createdAt: t.createdAt || null,
   };
 }
 
@@ -198,6 +202,7 @@ export function localAsTodoist(t: LocalTask): TodoistGorev {
     oncelik: priorityToTodoist(t.priority),
     etiketler: t.important ? [ONEMLI_ETIKETI] : [],
     altGorev: false,
+    eklendi: t.createdAt || null,
     source: "local",
   };
 }
