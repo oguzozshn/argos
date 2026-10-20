@@ -1,6 +1,6 @@
 import { BugununCalismasi } from "@/ui/CalismaOturumlari";
-import { AlertTriangle, KeyRound, Monitor, Plus, RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AlertTriangle, ChevronDown, ChevronRight, KeyRound, Monitor, Plus, RefreshCw } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import type { TaskList } from "@ortak/task";
 import { groupByDate } from "@ortak/task-dates";
 import { Kisayollar } from "@/ui/Kisayollar";
@@ -13,6 +13,34 @@ import { TaskPanel } from "@/ui/gorev/TaskPanel";
 import { TaskRow } from "./TaskRow";
 import { useTaskBoard, type TaskBoard } from "@/veri/task-board";
 import s from "./board.module.css";
+
+/** Folded date groups ("list key|Gecikmiş"), remembered on this computer. */
+const KATLI_ANAHTARI = "argos.yapilacak.katli";
+
+function useKatliGruplar() {
+  const [katli, setKatli] = useState<ReadonlySet<string>>(() => {
+    try {
+      const x: unknown = JSON.parse(localStorage.getItem(KATLI_ANAHTARI) ?? "[]");
+      return new Set(Array.isArray(x) ? x.filter((y): y is string => typeof y === "string") : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const degistir = useCallback((anahtar: string) => {
+    setKatli((k) => {
+      const y = new Set(k);
+      if (y.has(anahtar)) y.delete(anahtar);
+      else y.add(anahtar);
+      try {
+        localStorage.setItem(KATLI_ANAHTARI, JSON.stringify([...y]));
+      } catch {
+        /* storage closed: folding lasts this session */
+      }
+      return y;
+    });
+  }, []);
+  return [katli, degistir] as const;
+}
 
 /**
  * Yapılacaklar: Todoist projects and Argos-local lists side by side. The
@@ -153,8 +181,13 @@ function TaskListCard({
     [board.tasks, list],
   );
   const groups = useMemo(() => groupByDate(tasks, board.today), [tasks, board.today]);
-  // Screen order, for ↑/↓ between tasks while the panel is open.
-  const order = useMemo(() => groups.flatMap((g) => g.tasks.map((t) => t.key)), [groups]);
+  const [katli, katla] = useKatliGruplar();
+  const katliMi = (group: string) => katli.has(`${list.key}|${group}`);
+  // Screen order, for ↑/↓ between tasks while the panel is open; folded groups are skipped.
+  const order = useMemo(
+    () => groups.filter((g) => !katli.has(`${list.key}|${g.group}`)).flatMap((g) => g.tasks.map((t) => t.key)),
+    [groups, katli, list.key],
+  );
   const step = (n: number) => () => {
     if (order.length === 0) return;
     const i = selectedKey ? order.indexOf(selectedKey) : -1;
@@ -210,11 +243,21 @@ function TaskListCard({
         groups.map(({ group, tasks: items }) => (
           <section key={group}>
             <h3 className={group === "Gecikmiş" ? `${s.groupHead} ${s.groupOverdue}` : s.groupHead}>
-              {group} <span>{items.length}</span>
+              <button
+                type="button"
+                className={s.groupToggle}
+                aria-expanded={!katliMi(group)}
+                title={katliMi(group) ? "Aç" : "Kapat"}
+                onClick={() => katla(`${list.key}|${group}`)}
+              >
+                {katliMi(group) ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                {group} <span>{items.length}</span>
+              </button>
             </h3>
-            {items.map((t) => (
-              <TaskRow key={t.key} task={t} board={board} selected={t.key === selectedKey} onSelect={onSelect} onOpen={onOpen} />
-            ))}
+            {!katliMi(group) &&
+              items.map((t) => (
+                <TaskRow key={t.key} task={t} board={board} selected={t.key === selectedKey} onSelect={onSelect} onOpen={onOpen} />
+              ))}
           </section>
         ))
       )}
