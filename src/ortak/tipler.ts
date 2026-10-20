@@ -82,6 +82,8 @@ export interface TodoistGorev {
   oncelik: number;
   etiketler: string[];
   altGorev: boolean;
+  /** When it was added (ISO); null or absent when not known. */
+  eklendi?: string | null;
   /**
    * "local" marks an Argos-local task shown in a Todoist-shaped screen
    * (Takvim, Hafta, Bugün cards). Absent means a Todoist task.

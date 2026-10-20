@@ -1,9 +1,9 @@
-import { Bell, Calendar, Check, Flag, Maximize2, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
+import { Bell, Calendar, Check, Clock, Flag, Maximize2, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { Priority } from "@ortak/local-tasks";
 import type { Task } from "@ortak/task";
 import { describeReminder } from "@ortak/reminders";
-import { dueLabel } from "@ortak/task-dates";
+import { addedLabel, dueLabel } from "@ortak/task-dates";
 import { DatePicker, splitDue } from "@/ui/DatePicker";
 import { MenuIconButton, MenuIconRow, Popover } from "@/ui/Popover";
 import { PRIORITY_COLOR } from "./priority";
@@ -170,6 +170,12 @@ export function TaskPanel({
             <Star size={14} fill={task.important ? "currentColor" : "none"} />
             {task.important ? "Önemli · Bugün'de geri sayım" : "Önemli değil"}
           </button>
+        </Prop>
+        <Prop label="Eklendi">
+          <span className={task.createdAt ? `${s.propValue} ${s.propStatic}` : `${s.propValue} ${s.propStatic} ${s.propEmpty}`}>
+            <Clock size={14} />
+            {(task.createdAt && addedLabel(task.createdAt, new Date())) || "Bilinmiyor"}
+          </span>
         </Prop>
       </div>
 

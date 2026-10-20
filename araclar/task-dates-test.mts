@@ -2,7 +2,7 @@
  * Date labels and groups in task lists: `node araclar/task-dates-test.mts`
  */
 
-import { dateGroup, dueLabel, groupByDate } from "../src/ortak/task-dates.ts";
+import { addedLabel, dateGroup, dueLabel, groupByDate } from "../src/ortak/task-dates.ts";
 
 let passed = 0;
 let failed = 0;
@@ -50,6 +50,15 @@ const grouped = groupByDate(
 eq("group order, empty groups left out", grouped.map((g) => g.group), ["Gecikmiş", "Bugün", "Tarihsiz"]);
 eq("all-day before timed on the same day", grouped[1]!.tasks.map((t) => t.title), ["allday", "timed"]);
 eq("undated sorted by priority", grouped[2]!.tasks.map((t) => t.title), ["a", "b"]);
+
+console.log("\nWhen a task was added");
+const simdi = new Date(2026, 9, 20, 10, 0);
+eq("today", addedLabel(new Date(2026, 9, 20, 8, 5).toISOString(), simdi), "20 Ekim 2026 · 08:05 · bugün");
+eq("yesterday, late at night", addedLabel(new Date(2026, 9, 19, 23, 59).toISOString(), simdi), "19 Ekim 2026 · 23:59 · dün");
+eq("days", addedLabel(new Date(2026, 9, 15, 9, 0).toISOString(), simdi), "15 Ekim 2026 · 09:00 · 5 gün önce");
+eq("weeks", addedLabel(new Date(2026, 8, 20, 9, 0).toISOString(), simdi), "20 Eylül 2026 · 09:00 · 4 hafta önce");
+eq("months", addedLabel(new Date(2026, 4, 1, 9, 0).toISOString(), simdi), "1 Mayıs 2026 · 09:00 · 5 ay önce");
+eq("an unreadable date", addedLabel("yarın", simdi), null);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exitCode = 1;

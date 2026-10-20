@@ -31,6 +31,7 @@ export const taskFromStore = (i: MirrorItem): TodoistGorev => ({
   oncelik: i.priority,
   etiketler: i.labels,
   altGorev: i.parentId !== null,
+  eklendi: i.addedAt ?? null,
 });
 
 const day = (t: TodoistGorev): string | null => t.tarih?.slice(0, 10) ?? null;

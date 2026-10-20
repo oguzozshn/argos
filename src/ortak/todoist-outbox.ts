@@ -175,6 +175,7 @@ export function addItem(input: NewItem, clock: Clock): OutboxCommand {
     parentId: null,
     // After everything already in the project, like Todoist adds it.
     order: Number.MAX_SAFE_INTEGER,
+    addedAt: clock.now,
     ...(due ? due.patch : {}),
   };
   return {

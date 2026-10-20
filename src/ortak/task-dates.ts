@@ -61,3 +61,21 @@ export function groupByDate<T extends { due: string | null; priority: number; ti
   }
   return DATE_GROUPS.filter((g) => by.has(g)).map((g) => ({ group: g, tasks: by.get(g)!.sort(compareTasks) }));
 }
+
+const AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+/**
+ * When a task was added, in local time: "18 Ekim 2026 · 14:32 · 2 gün önce".
+ * `now` is passed in so the screen and the tests agree; an unreadable date gives null.
+ */
+export function addedLabel(iso: string, now: Date): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const when = `${d.getDate()} ${AYLAR[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const dayOf = (x: Date) => Date.UTC(x.getFullYear(), x.getMonth(), x.getDate());
+  const days = Math.round((dayOf(now) - dayOf(d)) / 86400000);
+  const ago =
+    days <= 0 ? "bugün" : days === 1 ? "dün" : days < 14 ? `${days} gün önce` : days < 60 ? `${Math.floor(days / 7)} hafta önce` : days < 730 ? `${Math.floor(days / 30)} ay önce` : `${Math.floor(days / 365)} yıl önce`;
+  return `${when} · ${ago}`;
+}

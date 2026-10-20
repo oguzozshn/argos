@@ -617,3 +617,10 @@
     opacity: 0;
   }
 }
+
+/* A read-only property (when the task was added): no hover, no pointer. */
+.propStatic,
+.propStatic:hover {
+  background: transparent;
+  cursor: default;
+}
