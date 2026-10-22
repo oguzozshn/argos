@@ -74,6 +74,12 @@ export interface Oturum {
   dk: number;
   yapildi?: boolean;
   /**
+   * Marked as not done (missed). It stays on the calendar to show it, but
+   * no longer counts as planned: its time goes back to what is left, for
+   * the automatic planning to place again.
+   */
+  yapilmadi?: boolean;
+  /**
    * What was set for it when only part was done; `dk` is then what was
    * done, and the rest is left for planning again.
    */
@@ -159,6 +165,7 @@ export function normalizeCp(ham: unknown): CpDosyasi {
         ...(o.altId ? { altId: o.altId } : {}),
         dk: pozitif(o.dk),
         ...(o.yapildi ? { yapildi: true } : {}),
+        ...(!o.yapildi && o.yapilmadi ? { yapilmadi: true } : {}),
         ...(o.yapildi && pozitif(o.planlananDk) > pozitif(o.dk) ? { planlananDk: pozitif(o.planlananDk) } : {}),
         ...(o.oto ? { oto: true } : {}),
       }));
@@ -274,7 +281,7 @@ export function planDurumu(d: CpDosyasi, p: CalismaPlani, bugun: string): PlanDu
     let zamanindaDk = 0;
     for (const [gun, l] of Object.entries(d.takvim)) {
       for (const o of l) {
-        if (o.planId !== p.id || o.altId !== altId) continue;
+        if (o.planId !== p.id || o.altId !== altId || o.yapilmadi) continue;
         planliDk += o.dk;
         if (o.yapildi) yapilanDk += o.dk;
         if (!sonTarih || gun <= sonTarih) zamanindaDk += o.dk;
@@ -319,7 +326,7 @@ export function eforu(d: CpDosyasi, bas: string, gun = 7): HaftaEforu {
   for (let i = 0; i < gun; i++) {
     for (const o of d.takvim[gunEkle(bas, i)] ?? []) {
       const p = planBul(d, o.planId);
-      if (!p) continue;
+      if (!p || o.yapilmadi) continue;
       planliDk += o.dk;
       if (o.yapildi) yapilanDk += o.dk;
       const x = plana.get(p.id) ?? plana.set(p.id, { plan: p, planliDk: 0, yapilanDk: 0 }).get(p.id)!;
@@ -380,7 +387,7 @@ function isGunu(bas: string, son: string, gunler: number[]): number {
 function planlanacaklar(d: CpDosyasi, p: CalismaPlani, bugun: string) {
   const takvim: Record<string, Oturum[]> = {};
   for (const [gun, l] of Object.entries(d.takvim)) {
-    const kalan = l.filter((o) => !(o.planId === p.id && o.oto && !o.yapildi && gun >= bugun));
+    const kalan = l.filter((o) => !(o.planId === p.id && o.oto && !o.yapildi && !o.yapilmadi && gun >= bugun));
     if (kalan.length) takvim[gun] = kalan;
   }
   const dosya: CpDosyasi = { ...d, takvim };
@@ -447,7 +454,8 @@ export function otomatikPlanla(d: CpDosyasi, planId: string, bugun: string, yeni
   if (parcalar.length === 0) return { dosya, rapor };
 
   const sonGun = parcalar.every((x) => x.sonTarih) ? parcalar.map((x) => x.sonTarih!).sort().at(-1)! : gunEkle(planBaslangici(p, bugun), UFUK_GUN);
-  const planinGunu = (gun: string) => (dosya.takvim[gun] ?? []).filter((o) => o.planId === planId).reduce((t, o) => t + o.dk, 0);
+  const planinGunu = (gun: string) =>
+    (dosya.takvim[gun] ?? []).filter((o) => o.planId === planId && !o.yapilmadi).reduce((t, o) => t + o.dk, 0);
 
   for (let gun = planBaslangici(p, bugun); gun <= sonGun && parcalar.some((x) => x.kalan > 0); gun = gunEkle(gun, 1)) {
     if (!gunler.includes(haftaninGunu(gun))) continue;
@@ -540,11 +548,23 @@ export const oturumIsaretle = (d: CpDosyasi, gun: string, id: string, yapildi: b
 export const oturumKismen = (d: CpDosyasi, gun: string, id: string, yapilanDk: number): CpDosyasi =>
   takvimSuz(d, (o, g) => {
     if (g !== gun || o.id !== id) return o;
-    const { yapildi: _, planlananDk: __, ...y } = o;
+    const { yapildi: _, planlananDk: __, yapilmadi: ___, ...y } = o;
     const tam = o.planlananDk ?? o.dk;
     if (yapilanDk <= 0) return { ...y, dk: tam };
     if (yapilanDk >= tam) return { ...y, dk: tam, yapildi: true };
     return { ...y, dk: yapilanDk, yapildi: true, planlananDk: tam };
+  });
+
+/**
+ * Marks a session as not done (missed), or takes the mark back. A missed
+ * session keeps what was set for it; a part done before is undone.
+ */
+export const oturumYapilmadi = (d: CpDosyasi, gun: string, id: string, yapilmadi: boolean): CpDosyasi =>
+  takvimSuz(d, (o, g) => {
+    if (g !== gun || o.id !== id) return o;
+    const { yapildi: _, planlananDk: __, yapilmadi: ___, ...y } = o;
+    const tam = o.planlananDk ?? o.dk;
+    return yapilmadi ? { ...y, dk: tam, yapilmadi: true } : { ...y, dk: tam };
   });
 
 /** Days left to a deadline, today included; 0 once it has passed. */

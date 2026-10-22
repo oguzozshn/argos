@@ -51,3 +51,44 @@
   font-size: var(--y5, 12px);
   white-space: nowrap;
 }
+
+/* Not done (missed): red, crossed out; its hours went back to the plan. */
+.yapilmadi .ad {
+  color: var(--hata);
+  text-decoration: line-through;
+}
+
+.yapilmadi .sure {
+  color: var(--hata);
+}
+
+.kacti {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--metin-soluk);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.satir:hover .kacti,
+.kacti:focus-visible,
+.kactiSecili {
+  opacity: 1;
+}
+
+.kacti:hover {
+  background: var(--zemin-alt);
+  color: var(--hata);
+}
+
+.kactiSecili {
+  color: var(--hata);
+}

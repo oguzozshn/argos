@@ -1,6 +1,7 @@
+import { X } from "lucide-react";
 import { useMemo } from "react";
 import { AY_ADLARI, gunAl } from "@ortak/gun";
-import { CP_YOLU, normalizeCp, oturumIsaretle, planBul, type CalismaPlani, type CpDosyasi, type Oturum } from "@ortak/calisma-plani";
+import { CP_YOLU, normalizeCp, oturumIsaretle, oturumYapilmadi, planBul, type CalismaPlani, type CpDosyasi, type Oturum } from "@ortak/calisma-plani";
 import { useDosya } from "@/veri/kanca";
 import s from "./calismaOturumlari.module.css";
 
@@ -33,29 +34,49 @@ export function useCalisma() {
       const alt = oturum.altId ? plan.altlar.find((a) => a.id === oturum.altId) : null;
       return [{ gun, oturum, plan, ad: alt ? `${plan.ad} · ${alt.ad}` : plan.ad }];
     });
-  /** Undone sessions of days before `bugun`, the oldest first. */
+  /** Sessions of days before `bugun` neither done nor marked not done, the oldest first. */
   const kalanlar = (bugun: string): GunOturumu[] =>
     Object.keys(veri.takvim)
       .filter((g) => g < bugun)
       .sort()
-      .flatMap((g) => gunun(g).filter((x) => !x.oturum.yapildi));
+      .flatMap((g) => gunun(g).filter((x) => !x.oturum.yapildi && !x.oturum.yapilmadi));
   const isaretle = (gun: string, id: string, yapildi: boolean) =>
     void dosya.degistir((d) => oturumIsaretle(normalizeCp(d), gun, id, yapildi));
-  return { veri, gunun, kalanlar, isaretle, yukleniyor: dosya.yukleniyor };
+  const yapilmadi = (gun: string, id: string, deger: boolean) =>
+    void dosya.degistir((d) => oturumYapilmadi(normalizeCp(d), gun, id, deger));
+  return { veri, gunun, kalanlar, isaretle, yapilmadi, yukleniyor: dosya.yukleniyor };
 }
 
-/** One session as a row: a tick, the plan's colour, the hours and the name. */
-function OturumSatiri({ x, gunGoster, isaretle }: { x: GunOturumu; gunGoster?: boolean; isaretle: ReturnType<typeof useCalisma>["isaretle"] }) {
+/**
+ * One session as a row: a tick, the plan's colour, the hours and the name,
+ * and ✕ to mark it not done (its hours go back to the plan).
+ */
+function OturumSatiri({ x, gunGoster, c }: { x: GunOturumu; gunGoster?: boolean; c: ReturnType<typeof useCalisma> }) {
   const { oturum: o } = x;
+  const isaretle = c.isaretle;
   return (
-    <label className={o.yapildi ? `${s.satir} ${s.bitti}` : s.satir}>
+    <label className={[s.satir, o.yapildi && s.bitti, o.yapilmadi && s.yapilmadi].filter(Boolean).join(" ")}>
       <input type="checkbox" checked={Boolean(o.yapildi)} aria-label={`${x.ad}: yapıldı`} onChange={(e) => isaretle(x.gun, o.id, e.target.checked)} />
       <span className={s.renk} style={{ background: x.plan.renk }} />
       <span className={s.ad}>{x.ad}</span>
       <span className={s.sure}>
         {gunGoster && `${gunAl(x.gun)} ${AY_ADLARI[Number(x.gun.slice(5, 7)) - 1]} · `}
         {o.planlananDk ? `${saatMetni(o.dk)}/${saatMetni(o.planlananDk)}` : saatMetni(o.dk)}
+        {o.yapilmadi && " · yapılmadı"}
       </span>
+      <button
+        type="button"
+        className={o.yapilmadi ? `${s.kacti} ${s.kactiSecili}` : s.kacti}
+        aria-pressed={Boolean(o.yapilmadi)}
+        aria-label={`${x.ad}: yapılmadı`}
+        title={o.yapilmadi ? "Yapılmadı işaretini kaldır" : "Yapılmadı olarak işaretle — saatleri plana geri döner, otomatik planlama ileriye dağıtır"}
+        onClick={(e) => {
+          e.preventDefault();
+          c.yapilmadi(x.gun, o.id, !o.yapilmadi);
+        }}
+      >
+        <X size={13} />
+      </button>
     </label>
   );
 }
@@ -69,7 +90,7 @@ export function GununCalismasi({ gun, suz }: { gun: string; suz?: (x: GunOturumu
     <div className={s.liste}>
       <p className={s.baslik}>Çalışma planı</p>
       {liste.map((x) => (
-        <OturumSatiri key={x.oturum.id} x={x} isaretle={c.isaretle} />
+        <OturumSatiri key={x.oturum.id} x={x} c={c} />
       ))}
     </div>
   );
@@ -87,10 +108,10 @@ export function BugununCalismasi({ bugun }: { bugun: string }) {
         Çalışma planı <span>{bugunku.filter((x) => !x.oturum.yapildi).length + kalan.length}</span>
       </p>
       {kalan.map((x) => (
-        <OturumSatiri key={x.oturum.id} x={x} gunGoster isaretle={c.isaretle} />
+        <OturumSatiri key={x.oturum.id} x={x} gunGoster c={c} />
       ))}
       {bugunku.map((x) => (
-        <OturumSatiri key={x.oturum.id} x={x} isaretle={c.isaretle} />
+        <OturumSatiri key={x.oturum.id} x={x} c={c} />
       ))}
     </div>
   );

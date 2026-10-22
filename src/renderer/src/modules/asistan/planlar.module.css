@@ -757,3 +757,20 @@
   font-size: var(--y5);
   outline: none;
 }
+
+/* A session marked not done: red and crossed out; its hours went back to the plan. */
+.cipYapilmadi {
+  color: var(--hata);
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.panelYapilmadi .panelAd {
+  color: var(--hata);
+  text-decoration: line-through;
+}
+
+.yapilmadiSecili,
+.yapilmadiSecili:hover:not(:disabled) {
+  color: var(--hata);
+}
