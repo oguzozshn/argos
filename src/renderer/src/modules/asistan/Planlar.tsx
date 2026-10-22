@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Flag, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { Ban, Check, ChevronLeft, ChevronRight, Flag, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { AY_ADLARI, AY_TAM, GUN_ADLARI, GUN_KISA, ayBasi, gunAl, gunEkle, haftaninGunu } from "@ortak/gun";
 import {
@@ -25,6 +25,7 @@ import {
   otomatikPlanla,
   oturumEkle,
   oturumIsaretle,
+  oturumYapilmadi,
   oturumKismen,
   oturumSil,
   planBul,
@@ -1003,7 +1004,7 @@ function OturumListesi({ gun, veri, degistir }: { gun: string; veri: CpDosyasi; 
         const b = oturumAdi(veri, o);
         if (!b) return null;
         return (
-          <div key={o.id} className={s.panelSatir}>
+          <div key={o.id} className={o.yapilmadi ? `${s.panelSatir} ${s.panelYapilmadi}` : s.panelSatir}>
             <input type="checkbox" checked={Boolean(o.yapildi)} aria-label={`${b.ad} ${saatMetni(o.planlananDk ?? o.dk)}: yapıldı`} onChange={(e) => void degistir((d) => oturumIsaretle(d, gun, o.id, e.target.checked))} />
             <span className={s.renk} style={{ background: b.plan.renk }} />
             <span className={s.panelAd}>
@@ -1023,6 +1024,16 @@ function OturumListesi({ gun, veri, degistir }: { gun: string; veri: CpDosyasi; 
               }}
               onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             />
+            <button
+              type="button"
+              className={o.yapilmadi ? `${s.ikon} ${s.yapilmadiSecili}` : s.ikon}
+              aria-pressed={Boolean(o.yapilmadi)}
+              aria-label={`${b.ad}: yapılmadı`}
+              title={o.yapilmadi ? "Yapılmadı işaretini kaldır" : "Yapılmadı — saatleri plana geri döner, otomatik planlama ileriye dağıtır"}
+              onClick={() => void degistir((d) => oturumYapilmadi(d, gun, o.id, !o.yapilmadi))}
+            >
+              <Ban size={13} />
+            </button>
             {o.planlananDk && <span className={s.soluk}>/{saatMetni(o.planlananDk)}</span>}
             {o.oto && <Sparkles size={11} className={s.soluk} aria-label="otomatik" />}
             <button type="button" className={s.ikon} aria-label={`${b.ad} oturumunu kaldır`} onClick={() => void degistir((d) => oturumSil(d, gun, o.id))}>
@@ -1102,7 +1113,7 @@ function GunIcerigi({ gun, veri, sonTarihler, gorevler, enCok }: Pick<GorunumOrt
         const b = oturumAdi(veri, o);
         if (!b) return null;
         return (
-          <span key={o.id} className={o.yapildi ? `${s.cip} ${s.cipYapildi}` : s.cip} style={{ borderLeftColor: b.plan.renk }} title={`${b.ad} · ${o.planlananDk ? `${saatMetni(o.dk)}/${saatMetni(o.planlananDk)} yapıldı` : saatMetni(o.dk)}`}>
+          <span key={o.id} className={[s.cip, o.yapildi && s.cipYapildi, o.yapilmadi && s.cipYapilmadi].filter(Boolean).join(" ")} style={{ borderLeftColor: b.plan.renk }} title={`${b.ad} · ${o.planlananDk ? `${saatMetni(o.dk)}/${saatMetni(o.planlananDk)} yapıldı` : saatMetni(o.dk)}`}>
             {o.yapildi && <Check size={10} />}
             {/* The colour tells the plan; the chip names the sub-plan when there is one. */}
             <span className={s.cipMetin}>

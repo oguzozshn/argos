@@ -930,6 +930,13 @@
   opacity: 0.6;
 }
 
+/* A session marked not done: red and crossed out. */
+.calismaRozetYapilmadi {
+  color: var(--hata);
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
 .filtre {
   width: 260px;
   max-height: 70vh;

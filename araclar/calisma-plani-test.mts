@@ -17,6 +17,7 @@ import {
   otomatikPlanla,
   oturumEkle,
   oturumIsaretle,
+  oturumYapilmadi,
   oturumKismen,
   planDurumu,
   planEkle,
@@ -144,6 +145,28 @@ eq("removing a sub-plan: done sessions go to the plan, the rest go", [altsiz.tak
 eq("…and the sub-plan is gone", altsiz.planlar[0]!.altlar.map((a) => a.id), ["final"]);
 eq("add a sub-plan", altEkle(d, "a", { id: "odev", ad: "Ödev", hedefDk: 120 }).planlar[0]!.altlar.length, 3);
 eq("removing a plan removes its sessions", [planSil(d, "a").planlar.length, Object.keys(planSil(d, "a").takvim).length], [0, 0]);
+
+console.log("\nA session not done (missed)");
+{
+  const p: CalismaPlani = { id: "k", ad: "K", tur: "ders", renk: "#000", hedefDk: sa(10), sonTarih: "2026-11-01", haftalikDk: 0, gunler: [], altlar: [] };
+  let x = planEkle(BOS_CP, p);
+  x = oturumEkle(x, "2026-10-17", { id: "m", planId: "k", dk: 120, oto: true });
+  x = oturumEkle(x, "2026-10-18", { id: "y", planId: "k", dk: 60 });
+  x = oturumIsaretle(x, "2026-10-18", "y", true);
+  const once = planDurumu(x, p, bugun);
+  const k = oturumYapilmadi(x, "2026-10-17", "m", true);
+  const sonra = planDurumu(k, p, bugun);
+  eq("a missed session no longer counts as planned", [once.planliDk, sonra.planliDk, sonra.eksikDk], [180, 60, sa(10) - 60]);
+  eq("it stays on the calendar, marked", k.takvim["2026-10-17"], [{ id: "m", planId: "k", dk: 120, oto: true, yapilmadi: true }]);
+  eq("…and out of the week's effort", eforu(k, "2026-10-12").planliDk, 60);
+  const r = otomatikPlanla(k, "k", bugun, id);
+  eq("planning again places its hours and keeps the mark", [r.rapor.eklenenDk, r.dosya.takvim["2026-10-17"]?.[0]?.yapilmadi], [sa(10) - 60, true]);
+  eq("taking the mark back", oturumYapilmadi(k, "2026-10-17", "m", false).takvim["2026-10-17"], [{ id: "m", planId: "k", dk: 120, oto: true }]);
+  eq("marking it done clears not done", oturumIsaretle(k, "2026-10-17", "m", true).takvim["2026-10-17"], [{ id: "m", planId: "k", dk: 120, oto: true, yapildi: true }]);
+  eq("not done replaces done", oturumYapilmadi(x, "2026-10-18", "y", true).takvim["2026-10-18"], [{ id: "y", planId: "k", dk: 60, yapilmadi: true }]);
+  eq("a missed one today is not taken back by planning", otomatikPlanla(oturumYapilmadi(oturumEkle(x, bugun, { id: "t", planId: "k", dk: 30, oto: true }), bugun, "t", true), "k", bugun, id).dosya.takvim[bugun]?.some((o) => o.id === "t"), true);
+  eq("the mark survives reading the file", normalizeCp(k).takvim["2026-10-17"]?.[0]?.yapilmadi, true);
+}
 
 console.log("\nReading the file");
 eq("no file", normalizeCp(null), BOS_CP);

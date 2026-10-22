@@ -143,9 +143,9 @@ const GorevAc = createContext<(g: TodoistGorev) => void>(() => undefined);
 function CalismaCipi({ x }: { x: GunOturumu }) {
   return (
     <span
-      className={x.oturum.yapildi ? `${s.gorevRozet} ${s.calismaRozetBitti}` : s.gorevRozet}
+      className={[s.gorevRozet, x.oturum.yapildi && s.calismaRozetBitti, x.oturum.yapilmadi && s.calismaRozetYapilmadi].filter(Boolean).join(" ")}
       style={{ borderLeft: `3px solid ${x.plan.renk}` }}
-      title={`${x.ad} · ${String(x.oturum.dk / 60).replace(".", ",")} sa${x.oturum.yapildi ? " · yapıldı" : ""}`}
+      title={`${x.ad} · ${String(x.oturum.dk / 60).replace(".", ",")} sa${x.oturum.yapildi ? " · yapıldı" : x.oturum.yapilmadi ? " · yapılmadı" : ""}`}
     >
       {x.ad}
     </span>
