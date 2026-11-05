@@ -105,6 +105,8 @@ export interface Modul {
   ozetAd?: string;
   /** Same for the `Ust` card. */
   ustAd?: string;
+  /** How many grid rows the `Ust` card gets in a fresh layout; 5 when absent. */
+  ustH?: number;
   /** More card types for Bugün, each addable more than once with its own settings. */
   kartlar?: KartTuru[];
   /**

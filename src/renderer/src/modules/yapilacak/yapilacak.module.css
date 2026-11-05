@@ -61,18 +61,51 @@
  * Stacked rows: countdown | name | date. The countdown column is fixed so
  * every name starts at the same place; the date is pushed to the right.
  */
+
+/*
+ * Every important task is in the card (issue #85), so the card stays inside
+ * its Bugün cell and the rows scroll within it: the title and the link keep
+ * their place, and the cell is resized to show more rows at once.
+ */
+.onemliKart {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+/* The body of Kart: it has no class of its own while `dolgulu` is false. */
+.onemliKart > :last-child {
+  flex: 1;
+  min-height: 0;
+}
+
 .dosemeler {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
 }
 
+/* A row opens the task's details (issue #86), so it is a button. */
 .doseme {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr) auto;
   align-items: baseline;
   column-gap: var(--b5);
+  width: 100%;
   padding: var(--b4) var(--b6);
+  border: 0;
   border-top: 1px solid var(--cizgi);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.doseme:hover {
+  background: var(--kart-hover);
 }
 
 .doseme:first-child {
@@ -130,17 +163,3 @@
   }
 }
 
-.dahaDugme {
-  flex: none;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  font-size: var(--y4);
-  color: var(--metin-soluk);
-  cursor: pointer;
-}
-
-.dahaDugme:hover {
-  color: var(--metin);
-}

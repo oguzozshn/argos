@@ -17,6 +17,8 @@ export const yapilacakModulu: Modul = {
   ozetAd: "Bugün yapılacaklar",
   Ust: OnemliTarihler,
   ustAd: "Önemli tarihler",
+  // Tall enough for about five rows at once; the rest are scrolled to (issue #85).
+  ustH: 9,
   kartlar: [gorevListesiKarti],
   komutlar: yapilacakKomutlari,
   ArkaPlan: ReminderBackground,

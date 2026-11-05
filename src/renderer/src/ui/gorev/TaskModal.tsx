@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Task } from "@ortak/task";
 import type { TaskBoard } from "@/veri/task-board";
 import { TaskPanel } from "./TaskPanel";
@@ -9,6 +10,10 @@ import s from "./gorev.module.css";
  * board: big title, properties in rows, and room to write the description.
  * Opened by double-clicking a task or the ⤢ of the side panel. Esc, the ✕
  * or a click outside closes it.
+ *
+ * It is rendered into the body: `position: fixed` is measured against a
+ * transformed ancestor, and a Bugün card sits inside one (the grid moves its
+ * cells with a transform), which would cut the modal down to the card.
  */
 export function TaskModal({ task, board, onClose }: { task: Task; board: TaskBoard; onClose: () => void }) {
   useEffect(() => {
@@ -25,11 +30,12 @@ export function TaskModal({ task, board, onClose }: { task: Task; board: TaskBoa
     return () => window.removeEventListener("keydown", key, true);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className={s.modalArka} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={s.modal} role="dialog" aria-modal="true" aria-label={task.title}>
         <TaskPanel task={task} board={board} onClose={onClose} variant="buyuk" />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
