@@ -69,6 +69,10 @@ export interface Hafta {
   kullanilmisIdler?: string[];
   rotasyon?: string[];
   sosyalKota?: { haftaSonu?: boolean; haftaIci?: boolean };
+  /** app.py's change log: one line per change, so nothing is lost silently. */
+  degisiklikGunlugu?: { tarih: string; not: string }[];
+  /** Filled in when the week is closed; empty strings until then. */
+  kapanis?: { tamamlanma?: string; isYarayan?: string; yaramayan?: string; tasinan?: string };
 }
 
 export interface HatirlaMaddesi {

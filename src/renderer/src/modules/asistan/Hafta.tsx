@@ -1,9 +1,8 @@
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DURUM_ISARETI, type Hafta as HaftaTipi, type Slot } from "@ortak/plan";
-import { siklikMetni, siklikOku } from "@ortak/ozet";
 import { gunEkle } from "@ortak/gun";
-import { aliskanlikCevir, slotDurumunuDondur, slotEkle as slotEkleIslem, slotTasi } from "@ortak/plan-islem";
+import { slotDurumunuDondur, slotEkle as slotEkleIslem, slotTasi } from "@ortak/plan-islem";
 import type { TodoistGorev } from "@ortak/tipler";
 import { gununSlotlari, haftalikYuk, ihlaller, kuralSetiTamamla, type KuralSeti } from "@ortak/kural";
 import { BosDurum, Dugme, EkranBasi, Etiket, Kart, Yuklenirken } from "@/ui/bilesenler";
@@ -22,7 +21,8 @@ import { PlanHaftaKarti } from "./Planlar";
 import s from "./hafta.module.css";
 
 /**
- * Hafta ekranı: slot düzenleme, günlük ızgara, sosyal kota, kural uyarıları.
+ * Hafta ekranı: slot düzenleme, sosyal kota, kural uyarıları. Günlük
+ * alışkanlık ızgarası Alışkanlıklar ekranına taşındı (issue #87).
  *
  * Yazma `useDosya` üzerinden gidiyor — atomik, yedekli ve çakışma kontrollü.
  * Eski uygulama ya da sabah mutabakatı aynı dosyayı değiştirdiyse yazma
@@ -224,8 +224,6 @@ function HaftaIcerik({
     });
   };
 
-  const aliskanlikDegis = (ad: string, gunNo: number) => kaydet(aliskanlikCevir(veri, ad, gunNo));
-
   const kotaDegis = (alan: "haftaSonu" | "haftaIci") => {
     const k = veri.sosyalKota ?? {};
     kaydet({ ...veri, sosyalKota: { ...k, [alan]: !k[alan] } });
@@ -351,66 +349,6 @@ function HaftaIcerik({
               </div>
             </div>
           </Kart>
-
-          {(veri.gunlukAliskanliklar ?? []).length > 0 && (
-            <Kart dolgulu={false} baslik="Günlük" not="kaçan gün telafi edilmez">
-              <table className={s.izgara}>
-                <thead>
-                  <tr>
-                    <th>Alışkanlık</th>
-                    {veri.gunler.map((g) => (
-                      <th key={g.no}>{g.ad.slice(0, 2)}</th>
-                    ))}
-                    <th className={s.izgaraSon}>&nbsp;</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(veri.gunlukAliskanliklar ?? []).map((a) => {
-                    const sik = siklikOku(a, bugun);
-                    const yapilanSayi = veri.gunler.filter((g) => (a.gunler ?? {})[String(g.no)])
-                      .length;
-                    return (
-                      <tr key={a.ad}>
-                        <td>
-                          <span className={s.aliskanlikAd}>{a.ad}</span>
-                          <span className={s.aliskanlikSiklik}>{siklikMetni(sik)}</span>
-                        </td>
-                        {veri.gunler.map((g) => {
-                          const yapildi = Boolean((a.gunler ?? {})[String(g.no)]);
-                          const bek = a.beklenenGunler;
-                          const bekleniyor = !Array.isArray(bek) || bek.includes(g.no);
-                          return (
-                            <td key={g.no}>
-                              <button
-                                type="button"
-                                className={[
-                                  s.hucre,
-                                  yapildi && s.hucreYapildi,
-                                  !bekleniyor && !yapildi && s.hucreBeklenmiyor,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                                onClick={() => aliskanlikDegis(a.ad, g.no)}
-                                aria-label={`${a.ad} · ${g.ad}`}
-                              >
-                                {yapildi ? "☑" : "☐"}
-                              </button>
-                            </td>
-                          );
-                        })}
-                        <td className={s.izgaraSon}>
-                          {yapilanSayi}/
-                          {Array.isArray(a.beklenenGunler)
-                            ? a.beklenenGunler.length
-                            : veri.gunler.length}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Kart>
-          )}
 
           <Kart dolgulu={false} baslik="Slotlar" not={`${veri.slotlar.length} slot`}>
             {tasimaNotu && <p className={s.tasimaNotu}>{tasimaNotu}</p>}

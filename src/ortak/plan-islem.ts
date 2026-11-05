@@ -107,7 +107,7 @@ export function gunBosalt(
 
   const p = (n: number) => String(n).padStart(2, "0");
   const gunluk = [
-    ...(((v as Hafta & { degisiklikGunlugu?: unknown[] }).degisiklikGunlugu ?? []) as unknown[]),
+    ...(v.degisiklikGunlugu ?? []),
     {
       tarih: `${p(bugun.getMonth() + 1)}-${p(bugun.getDate())}`,
       not:
@@ -123,8 +123,8 @@ export function gunBosalt(
     ...(kota === "haftaSonu" || kota === "haftaIci"
       ? { sosyalKota: { ...(v.sosyalKota ?? {}), [kota]: true } }
       : {}),
+    degisiklikGunlugu: gunluk,
   };
-  (hafta as Hafta & { degisiklikGunlugu?: unknown[] }).degisiklikGunlugu = gunluk;
 
   return { hafta, rapor };
 }
@@ -204,14 +204,17 @@ export function slotTasi(
   );
 
   const p = (n: number) => String(n).padStart(2, "0");
-  const hafta: Hafta = { ...v, slotlar };
-  (hafta as Hafta & { degisiklikGunlugu?: unknown[] }).degisiklikGunlugu = [
-    ...(((v as Hafta & { degisiklikGunlugu?: unknown[] }).degisiklikGunlugu ?? []) as unknown[]),
-    {
-      tarih: `${p(bugun.getMonth() + 1)}-${p(bugun.getDate())}`,
-      not: `${slotId} elle taşındı: ${eskiGun?.ad ?? kaynak.gun} → ${gun.ad} ${kaynak.saat}.`,
-    },
-  ];
+  const hafta: Hafta = {
+    ...v,
+    slotlar,
+    degisiklikGunlugu: [
+      ...(v.degisiklikGunlugu ?? []),
+      {
+        tarih: `${p(bugun.getMonth() + 1)}-${p(bugun.getDate())}`,
+        not: `${slotId} elle taşındı: ${eskiGun?.ad ?? kaynak.gun} → ${gun.ad} ${kaynak.saat}.`,
+      },
+    ],
+  };
 
   return { hafta, tasindi: true, not: uyarilar.length ? uyarilar.join(" · ") : null };
 }
