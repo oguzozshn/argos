@@ -1,5 +1,6 @@
 import { Target } from "lucide-react";
 import type { Modul } from "@/modules";
+import { Aliskanliklar } from "./Aliskanliklar";
 import { Arsiv } from "./Arsiv";
 import { Hafta } from "./Hafta";
 import { Hatirla } from "./Hatirla";
@@ -29,6 +30,7 @@ export const asistanModulu: Modul = {
   rotalar: [
     { yol: "", ad: "Hafta", Ekran: Hafta },
     { yol: "odak", ad: "Odak", Ekran: Odak },
+    { yol: "aliskanliklar", ad: "Alışkanlıklar", Ekran: Aliskanliklar },
     { yol: "hatirla", ad: "Hatırla", Ekran: Hatirla },
     { yol: "arsiv", ad: "Arşiv", Ekran: Arsiv },
     { yol: "hedefler", ad: "Hedefler", Ekran: Hedefler },

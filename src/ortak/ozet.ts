@@ -60,7 +60,8 @@ export interface Roadmap {
 
 /** Kural dosyasının okunan kısmı. Kapasite ve korumalı alanlar `kural.ts`'te. */
 export interface Kurallar extends Partial<KuralSeti> {
-  gunlukAliskanliklar?: { ad: string; hedefId?: string }[];
+  /** `siklik` and the older flat `gunler` are read through `siklikOku`. */
+  gunlukAliskanliklar?: { ad: string; hedefId?: string; siklik?: unknown; gunler?: unknown }[];
   rotasyonHavuzu?: string[];
   rotasyonAdedi?: number;
   /** Areas planned every week, outside the rotation (K02). */

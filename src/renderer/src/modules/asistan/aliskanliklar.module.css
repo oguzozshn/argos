@@ -1,0 +1,135 @@
+/*
+ * Alışkanlıklar ekranı (issue #87). Günlük ızgara Hafta ekranından buraya
+ * taşındı; sınıflar oradaki hâliyle duruyor, bugünün sütunu ve seriler
+ * tablosu eklendi.
+ */
+
+.gez {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+}
+
+.dizi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b5);
+}
+
+.uyari {
+  margin-bottom: var(--b5);
+  padding: var(--b3) var(--b4);
+  border: 1px solid var(--hata);
+  border-radius: var(--r1);
+  background: var(--hata-yumusak);
+  font-size: var(--y4);
+}
+
+/* --- günlük ızgara ------------------------------------------------------ */
+
+.izgara,
+.seriler {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--y4);
+}
+
+.izgara th,
+.seriler th {
+  font-weight: var(--sik-orta);
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  padding: var(--b2) 0;
+  text-align: center;
+}
+
+.izgara th {
+  /* "Pzt" ve "Cmt" sığsın: iki harfe kısaltmak Cuma ile Cumartesi'yi eşitler. */
+  width: 46px;
+}
+
+.izgara th:first-child,
+.seriler th:first-child {
+  text-align: left;
+  width: auto;
+  padding-left: var(--b6);
+}
+
+.izgara td,
+.seriler td {
+  padding: 3px 0;
+  text-align: center;
+  border-top: 1px solid var(--cizgi);
+}
+
+.izgara td:first-child,
+.seriler td:first-child {
+  text-align: left;
+  padding-left: var(--b6);
+  color: var(--metin-orta);
+}
+
+.izgaraSon {
+  padding-right: var(--b6) !important;
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+  text-align: right !important;
+}
+
+/* Which column is today: the grid is read to answer "did I do it today". */
+.bugunSutun {
+  background: var(--vurgu-yumusak);
+}
+
+.hucre {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r1);
+  border: 1px solid var(--cizgi);
+  background: transparent;
+  cursor: pointer;
+  color: var(--metin-soluk);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  transition:
+    background var(--sure-hizli) var(--egri),
+    border-color var(--sure-hizli) var(--egri);
+}
+
+.hucre:hover {
+  border-color: var(--metin-soluk);
+}
+
+.hucreYapildi {
+  background: var(--iyi-yumusak);
+  border-color: var(--iyi);
+  color: var(--iyi);
+}
+
+.hucreBeklenmiyor {
+  opacity: 0.35;
+}
+
+.aliskanlikAd {
+  font-size: var(--y4);
+}
+
+.aliskanlikSiklik {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  margin-left: var(--b2);
+}
+
+/* --- seriler ------------------------------------------------------------ */
+
+.seriler td {
+  font-variant-numeric: tabular-nums;
+  color: var(--metin);
+}
+
+/* A habit no longer in kurallar.json: its record stays, quieter. */
+.birakilan td {
+  color: var(--metin-soluk);
+}
