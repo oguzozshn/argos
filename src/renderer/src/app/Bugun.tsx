@@ -67,7 +67,7 @@ const tekil = (C: ComponentType): ComponentType<{ ayar: KartAyari }> => {
 const KARTLAR: Kart[] = [
   ...moduller
     .filter((m) => m.Ust)
-    .map((m) => ({ id: `${m.id}:ust`, ad: m.ustAd ?? m.ad, ust: true, coklu: false, modulAd: m.ad, Bilesen: tekil(m.Ust!) })),
+    .map((m) => ({ id: `${m.id}:ust`, ad: m.ustAd ?? m.ad, ust: true, coklu: false, modulAd: m.ad, Bilesen: tekil(m.Ust!), h: m.ustH })),
   ...moduller
     .filter((m) => m.Ozet)
     .map((m) => ({ id: `${m.id}:ozet`, ad: m.ozetAd ?? m.ad, ust: false, coklu: false, modulAd: m.ad, Bilesen: tekil(m.Ozet!) })),
