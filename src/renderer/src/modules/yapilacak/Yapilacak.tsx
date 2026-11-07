@@ -1,4 +1,3 @@
-import { BugununCalismasi } from "@/ui/CalismaOturumlari";
 import { AlertTriangle, ChevronDown, ChevronRight, KeyRound, Monitor, Plus, RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type { TaskList } from "@ortak/task";
@@ -236,7 +235,6 @@ function TaskListCard({
           Görev ekle
         </button>
       )}
-      {list.inbox && <BugununCalismasi bugun={board.today} />}
       {tasks.length === 0 ? (
         <p className={s.empty}>Bu listede açık görev yok.</p>
       ) : (
