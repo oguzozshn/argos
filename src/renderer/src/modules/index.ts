@@ -129,6 +129,7 @@ export interface Modul {
 import { asistanModulu } from "./asistan";
 import { harcamaModulu } from "./harcama";
 import { hobilerModulu } from "./hobiler";
+import { sayfalarModulu } from "./sayfalar";
 import { takvimModulu } from "./takvim";
 import { yapilacakModulu } from "./yapilacak";
 
@@ -136,6 +137,7 @@ export const moduller: Modul[] = [
   asistanModulu,
   takvimModulu,
   yapilacakModulu,
+  sayfalarModulu,
   harcamaModulu,
   hobilerModulu,
 ];

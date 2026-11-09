@@ -1,0 +1,476 @@
+/*
+ * Sayfalar: solda ağaç, sağda blok blok yazılan gövde. Ölçüler Yapılacaklar
+ * panosundan (board.module.css) geliyor, iki ekran yan yana aynı görünsün.
+ */
+
+.pano {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--b5);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .pano {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.hataSerit {
+  margin-bottom: var(--b5);
+  padding: var(--b4) var(--b5);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--hata-yumusak);
+  color: var(--hata);
+  font-size: var(--y4);
+}
+
+/* --- ağaç --------------------------------------------------------------- */
+
+.kenar {
+  position: sticky;
+  top: var(--b5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--b4) 0 var(--b5);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--kart);
+}
+
+.kenarBas {
+  display: flex;
+  align-items: center;
+  gap: var(--b4);
+  padding: 0 var(--b4) var(--b4) var(--b5);
+}
+
+.kenarBaslik {
+  flex: 1;
+  margin: 0;
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--metin-soluk);
+}
+
+.kenarEkle,
+.agacDugme,
+.katla {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--r1);
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+  flex: none;
+}
+
+.kenarEkle:hover,
+.agacDugme:hover,
+.katla:hover:not(:disabled) {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.katla:disabled {
+  cursor: default;
+  opacity: 0;
+}
+
+.kenarBos {
+  padding: 0 var(--b5) var(--b4);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+  line-height: 1.5;
+}
+
+.agac {
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.agacSatir {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: var(--b4);
+  border-radius: var(--r1);
+}
+
+.agacSatir:hover {
+  background: var(--kart-hover);
+}
+
+.agacSatirAcik {
+  background: var(--vurgu-yumusak);
+}
+
+.agacAd {
+  display: flex;
+  align-items: center;
+  gap: var(--b4);
+  flex: 1;
+  min-width: 0;
+  padding: 5px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  text-align: left;
+  cursor: pointer;
+}
+
+.agacIkon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  flex: none;
+  color: var(--metin-soluk);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.agacMetin {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Satır butonları yalnızca üstüne gelince; ağaç sakin dursun. */
+.agacDugme {
+  opacity: 0;
+}
+
+.agacSatir:hover .agacDugme,
+.agacDugme:focus-visible {
+  opacity: 1;
+}
+
+/* --- silme onayı -------------------------------------------------------- */
+
+.onayZemini {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 45%);
+}
+
+.onay {
+  width: min(380px, 90vw);
+  padding: var(--b5);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--kart);
+  box-shadow: var(--golge2);
+}
+
+.onay p {
+  margin: 0 0 var(--b5);
+  line-height: 1.5;
+}
+
+.onayDugmeler {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--b4);
+}
+
+.onayVazgec,
+.onaySil {
+  padding: 6px 14px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: none;
+  font: inherit;
+  color: var(--metin);
+  cursor: pointer;
+}
+
+.onaySil {
+  border-color: var(--hata);
+  background: var(--hata);
+  color: #fff;
+}
+
+/* --- sayfa gövdesi ------------------------------------------------------ */
+
+.govde {
+  min-width: 0;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r2);
+  background: var(--kart);
+}
+
+.sayfa {
+  display: flex;
+  flex-direction: column;
+  /* Soldaki 36px blok tutamaklarının yeri: satırın dışına taşıyorlar. */
+  padding: var(--b6) var(--b6) 0 36px;
+}
+
+.sayfaBas {
+  display: flex;
+  align-items: center;
+  gap: var(--b4);
+  /* İkon metnin soluna taşar, başlık bloklarla aynı hizada kalsın. */
+  margin-left: -38px;
+  padding: 0 0 var(--b5);
+}
+
+.ikonDugmesi {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--r1);
+  background: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ikonDugmesi:hover {
+  background: var(--kart-hover);
+}
+
+.baslikAlani {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 28px;
+  font-weight: var(--sik-kalin);
+  letter-spacing: -0.02em;
+  color: var(--metin);
+  outline: none;
+}
+
+.hata {
+  margin: 0 0 var(--b4);
+  color: var(--hata);
+  font-size: var(--y5);
+}
+
+.bloklar {
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- blok satırı -------------------------------------------------------- */
+
+.satir {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.tutamak {
+  position: absolute;
+  left: -22px;
+  top: 3px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--r1);
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.satir:hover .tutamak,
+.tutamak:focus-visible {
+  opacity: 1;
+}
+
+.tutamak:hover {
+  background: var(--kart-hover);
+}
+
+/* Madde imi ve numara: metnin ilk satırıyla hizalı. */
+.madde {
+  flex: none;
+  min-width: 18px;
+  padding-top: 3px;
+  color: var(--metin-orta);
+  font-size: var(--y4);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.calloutIkon {
+  flex: none;
+  padding-top: 3px;
+  font-size: 14px;
+}
+
+.kutucuk {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 4px;
+  border: 1.5px solid var(--cizgi-koyu);
+  border-radius: 4px;
+  background: transparent;
+  color: transparent;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.kutucuk:hover {
+  border-color: var(--vurgu);
+}
+
+.kutucukDolu {
+  border-color: var(--vurgu);
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}
+
+.alan {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 1.6;
+  color: var(--metin);
+  resize: none;
+  overflow: hidden;
+  outline: none;
+}
+
+.alan::placeholder {
+  color: var(--metin-soluk);
+}
+
+/* Yer tutucu yalnızca odaktaki boş blokta; sayfa yer tutucu yığınına dönmesin. */
+.alan:not(:focus)::placeholder {
+  color: transparent;
+}
+
+.heading1 {
+  font-size: 24px;
+  font-weight: var(--sik-kalin);
+  letter-spacing: -0.015em;
+  padding-top: var(--b5);
+}
+
+.heading2 {
+  font-size: 20px;
+  font-weight: var(--sik-kalin);
+  padding-top: var(--b4);
+}
+
+.heading3 {
+  font-size: 17px;
+  font-weight: var(--sik-orta);
+  padding-top: var(--b4);
+}
+
+.quote {
+  padding-left: var(--b4);
+  border-left: 3px solid var(--cizgi-koyu);
+  color: var(--metin-orta);
+}
+
+.callout {
+  color: var(--metin-orta);
+}
+
+.code {
+  padding: var(--b4);
+  border-radius: var(--r1);
+  background: var(--zemin-alt);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--y4);
+  line-height: 1.5;
+}
+
+.toggle {
+  font-weight: var(--sik-orta);
+}
+
+.bitti {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.ayrac {
+  flex: 1;
+  margin: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--cizgi);
+}
+
+/* Argos'un çizmediği Notion bloğu: yerinde durduğu görünsün, elle bozulmasın. */
+.bilinmeyen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--b4);
+  padding: 6px var(--b4);
+  border: 1px dashed var(--cizgi-koyu);
+  border-radius: var(--r1);
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}
+
+.bilinmeyen code {
+  font-size: var(--y5);
+}
+
+.bosAlan {
+  min-height: 140px;
+  margin-top: 2px;
+  border: 0;
+  background: none;
+  cursor: text;
+  text-align: left;
+}
+
+.bosIpucu {
+  color: var(--metin-soluk);
+  font-size: var(--y4);
+}
+
+.blokMenusu {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* --- Bugün kartı -------------------------------------------------------- */
+
+.kartNot {
+  margin: 0;
+  padding: var(--b3);
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+.kartIkon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  color: var(--metin-soluk);
+  font-size: 13px;
+  line-height: 1;
+}

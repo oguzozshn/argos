@@ -18,6 +18,7 @@ alıyor ve üstüne kendi modüllerini ekliyor.
 | **Asistan** | Hafta (slot düzenleme, günlük ızgara, kural uyarıları) · Odak (pomodoro, kronometre) · Hatırla · Arşiv · Yol haritaları |
 | **Takvim** | Ay ızgarası ve gün ekseni. Sorusu tek: hangi güne ne sığar. |
 | **Yapılacaklar** | Todoist'in kendisi — ayrı bir liste tutulmuyor |
+| **Sayfalar** | Notion'daki gibi blok blok yazılan notlar. İç içe sayfa ağacı, markdown kısayolları. |
 | **Harcama** | Defter, hesaplar, bütçeler, düzenli işlemler, kart borç tahmini, ekstre içe aktarma. Tutar kuruş cinsinden tam sayı. |
 | **Hobiler** | Oyun, dizi, film, kitap listeleri. Envanter, plan değil. |
 
@@ -48,6 +49,11 @@ hesaplar, bütçeler, düzenli kurallar) tek dosyada, işlemler takvim ayına g�
 `2026-09.json` gibi bölünmüş, kategori kuralları ve içe aktarma partileri
 `ekstre.json`'da. Defter yıllarla büyüyor; tek dosya her düzenlemede baştan
 yazılırdı.
+
+Sayfalar `data/pages/` altında durur: ağaç (hangi sayfa nerede, adı ne)
+`pages.json`'da, her sayfanın blokları kendi `<id>.json` dosyasında. Ayrı
+olmalarının sebebi gövdenin her tuşta yazılması — tek dosya olsaydı her
+harfte bütün defter baştan yazılırdı.
 
 Yol `argos.config.json`'dan gelir. Makineye özel değer için
 `argos.config.local.json` açılır; o dosya önce okunur ve depoya girmez.
