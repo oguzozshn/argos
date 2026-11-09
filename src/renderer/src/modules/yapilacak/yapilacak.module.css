@@ -163,3 +163,43 @@
   }
 }
 
+
+/* --- Bugün kartından görev ekleme -------------------------------------- */
+
+/* Yapılacaklar panosundaki ekleme satırının kart içindeki karşılığı. */
+.ekleSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b4);
+  width: 100%;
+  padding: var(--b4) var(--b6);
+  border: 0;
+  border-bottom: 1px solid var(--cizgi);
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-soluk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ekleSatir:hover {
+  color: var(--vurgu);
+}
+
+.eklePlus {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-tam);
+  color: var(--vurgu);
+  transition:
+    background var(--sure-hizli) var(--egri),
+    color var(--sure-hizli) var(--egri);
+}
+
+.ekleSatir:hover .eklePlus {
+  background: var(--vurgu);
+  color: var(--vurgu-metin);
+}

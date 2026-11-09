@@ -1,11 +1,13 @@
-import { Check } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { localAsTodoist } from "@ortak/task";
+import { Check, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { localAsTodoist, type TaskList } from "@ortak/task";
 import type { TodoistGorev } from "@ortak/tipler";
 import { Etiket, Kart, Satir } from "@/ui/bilesenler";
+import { Composer } from "@/ui/gorev/Composer";
 import { silVeBildir } from "@/ui/toast";
 import { kopru, useBugun } from "@/veri/kanca";
 import { completeLocalWithUndo, useLocalTasks } from "@/veri/local-tasks";
+import { useTaskComposerTarget, type NewTaskInput } from "@/veri/task-create";
 import s from "./yapilacak.module.css";
 
 /**
@@ -25,20 +27,40 @@ export function YapilacakOzet() {
     return [...todoistGorevleri, ...localDue];
   }, [todoistGorevleri, local.tasks, today]);
   const [gecikmisAcik, setGecikmisAcik] = useState(false);
+  const [ekliyor, setEkliyor] = useState(false);
 
-  useEffect(() => {
+  const yukle = useCallback(() => {
     const k = kopru();
     if (!k) return;
-    const yukle = () =>
-      void k.todoist
-        .durum()
-        .then((d) => (d.anahtarVar ? k.todoist.bugunVeGecikmis() : []))
-        .then(setGorevler)
-        .catch(() => setGorevler([]));
+    void k.todoist
+      .durum()
+      .then((d) => (d.anahtarVar ? k.todoist.bugunVeGecikmis() : []))
+      .then(setGorevler)
+      .catch(() => setGorevler([]));
+  }, []);
+
+  useEffect(() => {
     yukle();
     // Hızlı yakalamadan eklenen bugünkü görev kartta da görünsün.
-    return k.todoistDegisimDinle(yukle);
-  }, []);
+    return kopru()?.todoistDegisimDinle(yukle);
+  }, [yukle]);
+
+  // Karttan görev ekleme (issue #45'teki kutunun aynısı), gün bugüne kurulu.
+  const hedef = useTaskComposerTarget();
+  // Todoist'e ekleme kendi başına haber vermiyor: eklenen görev görünsün diye
+  // kart yeniden okunuyor.
+  const ekleHost = useMemo(
+    () => ({
+      ...hedef,
+      createTask: async (list: TaskList, input: NewTaskInput) => {
+        const ok = await hedef.createTask(list, input);
+        if (ok) yukle();
+        return ok;
+      },
+    }),
+    [hedef, yukle],
+  );
+  const ekleListesi = hedef.inbox ?? hedef.lists[0] ?? null;
 
   const kapat = (g: TodoistGorev) => {
     if (g.source === "local") {
@@ -71,7 +93,9 @@ export function YapilacakOzet() {
     });
   };
 
-  if (!gorevler || gorevler.length === 0) return null;
+  // Yüklenirken kart boş görünmesin; görev yoksa bile kart durur, çünkü
+  // görev eklemek için kullanılıyor.
+  if (!gorevler) return null;
 
   const bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
     .toISOString()
@@ -121,6 +145,18 @@ export function YapilacakOzet() {
         )
       }
     >
+      {ekliyor && ekleListesi ? (
+        <Composer list={ekleListesi} host={ekleHost} defaultDate={today} onClose={() => setEkliyor(false)} />
+      ) : (
+        ekleListesi && (
+          <button type="button" className={s.ekleSatir} onClick={() => setEkliyor(true)}>
+            <span className={s.eklePlus}>
+              <Plus size={14} />
+            </span>
+            Görev ekle
+          </button>
+        )
+      )}
       {gorunen.length === 0 ? (
         <p className={s.projeNot} style={{ borderTop: "none", marginTop: 0 }}>
           Bugüne görev yok.
