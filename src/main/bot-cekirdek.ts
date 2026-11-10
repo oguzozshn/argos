@@ -124,6 +124,12 @@ export interface IslemSonucu {
   eklenenler: string[];
   /** Bu turda işlenemeyip kuyrukta bırakılanlar (dosya kilitli vb.). */
   bekleyen: number;
+  /**
+   * Why each of those was left. A record that keeps failing stays in the
+   * queue for good, so the reason has to reach the log — the count alone
+   * says nothing about what to fix.
+   */
+  bekleyenSebepler: string[];
   sonuclar: KuyrukSonucu[];
 }
 
@@ -164,7 +170,7 @@ async function uygulaVeYaz<T>(
  */
 export async function kuyruguIsle(kok: string, a: BotAyari, bugun: string): Promise<IslemSonucu> {
   const kayitlar = await istek<KuyrukKaydi[]>(a, "/kuyruk");
-  const sonuc: IslemSonucu = { eklenenler: [], bekleyen: 0, sonuclar: [] };
+  const sonuc: IslemSonucu = { eklenenler: [], bekleyen: 0, bekleyenSebepler: [], sonuclar: [] };
   if (kayitlar.length === 0) return sonuc;
 
   const kurallar = await sessizOku<Kurallar>(kok, "kurallar.json");
@@ -204,6 +210,7 @@ export async function kuyruguIsle(kok: string, a: BotAyari, bugun: string): Prom
     if (u.tur === "sonra") {
       console.error(`[bot] ${k.id} bu tur işlenemedi: ${u.sebep}`);
       sonuc.bekleyen++;
+      sonuc.bekleyenSebepler.push(`${k.id} (${k.tur}): ${u.sebep}`);
     } else if (u.tur === "reddet") {
       sonuc.sonuclar.push({ id: k.id, durum: "reddedildi", sebep: u.sebep });
     } else {
