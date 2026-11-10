@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { bugunIso } from "../ortak/plan";
 import { KANAL } from "../ortak/tipler";
 import { anlikGonder, kuyruguIsle, type BotAyari } from "./bot-cekirdek";
+import { botLog } from "./bot-log";
 import { degisimeAbone } from "./izle";
 import { tepsiBotDurumu } from "./tepsi";
 import { gizliYolu } from "./todoist";
@@ -59,20 +60,31 @@ function ayar(): BotAyari | null {
   }
 }
 
+/** Logged once per change, not once per turn: the "no settings" state is steady. */
+let ayarYokBildirildi = false;
+
 function sirayaKoy(ad: string, is: (a: BotAyari) => Promise<void>): void {
   sira = sira.then(async () => {
     const a = ayar();
     if (!a) {
       tepsiBotDurumu(null);
+      if (!ayarYokBildirildi) {
+        ayarYokBildirildi = true;
+        botLog(`ayar yok — ${gizliYolu()} içinde argosBotUrl ve argosBotAnahtari aranıyor; bot duruyor`);
+      }
       return;
     }
+    ayarYokBildirildi = false;
+    const basladi = Date.now();
     try {
       await is(a);
       tepsiBotDurumu({ tamam: true, zaman: new Date() });
+      botLog(`${ad}: tamam (${Date.now() - basladi} ms)`);
     } catch (e) {
       const mesaj = e instanceof Error ? e.message : String(e);
       console.error(`[bot] ${ad}:`, mesaj);
       tepsiBotDurumu({ tamam: false, zaman: new Date(), hata: mesaj });
+      botLog(`${ad}: HATA (${Date.now() - basladi} ms) — ${mesaj}`);
     }
   });
 }
@@ -86,6 +98,14 @@ const gorunumGonder = () =>
 const kuyruguCek = () =>
   sirayaKoy("kuyruk", async (a) => {
     const s = await kuyruguIsle(dataDir(), a, bugunIso());
+    // A record left behind is reported every turn: it stays in the queue
+    // until it succeeds, and the reason is the only clue to why it does not.
+    if (s.sonuclar.length > 0 || s.bekleyen > 0) {
+      botLog(
+        `kuyruk: ${s.sonuclar.length} işlendi, ${s.bekleyen} bekliyor` +
+          (s.bekleyenSebepler.length > 0 ? ` — ${s.bekleyenSebepler.join("; ")}` : ""),
+      );
+    }
     if (s.eklenenler.length === 0) return;
     const p = anaPencere();
     soylenmedi.push(...s.eklenenler);
@@ -113,6 +133,7 @@ export function botBaslat(pencere: () => BrowserWindow | null): void {
     return x;
   });
 
+  botLog(`başladı — veri klasörü ${dataDir()}`);
   gorunumGonder();
   kuyruguCek();
 
