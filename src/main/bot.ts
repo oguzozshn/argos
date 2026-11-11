@@ -47,46 +47,98 @@ let soylenmedi: string[] = [];
 /** İşler sırayla: kuyruk yazarken görünüm aynı dosyaları okumasın, iki kuyruk turu çakışmasın. */
 let sira: Promise<void> = Promise.resolve();
 
-function ayar(): BotAyari | null {
+const hataMetni = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/**
+ * Why the bot cannot run, when it cannot. "Could not read the file" and "the
+ * keys are not in it" used to collapse into one `null`, and the log could not
+ * tell them apart — the secrets file held all three keys and was still read as
+ * empty nine milliseconds into start-up.
+ */
+type AyarSonucu =
+  | { tur: "var"; ayar: BotAyari }
+  | { tur: "eksik"; yol: string }
+  | { tur: "okunamadi"; yol: string; sebep: string };
+
+function ayar(): AyarSonucu {
+  let f: string;
   try {
-    const f = gizliYolu();
-    if (!existsSync(f)) return null;
-    const g = jsonCoz<{ argosBotUrl?: string; argosBotAnahtari?: string }>(readFileSync(f, "utf8"));
-    const url = g.argosBotUrl?.trim();
-    const anahtar = g.argosBotAnahtari?.trim();
-    return url && anahtar ? { url, anahtar } : null;
-  } catch {
-    return null;
+    f = gizliYolu();
+  } catch (e) {
+    return { tur: "okunamadi", yol: "(ayar çözülemedi)", sebep: hataMetni(e) };
+  }
+  let metin: string;
+  try {
+    if (!existsSync(f)) return { tur: "eksik", yol: f };
+    metin = readFileSync(f, "utf8");
+  } catch (e) {
+    return { tur: "okunamadi", yol: f, sebep: hataMetni(e) };
+  }
+  let g: { argosBotUrl?: string; argosBotAnahtari?: string };
+  try {
+    g = jsonCoz<{ argosBotUrl?: string; argosBotAnahtari?: string }>(metin);
+  } catch (e) {
+    return { tur: "okunamadi", yol: f, sebep: hataMetni(e) };
+  }
+  const url = g.argosBotUrl?.trim();
+  const anahtar = g.argosBotAnahtari?.trim();
+  return url && anahtar ? { tur: "var", ayar: { url, anahtar } } : { tur: "eksik", yol: f };
+}
+
+/**
+ * The steady "cannot run" state is repeated this often, not once per process.
+ * Logged once, a bot stuck on it looked exactly like a bot whose turns had
+ * stopped; now silence in the log means one thing only — no turn ran.
+ */
+const SESSIZ_TEKRAR_MS = 60 * 60 * 1000;
+let sonSessizKayit = 0;
+
+function sessizKaydet(satir: string): void {
+  const simdi = Date.now();
+  if (sonSessizKayit !== 0 && simdi - sonSessizKayit < SESSIZ_TEKRAR_MS) return;
+  sonSessizKayit = simdi;
+  botLog(satir);
+}
+
+async function turuCalistir(ad: string, is: (a: BotAyari) => Promise<void>): Promise<void> {
+  const a = ayar();
+  if (a.tur !== "var") {
+    tepsiBotDurumu(null);
+    sessizKaydet(
+      a.tur === "eksik"
+        ? `ayar yok — ${a.yol} içinde argosBotUrl ya da argosBotAnahtari yok; bot duruyor`
+        : `ayar okunamadı — ${a.yol}: ${a.sebep}; bot duruyor`,
+    );
+    return;
+  }
+  // Settings are back: the next outage is worth a line straight away.
+  sonSessizKayit = 0;
+  const basladi = Date.now();
+  try {
+    await is(a.ayar);
+    tepsiBotDurumu({ tamam: true, zaman: new Date() });
+    botLog(`${ad}: tamam (${Date.now() - basladi} ms)`);
+  } catch (e) {
+    const mesaj = hataMetni(e);
+    console.error(`[bot] ${ad}:`, mesaj);
+    tepsiBotDurumu({ tamam: false, zaman: new Date(), hata: mesaj });
+    botLog(`${ad}: HATA (${Date.now() - basladi} ms) — ${mesaj}`);
   }
 }
 
-/** Logged once per change, not once per turn: the "no settings" state is steady. */
-let ayarYokBildirildi = false;
-
+/**
+ * Turns run one after another on `sira`. The chain MUST never be left
+ * rejected: `sira.then(...)` on a rejected promise skips the callback, so a
+ * single throw used to stop every later turn for the rest of the session —
+ * the five-minute timer kept firing and nothing kept happening. The `catch`
+ * here is what keeps the bot alive, so nothing may be added after it.
+ */
 function sirayaKoy(ad: string, is: (a: BotAyari) => Promise<void>): void {
-  sira = sira.then(async () => {
-    const a = ayar();
-    if (!a) {
-      tepsiBotDurumu(null);
-      if (!ayarYokBildirildi) {
-        ayarYokBildirildi = true;
-        botLog(`ayar yok — ${gizliYolu()} içinde argosBotUrl ve argosBotAnahtari aranıyor; bot duruyor`);
-      }
-      return;
-    }
-    ayarYokBildirildi = false;
-    const basladi = Date.now();
-    try {
-      await is(a);
-      tepsiBotDurumu({ tamam: true, zaman: new Date() });
-      botLog(`${ad}: tamam (${Date.now() - basladi} ms)`);
-    } catch (e) {
-      const mesaj = e instanceof Error ? e.message : String(e);
-      console.error(`[bot] ${ad}:`, mesaj);
-      tepsiBotDurumu({ tamam: false, zaman: new Date(), hata: mesaj });
-      botLog(`${ad}: HATA (${Date.now() - basladi} ms) — ${mesaj}`);
-    }
-  });
+  sira = sira
+    .then(() => turuCalistir(ad, is))
+    .catch((e) => {
+      botLog(`${ad}: beklenmeyen hata — ${hataMetni(e)}`);
+    });
 }
 
 const gorunumGonder = () =>
