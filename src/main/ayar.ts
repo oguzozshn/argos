@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { AYAR_ADLARI, ayarCoz, jsonCoz, yenidenAdlandir } from "./veri-cekirdek";
+import { AYAR_ADLARI, ayarCoz, jsonCoz, yenidenAdlandir, type AyarIzi } from "./veri-cekirdek";
 
 /**
  * Ayarın nerede aranacağı. Tek yerde durur, çünkü aynı dosyalar iki şeyi
@@ -44,8 +44,25 @@ export const arananYollar = (): { yol: string; bulundu: boolean }[] =>
   );
 
 /** Bir ayar alanının mutlak karşılığı. Her çağrıda diskten okur. */
-export const ayar = (alan: string, varsayilan: string, ortamYolu?: string): string =>
-  ayarCoz(kokler(), alan, varsayilan, okuyucu, ortamYolu);
+export const ayar = (alan: string, varsayilan: string, ortamYolu?: string, iz?: AyarIzi): string =>
+  ayarCoz(kokler(), alan, varsayilan, okuyucu, ortamYolu, iz);
+
+/**
+ * A field's resolution, step by step, for the start-up diagnostics. The bot
+ * spent weeks reading the wrong secrets file and nothing recorded which root
+ * had answered — only the answer itself, which looked plausible.
+ */
+export function ayarIzi(alan: string, varsayilan: string, ortamYolu?: string): string[] {
+  const satirlar: string[] = [];
+  const cozulen = ayar(alan, varsayilan, ortamYolu, (s) => satirlar.push(s));
+  satirlar.push(`${alan}: çözülen ${cozulen}`);
+  try {
+    satirlar.push(`${alan}: dosya var mı ${existsSync(cozulen)}`);
+  } catch (e) {
+    satirlar.push(`${alan}: varlık bakılamadı — ${(e as { code?: string }).code ?? String(e)}`);
+  }
+  return satirlar;
+}
 
 /**
  * Ayarın konması önerilen yer: kalıcı kök, yereli. Veri klasörü bulunamadığında
@@ -92,6 +109,11 @@ export function taniYaz(
     ...arananlar.map((y) => `  ${y.bulundu ? "VAR" : "yok"} ${y.yol}`),
     `çözülen    : ${cozulen}`,
     `klasör var : ${cozulenVar}`,
+    // The secrets path is resolved by the same rules and had no record at all.
+    "gizliYolu izi:",
+    ...ayarIzi("gizliYolu", "../personnal_assistant/gizli.json", process.env.ARGOS_GIZLI).map(
+      (s) => `  ${s}`,
+    ),
     "",
   ];
   try {

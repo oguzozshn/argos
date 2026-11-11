@@ -216,6 +216,55 @@ async function calis(): Promise<void> {
       resolve("/ortam"),
   );
 
+  // İz olmadan doğru cevapla varsayılana düşmüş cevap aynı görünüyor; bot
+  // haftalarca yanlış dosyayı okudu ve hangi kökün cevap verdiği hiçbir yerde
+  // yazmıyordu.
+  const iziAl = (
+    kokler: string[],
+    alan: string,
+    varsayilan: string,
+    dosyalar: Record<string, string>,
+    ortam?: string,
+  ): string[] => {
+    const satirlar: string[] = [];
+    ayarCoz(kokler, alan, varsayilan, kurgu(dosyalar), ortam, (s) => satirlar.push(s));
+    return satirlar;
+  };
+
+  kontrol(
+    "iz: ortam değişkeni söylenir",
+    iziAl([exeKok], "dataDir", "../veri", { [yerel]: `{"dataDir": "/y"}` }, "/ortam").join(" | ") ===
+      `dataDir: ortam değişkeninden "/ortam"`,
+  );
+  kontrol(
+    "iz: hangi dosyanın cevap verdiği yazılır",
+    iziAl([exeKok, kaliciKok], "dataDir", "../veri", { [kalici]: `{"dataDir": "/k"}` }).at(-1) ===
+      `dataDir: ${kalici} içinden "/k"`,
+  );
+  kontrol(
+    "iz: okunamayan dosya ayrı satır olur",
+    iziAl([exeKok, kaliciKok], "dataDir", "../veri", { [kalici]: `{"dataDir": "/k"}` })[0] ===
+      `dataDir: ${yerel} okunamadı ya da yok`,
+  );
+  kontrol(
+    "iz: alanı olmayan dosya 'alan yok' der",
+    iziAl([exeKok], "gizliYolu", "../gizli.json", { [yerel]: `{"dataDir": "/y"}` }).includes(
+      `gizliYolu: ${yerel} okundu ama alan yok ya da boş`,
+    ),
+  );
+  kontrol(
+    "iz: varsayılana düşmek söylenir",
+    iziAl([exeKok], "dataDir", "../veri", {}).at(-1) ===
+      `dataDir: hiçbir ayar dosyası vermedi, varsayılan "../veri"`,
+  );
+  kontrol(
+    "iz: bozuk JSON atlandığı yazılır",
+    iziAl([exeKok, kaliciKok], "dataDir", "../veri", {
+      [yerel]: "{ bozuk",
+      [kalici]: `{"dataDir": "/k"}`,
+    }).includes(`dataDir: ${yerel} bozuk JSON, atlandı`),
+  );
+
   console.log("\nHızlı yazım (tuş başına yazma)");
   // Arayüz her tuşta yazıyor. İki yazma aynı eski mtime'la yola çıkarsa
   // ikincisi kendi yazmamıza çarpar — kullanıcının son harfi kaybolur.

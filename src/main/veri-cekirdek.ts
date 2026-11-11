@@ -225,34 +225,55 @@ export const AYAR_ADLARI = ["argos.config.local.json", "argos.config.json"];
  * yanından yazılmıştır. Hiçbir kökte bulunamazsa varsayılan ilk köke göre
  * çözülür.
  */
+/**
+ * Where a resolved path came from. Without it a wrong answer cannot be told
+ * from a right one: the settings file may be unreadable for a moment, a field
+ * may be absent, and the fallback then looks exactly like a real answer.
+ */
+export type AyarIzi = (satir: string) => void;
+
 export function ayarCoz(
   kokler: string[],
   alan: string,
   varsayilan: string,
   ayarOkuyucu: (yol: string) => string | null,
   ortamYolu?: string,
+  iz?: AyarIzi,
 ): string {
   const ilkKok = kokler[0] ?? ".";
   const mutlakla = (yol: string, kok: string): string =>
     isAbsolute(yol) ? resolve(yol) : resolve(kok, yol);
 
   const cevre = ortamYolu?.trim();
-  if (cevre) return mutlakla(cevre, ilkKok);
+  if (cevre) {
+    iz?.(`${alan}: ortam değişkeninden "${cevre}"`);
+    return mutlakla(cevre, ilkKok);
+  }
 
   for (const kok of kokler) {
     for (const ad of AYAR_ADLARI) {
-      const metin = ayarOkuyucu(join(kok, ad));
-      if (!metin) continue;
+      const yol = join(kok, ad);
+      const metin = ayarOkuyucu(yol);
+      if (!metin) {
+        iz?.(`${alan}: ${yol} okunamadı ya da yok`);
+        continue;
+      }
       let deger: unknown;
       try {
         deger = jsonCoz<Record<string, unknown>>(metin)[alan];
       } catch {
-        console.error(`[ayar] ${join(kok, ad)} okunamadı, yok sayıldı`);
+        console.error(`[ayar] ${yol} okunamadı, yok sayıldı`);
+        iz?.(`${alan}: ${yol} bozuk JSON, atlandı`);
         continue;
       }
-      if (typeof deger === "string" && deger.trim()) return mutlakla(deger.trim(), kok);
+      if (typeof deger === "string" && deger.trim()) {
+        iz?.(`${alan}: ${yol} içinden "${deger.trim()}"`);
+        return mutlakla(deger.trim(), kok);
+      }
+      iz?.(`${alan}: ${yol} okundu ama alan yok ya da boş`);
     }
   }
 
+  iz?.(`${alan}: hiçbir ayar dosyası vermedi, varsayılan "${varsayilan}"`);
   return mutlakla(varsayilan, ilkKok);
 }
