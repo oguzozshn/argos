@@ -1,4 +1,5 @@
 // Explicit .ts extensions: this file also runs under plain Node (araclar/sayfa-testi.mts).
+import { normalizeMarks, type Mark } from "./sayfa-marks.ts";
 
 /**
  * Sayfalar: Notion'daki gibi blok blok yazılan, iç içe geçebilen notlar.
@@ -212,6 +213,8 @@ export interface Block {
   type: BlockType;
   /** Düz metin. Biçimlendirme (kalın, bağlantı) `raw` içinde durur. */
   text: string;
+  /** Inline formatting over `text`, as offset runs (see sayfa-marks.ts). Absent when the text is plain. */
+  marks?: Mark[];
   /** `todo` için. */
   checked: boolean;
   /** `code` için dil adı, Notion'ın yazdığı gibi ("typescript"). */
@@ -251,6 +254,7 @@ export function normalizeDoc(raw: unknown, id: string): PageDoc {
       order: typeof b.order === "number" ? b.order : i,
       type: BLOCK_TYPES.has(b.type as string) ? (b.type as BlockType) : "paragraph",
       text: typeof b.text === "string" ? b.text : "",
+      ...marksField(b.marks, typeof b.text === "string" ? b.text.length : 0),
       checked: b.checked === true,
       lang: typeof b.lang === "string" ? b.lang : "",
       collapsed: b.collapsed === true,
@@ -258,6 +262,12 @@ export function normalizeDoc(raw: unknown, id: string): PageDoc {
       ...(b.raw === undefined ? {} : { raw: b.raw }),
     })),
   };
+}
+
+/** The `marks` field for a block: left out entirely when nothing is formatted, so plain pages stay as they were on disk. */
+function marksField(raw: unknown, length: number): { marks?: Mark[] } {
+  const marks = normalizeMarks(raw, length);
+  return marks.length > 0 ? { marks } : {};
 }
 
 export const childBlocks = (d: PageDoc, parentId: string | null): Block[] =>
@@ -296,6 +306,7 @@ export function blockWithDescendants(d: PageDoc, id: string): string[] {
 export interface NewBlock {
   type?: BlockType;
   text?: string;
+  marks?: Mark[];
   checked?: boolean;
   lang?: string;
   parentId?: string | null;
@@ -309,6 +320,7 @@ const makeBlock = (id: string, order: number, input: NewBlock): Block => ({
   order,
   type: input.type ?? "paragraph",
   text: input.text ?? "",
+  ...marksField(input.marks, (input.text ?? "").length),
   checked: input.checked === true,
   lang: input.lang ?? "",
   collapsed: false,
@@ -405,11 +417,46 @@ export function moveBlock(d: PageDoc, id: string, delta: -1 | 1): PageDoc {
 }
 
 /**
+ * Drag and drop: the block (with its subtree) becomes a sibling of `targetId`,
+ * right before or after it. Dropping a block into its own subtree would cut
+ * the tree loose, so that is rejected and the doc comes back unchanged.
+ */
+export function moveBlockTo(d: PageDoc, id: string, targetId: string, place: "before" | "after"): PageDoc {
+  if (id === targetId) return d;
+  const target = d.blocks.find((b) => b.id === targetId);
+  if (!target || !d.blocks.some((b) => b.id === id)) return d;
+  if (blockWithDescendants(d, id).includes(targetId)) return d;
+  const siblings = childBlocks(d, target.parentId)
+    .map((b) => b.id)
+    .filter((x) => x !== id);
+  const at = siblings.indexOf(targetId) + (place === "after" ? 1 : 0);
+  siblings.splice(at, 0, id);
+  const orderOf = new Map(siblings.map((x, n) => [x, n]));
+  return {
+    ...d,
+    blocks: d.blocks.map((b) => {
+      const order = orderOf.get(b.id);
+      return order === undefined ? b : { ...b, parentId: target.parentId, order };
+    }),
+  };
+}
+
+/** Inserts right before the given block, as its sibling: Enter at the start of a line. */
+export function insertBlockBefore(d: PageDoc, beforeId: string, input: NewBlock, id: string): PageDoc {
+  const before = d.blocks.find((b) => b.id === beforeId);
+  if (!before) return appendBlock(d, input, id);
+  const shifted = d.blocks.map((b) =>
+    b.parentId === before.parentId && b.order >= before.order ? { ...b, order: b.order + 1 } : b,
+  );
+  return { ...d, blocks: [...shifted, makeBlock(id, before.order, { ...input, parentId: before.parentId })] };
+}
+
+/**
  * Markdown kısayolu: satır başında yazılan işaret bloğun tipini değiştirir ve
  * kendisi silinir. Notion'ın yaptığı; alışkanlık buradan geliyor.
  */
 export function markdownShortcut(text: string): { type: BlockType; text: string } | null {
-  const m = /^(#{1,3}|[-*]|\d+\.|\[\]|\[ \]|>|```|---)\s$/.exec(text) ?? /^(```|---)$/.exec(text);
+  const m = /^(#{1,3}|[-*]|\d+\.|\[\]|\[ \]|>|"|```|---)\s$/.exec(text) ?? /^(```|---)$/.exec(text);
   if (!m) return null;
   const mark = m[1]!;
   if (mark === "#") return { type: "heading1", text: "" };
@@ -419,6 +466,7 @@ export function markdownShortcut(text: string): { type: BlockType; text: string 
   if (/^\d+\.$/.test(mark)) return { type: "numbered", text: "" };
   if (mark === "[]" || mark === "[ ]") return { type: "todo", text: "" };
   if (mark === ">") return { type: "toggle", text: "" };
+  if (mark === '"') return { type: "quote", text: "" };
   if (mark === "```") return { type: "code", text: "" };
   if (mark === "---") return { type: "divider", text: "" };
   return null;

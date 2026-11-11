@@ -55,7 +55,7 @@ export function useKisayol(tus: string, aciklama: string, grup: string, eylem: (
 }
 
 const yaziyor = (h: EventTarget | null): boolean =>
-  h instanceof HTMLElement && Boolean(h.closest("input, textarea, select, [contenteditable='true']"));
+  h instanceof HTMLElement && Boolean(h.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])"));
 
 /** Tuşu kayıtla eşleştirilecek biçime getirir: tek harfler küçük. */
 export const tusAdi = (key: string): string => (key.length === 1 ? key.toLocaleLowerCase("tr") : key);

@@ -15,8 +15,10 @@ import {
   emptyPages,
   indentBlock,
   insertBlockAfter,
+  insertBlockBefore,
   markdownShortcut,
   moveBlock,
+  moveBlockTo,
   movePage,
   normalizeDoc,
   normalizePages,
@@ -177,6 +179,7 @@ eq("[] yapılacak", markdownShortcut("[] "), { type: "todo", text: "" });
 eq("[ ] yapılacak", markdownShortcut("[ ] "), { type: "todo", text: "" });
 eq("--- çizgi", markdownShortcut("---"), { type: "divider", text: "" });
 eq("``` kod", markdownShortcut("```"), { type: "code", text: "" });
+eq('" alıntı', markdownShortcut('" '), { type: "quote", text: "" });
 eq("düz metin kısayol değil", markdownShortcut("merhaba "), null);
 eq("satır ortasındaki işaret kısayol değil", markdownShortcut("a - "), null);
 
@@ -192,6 +195,25 @@ eq(
   [["x", "paragraph", ""]],
 );
 eq("önizleme blokları birleştirir", docPreview(silme), "üst · alt · son");
+
+console.log("\nDrag and drop");
+let surukle: PageDoc = emptyDoc("p-8");
+surukle = appendBlock(surukle, { text: "a" }, "a");
+surukle = appendBlock(surukle, { text: "b" }, "b");
+surukle = appendBlock(surukle, { text: "b1", parentId: "b" }, "b1");
+surukle = appendBlock(surukle, { text: "c" }, "c");
+const sira = (x: PageDoc) => blockOutline(x).map(({ block, depth }) => `${block.id}:${depth}`);
+eq("drop before the first block", sira(moveBlockTo(surukle, "c", "a", "before")), ["c:0", "a:0", "b:0", "b1:1"]);
+eq("drop after a block", sira(moveBlockTo(surukle, "a", "c", "after")), ["b:0", "b1:1", "c:0", "a:0"]);
+eq("subtree moves with its parent", sira(moveBlockTo(surukle, "b", "a", "before")), ["b:0", "b1:1", "a:0", "c:0"]);
+eq("drop next to a nested block adopts its parent", sira(moveBlockTo(surukle, "c", "b1", "after")), ["a:0", "b:0", "b1:1", "c:1"]);
+eq("a block cannot drop into its own subtree", moveBlockTo(surukle, "b", "b1", "after"), surukle);
+eq("dropping on itself changes nothing", moveBlockTo(surukle, "a", "a", "before"), surukle);
+eq(
+  "insert before keeps the rest in order",
+  sira(insertBlockBefore(surukle, "b", { text: "yeni" }, "y")),
+  ["a:0", "y:0", "b:0", "b1:1", "c:0"],
+);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exitCode = 1;

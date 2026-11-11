@@ -1,4 +1,5 @@
 // Explicit .ts extensions: this file also runs under plain Node (araclar/sayfa-notion-test.mts).
+import { fromSegments, toSegments, type Mark, type Segment } from "./sayfa-marks.ts";
 import type { Block, BlockType, NewBlock, PageMeta } from "./sayfalar.ts";
 
 /**
@@ -17,6 +18,11 @@ import type { Block, BlockType, NewBlock, PageMeta } from "./sayfalar.ts";
  *   - Metin değiştiyse biçim gider, metin kalır. Düz metin editörünün
  *     dürüst karşılığı bu; sessizce eski biçimi yeni metne giydirmek
  *     yanlış yere kalın yazı koyardı.
+ *
+ * Since the editor learned inline formatting, the third rule is narrower:
+ * bold, italic, strikethrough, inline code and links travel both ways as
+ * `marks`. What Argos still cannot draw (colour, underline, mentions,
+ * equations) survives only while the block is left untouched.
  */
 
 /** Argos tipi → Notion tipi. İki yöne de aynı tablodan bakılıyor. */
@@ -90,17 +96,65 @@ function asRichText(text: string): RichItem[] {
   return out;
 }
 
+/** The formatting Argos understands, read off Notion's rich text. */
+export function marksFromRich(rich: RichItem[]): Mark[] {
+  const segments: Segment[] = rich.map((x) => {
+    const a = (x.annotations ?? {}) as { bold?: boolean; italic?: boolean; strikethrough?: boolean; code?: boolean };
+    const link = x.text?.link?.url ?? x.href ?? "";
+    return {
+      text: x.plain_text ?? x.text?.content ?? "",
+      ...(a.bold ? { bold: true as const } : {}),
+      ...(a.italic ? { italic: true as const } : {}),
+      ...(a.strikethrough ? { strike: true as const } : {}),
+      ...(a.code ? { code: true as const } : {}),
+      ...(link ? { link } : {}),
+    };
+  });
+  return fromSegments(segments).marks;
+}
+
+/** Formatted text as Notion rich text items; a plain piece carries no annotations at all. */
+function segmentsAsRichText(segments: Segment[]): RichItem[] {
+  const out: RichItem[] = [];
+  for (const s of segments) {
+    const annotations = {
+      ...(s.bold ? { bold: true } : {}),
+      ...(s.italic ? { italic: true } : {}),
+      ...(s.strike ? { strikethrough: true } : {}),
+      ...(s.code ? { code: true } : {}),
+    };
+    for (const item of asRichText(s.text)) {
+      out.push({
+        ...item,
+        text: { ...item.text, ...(s.link ? { link: { url: s.link } } : {}) },
+        ...(Object.keys(annotations).length > 0 ? { annotations } : {}),
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * Bloğun Notion'a gidecek zengin metni. Metin dokunulmamışsa Notion'dan
  * geldiği gibi, değiştiyse düz metin olarak.
+ *
+ * "Untouched" covers the formatting too: the raw rich text goes back only if
+ * both the text and the marks still match what Notion sent.
  */
-export function richTextForWrite(block: Pick<Block, "text" | "raw">): RichItem[] {
+export function richTextForWrite(block: Pick<Block, "text" | "raw" | "marks">): RichItem[] {
   const raw = block.raw as NotionBlock | undefined;
+  const marks = block.marks ?? [];
   if (raw) {
     const rich = richOf(raw);
-    if (rich.length > 0 && plainText(rich) === block.text) return rich.map(cleanRich);
+    if (
+      rich.length > 0 &&
+      plainText(rich) === block.text &&
+      JSON.stringify(marksFromRich(rich)) === JSON.stringify(fromSegments(toSegments(block.text, marks)).marks)
+    ) {
+      return rich.map(cleanRich);
+    }
   }
-  return asRichText(block.text);
+  return segmentsAsRichText(toSegments(block.text, marks));
 }
 
 /**
@@ -115,10 +169,13 @@ export function fromNotionBlock(raw: unknown): NewBlock {
   const common = { notionId: typeof b.id === "string" ? b.id : undefined, raw };
   if (!type) return { ...common, type: "unknown", text: plainText(richOf(b)) };
   if (type === "divider") return { ...common, type, text: "" };
+  // Code blocks stay plain: Notion highlights them itself and the editor draws no marks there.
+  const marks = type === "code" ? [] : marksFromRich(richOf(b));
   return {
     ...common,
     type,
     text: plainText(richOf(b)),
+    ...(marks.length > 0 ? { marks } : {}),
     checked: d["checked"] === true,
     lang: typeof d["language"] === "string" ? d["language"] : "",
   };

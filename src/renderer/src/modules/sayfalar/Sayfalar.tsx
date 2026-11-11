@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { BosDurum, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { BosDurum, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { Kisayollar } from "@/ui/Kisayollar";
 import { Sayfa } from "./Sayfa";
 import { SayfaAgaci } from "./SayfaAgaci";
@@ -35,7 +35,6 @@ export function Sayfalar() {
 
   return (
     <>
-      <EkranBasi baslik="Sayfalar" />
       {agac.hata && <div className={s.hataSerit}>Sayfa ağacı okunamadı: {agac.hata}</div>}
       <Kisayollar
         grup="Sayfalar"
@@ -61,7 +60,7 @@ export function Sayfalar() {
             ) : (
               <BosDurum
                 baslik="Sayfa yok"
-                metin="Soldaki + ile ilk sayfanı aç. Başlıklar, maddeler ve yapılacaklar markdown kısayollarıyla yazılır."
+                metin="Soldaki + ile ilk sayfanı aç. Yazarken '/' blok menüsünü açar."
               />
             )}
           </div>

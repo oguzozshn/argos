@@ -95,9 +95,21 @@ eq(
 );
 
 // Metin değişti: biçim gider, metin kalır.
-const degisti = toNotionBlock({ ...p, text: "Başka bir şey" }) as { paragraph: { rich_text: unknown[] } };
+const degisti = toNotionBlock({ ...p, text: "Başka bir şey", marks: undefined }) as { paragraph: { rich_text: unknown[] } };
 eq("değişen metin düz gider", degisti.paragraph.rich_text, [{ type: "text", text: { content: "Başka bir şey" } }]);
 
+eq("bold read from Notion as a mark", p.marks, [{ start: 4, end: 9, bold: true }]);
+const bicimli = toNotionBlock({ ...p, text: "Düz kalın ek", marks: [{ start: 4, end: 9, bold: true }, { start: 10, end: 12, link: "https://a.dev" }] }) as {
+  paragraph: { rich_text: unknown[] };
+};
+eq("edited text keeps its marks on the way back", bicimli.paragraph.rich_text, [
+  { type: "text", text: { content: "Düz " } },
+  { type: "text", text: { content: "kalın" }, annotations: { bold: true } },
+  { type: "text", text: { content: " " } },
+  { type: "text", text: { content: "ek", link: { url: "https://a.dev" } } },
+]);
+const bicimDegisti = toNotionBlock({ ...p, marks: [{ start: 0, end: 3, italic: true }] }) as { paragraph: { rich_text: { annotations?: unknown }[] } };
+eq("same text with other marks is rebuilt, not sent raw", bicimDegisti.paragraph.rich_text.map((x) => x.annotations), [{ italic: true }, undefined]);
 eq("to_do işareti yazılır", (toNotionBlock(todo) as { to_do: { checked: boolean } }).to_do.checked, true);
 eq("dili boş kod bloğu düz metin", (toNotionBlock({ ...kod, lang: "", raw: undefined }) as { code: { language: string } }).code.language, "plain text");
 

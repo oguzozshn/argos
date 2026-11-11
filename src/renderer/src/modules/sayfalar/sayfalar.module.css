@@ -1,12 +1,16 @@
 /*
- * Sayfalar: solda ağaç, sağda blok blok yazılan gövde. Ölçüler Yapılacaklar
- * panosundan (board.module.css) geliyor, iki ekran yan yana aynı görünsün.
+ * Sayfalar: solda ağaç, sağda blok blok yazılan gövde.
+ *
+ * The page reads like a Notion page: a flat tree on the left, and on the right
+ * one sheet with a narrow, centred text column. Block sizes follow Notion's
+ * (16px body, 30/24/20px headings) rather than the denser sizes of the other
+ * screens, because this is the one screen meant for long-form writing.
  */
 
 .pano {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: var(--b5);
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: var(--b6);
   align-items: start;
 }
 
@@ -34,17 +38,13 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: var(--b4) 0 var(--b5);
-  border: 1px solid var(--cizgi);
-  border-radius: var(--r2);
-  background: var(--kart);
 }
 
 .kenarBas {
   display: flex;
   align-items: center;
-  gap: var(--b4);
-  padding: 0 var(--b4) var(--b4) var(--b5);
+  gap: var(--b2);
+  padding: 0 4px 6px 10px;
 }
 
 .kenarBaslik {
@@ -52,8 +52,6 @@
   margin: 0;
   font-size: var(--y5);
   font-weight: var(--sik-orta);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--metin-soluk);
 }
 
@@ -64,8 +62,9 @@
   place-items: center;
   width: 22px;
   height: 22px;
+  padding: 0;
   border: 0;
-  border-radius: var(--r1);
+  border-radius: 5px;
   background: none;
   color: var(--metin-soluk);
   cursor: pointer;
@@ -75,7 +74,7 @@
 .kenarEkle:hover,
 .agacDugme:hover,
 .katla:hover:not(:disabled) {
-  background: var(--kart-hover);
+  background: var(--cizgi);
   color: var(--metin);
 }
 
@@ -85,8 +84,9 @@
 }
 
 .kenarBos {
-  padding: 0 var(--b5) var(--b4);
-  font-size: var(--y5);
+  margin: 0;
+  padding: 0 10px var(--b2);
+  font-size: var(--y4);
   color: var(--metin-soluk);
   line-height: 1.5;
 }
@@ -94,7 +94,8 @@
 .agac {
   display: flex;
   flex-direction: column;
-  max-height: 70vh;
+  gap: 1px;
+  max-height: calc(100vh - 180px);
   overflow-y: auto;
 }
 
@@ -102,41 +103,48 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding-right: var(--b4);
-  border-radius: var(--r1);
+  min-height: 30px;
+  padding-right: 4px;
+  border-radius: 6px;
 }
 
 .agacSatir:hover {
-  background: var(--kart-hover);
+  background: var(--zemin-alt);
 }
 
-.agacSatirAcik {
-  background: var(--vurgu-yumusak);
+.agacSatirAcik,
+.agacSatirAcik:hover {
+  background: var(--cizgi);
 }
 
 .agacAd {
   display: flex;
   align-items: center;
-  gap: var(--b4);
+  gap: 6px;
   flex: 1;
   min-width: 0;
-  padding: 5px 0;
+  padding: 4px 0;
   border: 0;
   background: none;
   font: inherit;
-  font-size: var(--y4);
-  color: var(--metin);
+  font-size: 14px;
+  font-weight: var(--sik-orta);
+  color: var(--metin-orta);
   text-align: left;
   cursor: pointer;
+}
+
+.agacSatirAcik .agacAd {
+  color: var(--metin);
 }
 
 .agacIkon {
   display: grid;
   place-items: center;
-  width: 16px;
+  width: 20px;
   flex: none;
   color: var(--metin-soluk);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1;
 }
 
@@ -148,12 +156,12 @@
 
 /* Satır butonları yalnızca üstüne gelince; ağaç sakin dursun. */
 .agacDugme {
-  opacity: 0;
+  display: none;
 }
 
 .agacSatir:hover .agacDugme,
-.agacDugme:focus-visible {
-  opacity: 1;
+.agacSatir:focus-within .agacDugme {
+  display: grid;
 }
 
 /* --- silme onayı -------------------------------------------------------- */
@@ -208,53 +216,99 @@
 
 .govde {
   min-width: 0;
+  min-height: calc(100vh - 150px);
   border: 1px solid var(--cizgi);
   border-radius: var(--r2);
   background: var(--kart);
 }
 
 .sayfa {
+  /* Side padding leaves room for the block handles, which hang left of the column. */
+  padding: 72px 64px 0;
+}
+
+.column {
   display: flex;
   flex-direction: column;
-  /* Soldaki 36px blok tutamaklarının yeri: satırın dışına taşıyorlar. */
-  padding: var(--b6) var(--b6) 0 36px;
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--metin);
 }
 
 .sayfaBas {
   display: flex;
-  align-items: center;
-  gap: var(--b4);
-  /* İkon metnin soluna taşar, başlık bloklarla aynı hizada kalsın. */
-  margin-left: -38px;
-  padding: 0 0 var(--b5);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-bottom: var(--b2);
 }
 
 .ikonDugmesi {
-  width: 34px;
-  height: 34px;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-left: -6px;
+  padding: 0;
   border: 0;
   border-radius: var(--r1);
   background: none;
-  font-size: 24px;
+  font-size: 56px;
   line-height: 1;
   cursor: pointer;
 }
 
 .ikonDugmesi:hover {
-  background: var(--kart-hover);
+  background: var(--zemin-alt);
+}
+
+/* Shown only while the header is hovered, so an icon-less page stays clean. */
+.addIcon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--metin-soluk);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
+}
+
+.sayfaBas:hover .addIcon,
+.addIcon:focus-visible {
+  opacity: 1;
+}
+
+.addIcon:hover {
+  background: var(--zemin-alt);
 }
 
 .baslikAlani {
-  flex: 1;
+  width: 100%;
   min-width: 0;
+  padding: 0 2px;
   border: 0;
   background: none;
   font: inherit;
-  font-size: 28px;
-  font-weight: var(--sik-kalin);
+  font-family: var(--aile-baslik);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.2;
   letter-spacing: -0.02em;
   color: var(--metin);
   outline: none;
+}
+
+.baslikAlani::placeholder {
+  color: var(--cizgi-koyu);
 }
 
 .hata {
@@ -274,58 +328,216 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 4px;
+  margin: 1px 0;
 }
 
-.tutamak {
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* The "+" and grip pair, left of the block. They show on hover only. */
+.handles {
   position: absolute;
-  left: -22px;
   top: 3px;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 22px;
-  border: 0;
-  border-radius: var(--r1);
-  background: none;
-  color: var(--metin-soluk);
-  cursor: pointer;
+  display: flex;
+  width: 48px;
   opacity: 0;
+  transition: opacity var(--sure-hizli) var(--egri);
 }
 
-.satir:hover .tutamak,
-.tutamak:focus-visible {
+.satir:hover .handles,
+.handles:focus-within {
   opacity: 1;
 }
 
+.tutamak {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
 .tutamak:hover {
-  background: var(--kart-hover);
+  background: var(--zemin-alt);
+  color: var(--metin-orta);
+}
+
+.grip {
+  width: 20px;
+  cursor: grab;
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+.alan {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 2px;
+  color: inherit;
+  outline: none;
+}
+
+/* The editable text box of a block (RichText.tsx). */
+.rich {
+  /* Line breaks inside a block are real newline characters. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+  /* The app turns text selection off for its chrome; writing needs it back. */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.rich:empty::before {
+  content: attr(data-placeholder);
+  color: var(--metin-soluk);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Yer tutucu yalnızca odaktaki boş blokta; sayfa yer tutucu yığınına dönmesin. */
+.rich:empty:not(:focus)::before {
+  color: transparent;
+}
+
+.rich [data-b] {
+  font-weight: 650;
+}
+
+.rich [data-i] {
+  font-style: italic;
+}
+
+.rich [data-s] {
+  text-decoration: line-through;
+}
+
+.rich [data-c] {
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background: var(--zemin-alt);
+  color: var(--hata);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.85em;
+}
+
+/* Links stay in the text colour, as everywhere in Argos; a soft underline marks them. */
+.rich [data-a] {
+  color: var(--metin-orta);
+  text-decoration: underline;
+  text-decoration-color: var(--cizgi-koyu);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.rich [data-a][data-s] {
+  text-decoration: underline line-through;
+}
+
+/* The caret is the focus mark while writing; the global focus ring would box every line. */
+.alan:focus-visible,
+.alan:focus,
+.baslikAlani:focus-visible {
+  outline: none;
+}
+
+/* Headings keep their placeholder: an empty heading would otherwise vanish. */
+.satir[data-type^="heading"] .rich:empty:not(:focus)::before {
+  color: var(--cizgi-koyu);
+  opacity: 1;
+}
+
+.satir[data-type="heading1"] {
+  margin-top: 28px;
+}
+
+.satir[data-type="heading1"] .alan {
+  font-size: 30px;
+  font-weight: var(--sik-kalin);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.satir[data-type="heading1"] .handles {
+  top: 10px;
+}
+
+.satir[data-type="heading2"] {
+  margin-top: 22px;
+}
+
+.satir[data-type="heading2"] .alan {
+  font-size: 24px;
+  font-weight: var(--sik-kalin);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.satir[data-type="heading2"] .handles {
+  top: 7px;
+}
+
+.satir[data-type="heading3"] {
+  margin-top: 16px;
+}
+
+.satir[data-type="heading3"] .alan {
+  font-size: 20px;
+  font-weight: var(--sik-kalin);
+  line-height: 1.3;
+}
+
+.satir[data-type="heading3"] .handles {
+  top: 4px;
+}
+
+/* The first block sits right under the title; no extra gap there. */
+.bloklar > .satir:first-child {
+  margin-top: 1px;
 }
 
 /* Madde imi ve numara: metnin ilk satırıyla hizalı. */
 .madde {
   flex: none;
-  min-width: 18px;
-  padding-top: 3px;
-  color: var(--metin-orta);
-  font-size: var(--y4);
+  min-width: 24px;
+  padding: 3px 4px 3px 0;
+  color: var(--metin);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-.calloutIkon {
+.bullet {
+  padding-right: 0;
+  font-size: 22px;
+  line-height: 24px;
+  text-align: center;
+}
+
+.todoBox {
   flex: none;
-  padding-top: 3px;
-  font-size: 14px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 3px 2px 0 0;
 }
 
 .kutucuk {
-  flex: none;
   width: 16px;
   height: 16px;
-  margin-top: 4px;
-  border: 1.5px solid var(--cizgi-koyu);
-  border-radius: 4px;
+  border: 1.5px solid var(--metin-orta);
+  border-radius: 3px;
   background: transparent;
   color: transparent;
   display: grid;
@@ -335,78 +547,14 @@
 }
 
 .kutucuk:hover {
-  border-color: var(--vurgu);
+  background: var(--zemin-alt);
 }
 
-.kutucukDolu {
+.kutucukDolu,
+.kutucukDolu:hover {
   border-color: var(--vurgu);
   background: var(--vurgu);
   color: var(--vurgu-metin);
-}
-
-.alan {
-  flex: 1;
-  min-width: 0;
-  padding: 2px 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  line-height: 1.6;
-  color: var(--metin);
-  resize: none;
-  overflow: hidden;
-  outline: none;
-}
-
-.alan::placeholder {
-  color: var(--metin-soluk);
-}
-
-/* Yer tutucu yalnızca odaktaki boş blokta; sayfa yer tutucu yığınına dönmesin. */
-.alan:not(:focus)::placeholder {
-  color: transparent;
-}
-
-.heading1 {
-  font-size: 24px;
-  font-weight: var(--sik-kalin);
-  letter-spacing: -0.015em;
-  padding-top: var(--b5);
-}
-
-.heading2 {
-  font-size: 20px;
-  font-weight: var(--sik-kalin);
-  padding-top: var(--b4);
-}
-
-.heading3 {
-  font-size: 17px;
-  font-weight: var(--sik-orta);
-  padding-top: var(--b4);
-}
-
-.quote {
-  padding-left: var(--b4);
-  border-left: 3px solid var(--cizgi-koyu);
-  color: var(--metin-orta);
-}
-
-.callout {
-  color: var(--metin-orta);
-}
-
-.code {
-  padding: var(--b4);
-  border-radius: var(--r1);
-  background: var(--zemin-alt);
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: var(--y4);
-  line-height: 1.5;
-}
-
-.toggle {
-  font-weight: var(--sik-orta);
 }
 
 .bitti {
@@ -414,11 +562,69 @@
   text-decoration: line-through;
 }
 
+.content > .katla {
+  width: 24px;
+  height: 24px;
+  margin: 3px 2px 0 0;
+  color: var(--metin);
+}
+
+.satir[data-type="quote"] .content {
+  margin: 3px 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--metin);
+}
+
+.satir[data-type="callout"] .content {
+  margin: 4px 0;
+  padding: 12px 14px 12px 10px;
+  border-radius: 6px;
+  background: var(--zemin-alt);
+}
+
+.calloutIkon {
+  flex: none;
+  width: 28px;
+  padding-top: 3px;
+  font-size: 18px;
+  line-height: 24px;
+  text-align: center;
+}
+
+.satir[data-type="callout"] .handles,
+.satir[data-type="code"] .handles {
+  top: 19px;
+}
+
+.satir[data-type="code"] .content {
+  margin: 4px 0;
+  padding: 16px 18px;
+  border-radius: 6px;
+  background: var(--zemin-alt);
+}
+
+.satir[data-type="code"] .alan {
+  white-space: pre;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.ayracKutu {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 30px;
+}
+
 .ayrac {
   flex: 1;
-  margin: 10px 0;
+  margin: 0;
   border: 0;
-  border-top: 1px solid var(--cizgi);
+  border-top: 1px solid var(--cizgi-koyu);
 }
 
 /* Argos'un çizmediği Notion bloğu: yerinde durduğu görünsün, elle bozulmasın. */
@@ -426,35 +632,272 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: var(--b4);
-  padding: 6px var(--b4);
+  gap: var(--b2);
+  margin: 3px 0;
+  padding: 6px var(--b3);
   border: 1px dashed var(--cizgi-koyu);
-  border-radius: var(--r1);
+  border-radius: 6px;
   color: var(--metin-soluk);
-  font-size: var(--y5);
+  font-size: var(--y4);
 }
 
 .bilinmeyen code {
   font-size: var(--y5);
 }
 
+/* --- drag and drop ------------------------------------------------------ */
+
+.rowDragging {
+  opacity: 0.35;
+}
+
+.dropBefore::before,
+.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: var(--indent, 0);
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--vurgu) 45%, transparent);
+  pointer-events: none;
+}
+
+.dropBefore::before {
+  top: -3px;
+}
+
+.dropAfter::after {
+  bottom: -3px;
+}
+
+/* --- page bottom -------------------------------------------------------- */
+
 .bosAlan {
-  min-height: 140px;
+  width: 100%;
+  min-height: 30vh;
   margin-top: 2px;
+  padding: 3px 2px;
   border: 0;
   background: none;
+  font: inherit;
   cursor: text;
   text-align: left;
+  display: flex;
+  align-items: flex-start;
 }
 
 .bosIpucu {
   color: var(--metin-soluk);
-  font-size: var(--y4);
+  opacity: 0.7;
 }
 
 .blokMenusu {
   max-height: 70vh;
   overflow-y: auto;
+}
+
+/* --- slash menu --------------------------------------------------------- */
+
+.slashMenu {
+  position: fixed;
+  z-index: 60;
+  width: 320px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r2);
+  background: var(--kart);
+  box-shadow: var(--golge3);
+}
+
+.slashLabel {
+  padding: 6px 8px 4px;
+  font-size: var(--y5);
+  font-weight: var(--sik-orta);
+  color: var(--metin-soluk);
+}
+
+.slashItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  color: var(--metin);
+  text-align: left;
+  cursor: pointer;
+}
+
+.slashItemSelected {
+  background: var(--zemin-alt);
+}
+
+.slashIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--cizgi);
+  border-radius: 6px;
+  background: var(--kart);
+  color: var(--metin-orta);
+}
+
+.slashText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.slashName {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.slashDescription {
+  overflow: hidden;
+  font-size: var(--y5);
+  line-height: 1.35;
+  color: var(--metin-soluk);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slashHint {
+  flex: none;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--y5);
+  color: var(--metin-soluk);
+}
+
+/* --- format toolbar ----------------------------------------------------- */
+
+.formatBar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--cizgi-koyu);
+  border-radius: var(--r1);
+  background: var(--kart);
+  box-shadow: var(--golge2);
+}
+
+.formatButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--metin-orta);
+  cursor: pointer;
+}
+
+.formatButton:hover {
+  background: var(--zemin-alt);
+  color: var(--metin);
+}
+
+.formatButtonActive,
+.formatButtonActive:hover {
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu);
+}
+
+.formatDivider {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--cizgi);
+}
+
+.formatLink {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The field sits inside the bar, which already frames it. */
+.formatLinkInput:focus-visible {
+  outline: none;
+}
+
+.formatLinkInput {
+  width: 260px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin);
+  outline: none;
+}
+
+/* --- emoji picker ------------------------------------------------------- */
+
+.emojiPicker {
+  width: 348px;
+  padding: 8px;
+}
+
+.emojiGrid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+}
+
+.emojiButton {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.emojiButton:hover {
+  background: var(--zemin-alt);
+}
+
+.emojiButtonCurrent {
+  background: var(--vurgu-yumusak);
+}
+
+.emojiRemove {
+  width: 100%;
+  margin-top: 6px;
+  padding: 7px 10px;
+  border: 0;
+  border-top: 1px solid var(--cizgi);
+  border-radius: 0 0 6px 6px;
+  background: none;
+  font: inherit;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+  text-align: left;
+  cursor: pointer;
+}
+
+.emojiRemove:hover {
+  background: var(--zemin-alt);
 }
 
 /* --- Bugün kartı -------------------------------------------------------- */
