@@ -1,5 +1,5 @@
 import { BrowserWindow, ipcMain, powerMonitor } from "electron";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { bugunIso } from "../ortak/plan";
 import { KANAL } from "../ortak/tipler";
 import { anlikGonder, kuyruguIsle, type BotAyari } from "./bot-cekirdek";
@@ -57,6 +57,7 @@ const hataMetni = (e: unknown): string => (e instanceof Error ? e.message : Stri
  */
 type AyarSonucu =
   | { tur: "var"; ayar: BotAyari }
+  | { tur: "dosyaYok"; yol: string }
   | { tur: "eksik"; yol: string }
   | { tur: "okunamadi"; yol: string; sebep: string };
 
@@ -69,10 +70,14 @@ function ayar(): AyarSonucu {
   }
   let metin: string;
   try {
-    if (!existsSync(f)) return { tur: "eksik", yol: f };
+    // Read first and let it fail: `existsSync` answers false for a file that
+    // is there but cannot be opened, and those two want different answers.
     metin = readFileSync(f, "utf8");
   } catch (e) {
-    return { tur: "okunamadi", yol: f, sebep: hataMetni(e) };
+    const kod = (e as NodeJS.ErrnoException).code;
+    return kod === "ENOENT"
+      ? { tur: "dosyaYok", yol: f }
+      : { tur: "okunamadi", yol: f, sebep: `${kod ?? ""} ${hataMetni(e)}`.trim() };
   }
   let g: { argosBotUrl?: string; argosBotAnahtari?: string };
   try {
@@ -105,9 +110,11 @@ async function turuCalistir(ad: string, is: (a: BotAyari) => Promise<void>): Pro
   if (a.tur !== "var") {
     tepsiBotDurumu(null);
     sessizKaydet(
-      a.tur === "eksik"
-        ? `ayar yok — ${a.yol} içinde argosBotUrl ya da argosBotAnahtari yok; bot duruyor`
-        : `ayar okunamadı — ${a.yol}: ${a.sebep}; bot duruyor`,
+      a.tur === "dosyaYok"
+        ? `anahtar dosyası yok — ${a.yol}; bot duruyor`
+        : a.tur === "eksik"
+          ? `ayar yok — ${a.yol} okundu, içinde argosBotUrl ya da argosBotAnahtari yok; bot duruyor`
+          : `anahtar dosyası okunamadı — ${a.yol}: ${a.sebep}; bot duruyor`,
     );
     return;
   }
