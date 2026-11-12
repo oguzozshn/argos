@@ -445,7 +445,20 @@ export function Takvim() {
   const pano = useTaskBoard();
   const [acikGorev, setAcikGorev] = useState<string | null>(null);
   const [buyuk, setBuyuk] = useState(false);
-  const gorevAc = useCallback((g: TodoistGorev) => setAcikGorev(`${g.source === "local" ? "local" : "todoist"}:${g.id}`), []);
+  // Opening a task also selects its day, so "back" always lands on the day the task belongs to.
+  const gorevAc = useCallback((g: TodoistGorev) => {
+    if (g.tarih) setSecili(g.tarih.slice(0, 10));
+    setAcikGorev(`${g.source === "local" ? "local" : "todoist"}:${g.id}`);
+  }, []);
+  /**
+   * Picking a day always shows that day. The right-hand panel shows an open
+   * task before it shows a day, so without closing the task here a click on
+   * another day left the panel on the task, with ✕ the only way out.
+   */
+  const gunSec = useCallback((iso: string) => {
+    setSecili(iso);
+    setAcikGorev(null);
+  }, []);
   const acikTask = acikGorev ? pano.tasks.find((t) => t.key === acikGorev) ?? null : null;
   const gorevHedefi = useTaskComposerTarget();
   const { tazele: tdTazele } = td;
@@ -532,7 +545,7 @@ export function Takvim() {
       return { tur: "eklendi", veri: r.hafta };
     }).then((ok) => {
       if (!ok || !yeniId) return;
-      setSecili(iso);
+      gunSec(iso);
       setSeciliSlot(yeniId);
     });
   };
@@ -588,7 +601,7 @@ export function Takvim() {
       setTasima(null);
       if (iptal) return;
       if (!oynadi || !t) {
-        setSecili(iso);
+        gunSec(iso);
         setSeciliSlot((sec) => (sec === x.id ? null : x.id));
         return;
       }
@@ -610,7 +623,7 @@ export function Takvim() {
         if (r.tasindi) return { tur: "eklendi", veri: r.hafta, ...(r.not ? { not: r.not } : {}) };
         return r.not ? { tur: "reddet", sebep: r.not } : { tur: "zatenVar" };
       });
-      setSecili(t.iso);
+      gunSec(t.iso);
       setSeciliSlot(x.id);
     };
     const birak = () => bitir(false);
@@ -628,9 +641,9 @@ export function Takvim() {
   const duzen: EksenDuzeni = { tasima, baslat, ekle: slotuEkle };
 
   const kaydir = (yon: number) => {
-    if (gorunum === "gun") setSecili(gunEkle(secili, yon));
-    else if (gorunum === "hafta") setSecili(gunEkle(secili, yon * 7));
-    else setSecili(gunEkle(`${secili.slice(0, 7)}-01`, yon > 0 ? 32 : -1).slice(0, 7) + "-01");
+    if (gorunum === "gun") gunSec(gunEkle(secili, yon));
+    else if (gorunum === "hafta") gunSec(gunEkle(secili, yon * 7));
+    else gunSec(gunEkle(`${secili.slice(0, 7)}-01`, yon > 0 ? 32 : -1).slice(0, 7) + "-01");
   };
 
   const baslikMetni =
@@ -671,9 +684,13 @@ export function Takvim() {
               liste={[
                 { tus: "ArrowLeft", aciklama: `Önceki ${gorunum === "gun" ? "gün" : gorunum}`, eylem: () => kaydir(-1) },
                 { tus: "ArrowRight", aciklama: `Sonraki ${gorunum === "gun" ? "gün" : gorunum}`, eylem: () => kaydir(1) },
-                { tus: "t", aciklama: "Bugüne dön", eylem: secili !== bugun ? () => setSecili(bugun) : null },
+                { tus: "t", aciklama: "Bugüne dön", eylem: secili !== bugun ? () => gunSec(bugun) : null },
                 { tus: "n", aciklama: "Seçili güne slot ekle", eylem: seciliKayit ? () => slotuEkle(seciliKayit, secili) : null },
-                { tus: "Escape", aciklama: "Slot seçimini kaldır", eylem: seciliSlot ? () => setSeciliSlot(null) : null },
+                {
+                  tus: "Escape",
+                  aciklama: "Görevi kapat, yoksa slot seçimini kaldır",
+                  eylem: acikGorev ? () => setAcikGorev(null) : seciliSlot ? () => setSeciliSlot(null) : null,
+                },
               ]}
             />
             <Dugme
@@ -690,7 +707,7 @@ export function Takvim() {
               aria-label="Sonraki"
             />
             {secili !== bugun && (
-              <Dugme tur="sade" onClick={() => setSecili(bugun)}>
+              <Dugme tur="sade" onClick={() => gunSec(bugun)}>
                 bugün
               </Dugme>
             )}
@@ -736,9 +753,9 @@ export function Takvim() {
               gorevler={gunlere}
               calisma={calismaGunun}
               surukle={surukle}
-              onSec={setSecili}
+              onSec={gunSec}
               onGunGorunumu={(iso) => {
-                setSecili(iso);
+                gunSec(iso);
                 setGorunum("gun");
               }}
             />
@@ -755,7 +772,7 @@ export function Takvim() {
               gorevler={gunlere}
               calisma={calismaGunun}
               surukle={surukle}
-              onSec={setSecili}
+              onSec={gunSec}
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
               duzen={duzen}
@@ -781,7 +798,14 @@ export function Takvim() {
 
         {acikTask ? (
           // A completed or deleted task leaves the board: the day panel comes back by itself.
-          <TaskPanel key={acikTask.key} task={acikTask} board={pano} onClose={() => setAcikGorev(null)} onExpand={() => setBuyuk(true)} />
+          <TaskPanel
+            key={acikTask.key}
+            task={acikTask}
+            board={pano}
+            onClose={() => setAcikGorev(null)}
+            onExpand={() => setBuyuk(true)}
+            backLabel={`${Number(secili.slice(8, 10))} ${AY_TAM[Number(secili.slice(5, 7)) - 1]} ${GUN_ADLARI[haftaninGunu(secili)]}`}
+          />
         ) : seciliKayit ? (
           <GunPaneliDosyali
             kod={seciliKayit.kod}

@@ -624,3 +624,27 @@
   background: transparent;
   cursor: default;
 }
+
+/* "← 12 Kasım Perşembe": takes the place of the list name when the panel has a view to go back to. */
+.panelTop .panelGeri {
+  /* Beats `.panelTop button`, which makes every top button a 28px square. */
+  width: auto;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--b1);
+  margin-right: auto;
+  padding: var(--b1) var(--b2);
+  border-radius: var(--r1);
+  color: var(--metin-orta);
+  font-size: var(--y4);
+}
+
+.panelTop .panelGeri:hover {
+  background: var(--kart-hover);
+  color: var(--metin);
+}
+
+.panelTop:has(.panelGeri) .panelPath {
+  display: none;
+}

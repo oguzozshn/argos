@@ -1,4 +1,4 @@
-import { Bell, Calendar, Check, Clock, Flag, Maximize2, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
+import { ArrowLeft, Bell, Calendar, Check, Clock, Flag, Maximize2, Monitor, Plus, Repeat, Star, Trash2, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { Priority } from "@ortak/local-tasks";
 import type { Task } from "@ortak/task";
@@ -23,6 +23,7 @@ export function TaskPanel({
   onClose,
   onExpand,
   variant = "panel",
+  backLabel,
 }: {
   task: Task;
   board: TaskBoard;
@@ -31,6 +32,8 @@ export function TaskPanel({
   onExpand?: () => void;
   /** "buyuk": the large view, with a big title and room for the description. */
   variant?: "panel" | "buyuk";
+  /** When given, a "← label" button closes the panel: for screens where the panel replaces a view the person came from. */
+  backLabel?: string;
 }) {
   const list = board.lists.find((l) => l.source === task.listSource && l.id === task.listId);
   const [picker, setPicker] = useState<{ x: number; y: number; repeat: boolean } | null>(null);
@@ -46,6 +49,12 @@ export function TaskPanel({
   return (
     <aside className={variant === "buyuk" ? `${s.panel} ${s.panelBuyuk}` : s.panel} aria-label="Görev ayrıntısı">
       <div className={s.panelTop}>
+        {backLabel && (
+          <button type="button" className={s.panelGeri} onClick={onClose} title="Geri (Esc)" aria-label={`Geri: ${backLabel}`}>
+            <ArrowLeft size={14} />
+            {backLabel}
+          </button>
+        )}
         <span className={s.panelPath}>
           {list && <span className={s.dot} style={{ background: list.color }} />}
           {list?.name}
