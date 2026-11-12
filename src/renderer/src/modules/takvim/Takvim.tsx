@@ -152,6 +152,58 @@ function CalismaCipi({ x }: { x: GunOturumu }) {
   );
 }
 
+/**
+ * The day view's "gün boyu" strip is read in full, one row per item — the chip
+ * form is kept for the week view, where a column is too narrow for anything
+ * else. A row shows the whole name and completes from its circle, like the day
+ * list beside it.
+ */
+function GunBoyuSatiri({
+  gorev,
+  surukle,
+  onKapat,
+}: {
+  gorev: TodoistGorev;
+  surukle: Surukle;
+  onKapat: (g: TodoistGorev) => Promise<void>;
+}) {
+  const ac = useContext(GorevAc);
+  return (
+    <div className={s.gunBoyuSatir} {...gorevKaynagi(gorev, surukle)}>
+      <button
+        type="button"
+        className={s.gunKutucuk}
+        onClick={() => void onKapat(gorev)}
+        title="Tamamla"
+        aria-label={`${gorev.icerik} görevini tamamla`}
+      />
+      <button
+        type="button"
+        className={s.gunSatirAc}
+        onClick={() => ac(gorev)}
+        title={gorev.tekrarli ? `${gorev.icerik} — ${SURUKLENMEZ}` : gorev.icerik}
+      >
+        {gorev.icerik}
+      </button>
+    </div>
+  );
+}
+
+function CalismaSatiri({ x }: { x: GunOturumu }) {
+  return (
+    <div
+      className={[s.gunBoyuSatir, s.gunBoyuCalisma, x.oturum.yapildi && s.calismaRozetBitti, x.oturum.yapilmadi && s.calismaRozetYapilmadi]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ borderLeft: `3px solid ${x.plan.renk}` }}
+      title={`${x.ad} · ${String(x.oturum.dk / 60).replace(".", ",")} sa${x.oturum.yapildi ? " · yapıldı" : x.oturum.yapilmadi ? " · yapılmadı" : ""}`}
+    >
+      <span className={s.gunBoyuCalismaAd}>{x.ad}</span>
+      <span className={s.gunBoyuCalismaSure}>{String(x.oturum.dk / 60).replace(".", ",")} sa</span>
+    </div>
+  );
+}
+
 const BOS_GOREVLER = new Map<string, TodoistGorev[]>();
 
 function GorevCipi({ gorev, surukle }: { gorev: TodoistGorev; surukle: Surukle }) {
@@ -792,6 +844,7 @@ export function Takvim() {
               seciliSlot={seciliSlot}
               onSlotSec={setSeciliSlot}
               duzen={duzen}
+              onGorevKapat={td.kapat}
             />
           )}
         </Kart>
@@ -1118,6 +1171,7 @@ function GunEkseni({
   seciliSlot,
   onSlotSec,
   duzen,
+  onGorevKapat,
 }: {
   iso: string;
   bugun: string;
@@ -1127,6 +1181,7 @@ function GunEkseni({
   gorevler: TodoistGorev[];
   calisma: GunOturumu[];
   surukle: Surukle;
+  onGorevKapat: (g: TodoistGorev) => Promise<void>;
   seciliSlot: string | null;
   onSlotSec: (id: string | null) => void;
   duzen: EksenDuzeni;
@@ -1150,12 +1205,12 @@ function GunEkseni({
       {(gunBoyu.length > 0 || calisma.length > 0) && (
         <div className={s.gunBoyu}>
           <span className={s.gunBoyuEtiket}>gün boyu</span>
-          <div className={s.gunBoyuIcerik}>
+          <div className={s.gunBoyuSatirlar}>
             {gunBoyu.map((g) => (
-              <GorevCipi key={g.id} gorev={g} surukle={surukle} />
+              <GunBoyuSatiri key={g.id} gorev={g} surukle={surukle} onKapat={onGorevKapat} />
             ))}
             {calisma.map((x) => (
-              <CalismaCipi key={x.oturum.id} x={x} />
+              <CalismaSatiri key={x.oturum.id} x={x} />
             ))}
           </div>
         </div>

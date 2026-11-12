@@ -657,6 +657,51 @@
   border-left: 1px solid var(--cizgi);
 }
 
+/*
+ * Day view: one row per item, the whole name. About four rows show; more
+ * scroll inside the strip so the hour grid below never moves.
+ */
+.gunBoyuSatirlar {
+  display: flex;
+  flex-direction: column;
+  max-height: 128px;
+  overflow-y: auto;
+  padding: 4px 0 4px 10px;
+  border-left: 1px solid var(--cizgi);
+}
+
+.gunBoyuSatir {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  min-height: 28px;
+  font-size: var(--y4);
+  color: var(--metin);
+}
+
+.gunBoyuSatir .gunKutucuk {
+  margin-top: 0;
+}
+
+.gunBoyuCalisma {
+  padding-left: var(--b2);
+  color: var(--metin-orta);
+}
+
+.gunBoyuCalismaAd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gunBoyuCalismaSure {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+  font-variant-numeric: tabular-nums;
+}
+
 .gunBoyuSutunlar {
   display: grid;
   border-left: 1px solid var(--cizgi);
