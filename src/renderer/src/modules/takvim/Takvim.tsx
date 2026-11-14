@@ -47,7 +47,7 @@ import s from "./takvim.module.css";
  * Takvim yalnızca planı gösterse günün yarısı eksik kalırdı.
  *
  * Ay ızgarasının işi **boşluk görmek**: hangi güne ne sığar, korumalı alan
- * nerede, sosyal kota hangi güne konabilir. Hafta ve gün ekseni ise saati
+ * nerede. Hafta ve gün ekseni ise saati
  * gösterir — plan ile görev yan yana.
  *
  * Haftası kurulmamış bir gün hata değil: o gün de açılır, görevleri görünür,
@@ -871,10 +871,6 @@ function AyIzgarasi({
           const tip = kayit ? gunTipi(kayit.gunNo, kayit.veri.ofisGunleri ?? []) : null;
           const korumali =
             kayit !== undefined && korumaliAlanlar.some((k) => k.gunler.includes(kayit.gunNo));
-          const kota = kayit?.veri.sosyalKota ?? {};
-          const bos = slotlar.filter((x) => x.durum !== "tasindi" && x.alan !== "Kapanış").length === 0;
-          const kotaBos =
-            kayit !== undefined && (kayit.gunNo >= 6 ? kota.haftaSonu !== true : kota.haftaIci !== true);
 
           return (
             <button
@@ -955,7 +951,6 @@ function AyIzgarasi({
                     {yapilan}/{planli}
                   </span>
                 )}
-                {!gecmis && bos && kotaBos && kayit && <span className={s.bosluk}>kota boş</span>}
               </span>
             </button>
           );
