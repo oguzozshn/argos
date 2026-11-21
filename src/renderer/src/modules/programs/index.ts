@@ -1,5 +1,6 @@
 import { Dumbbell } from "lucide-react";
 import type { Modul } from "@/modules";
+import { programCommands } from "./commands";
 import { Programs } from "./Programs";
 import { TodayCard } from "./TodayCard";
 import { WorkoutLogScreen } from "./WorkoutLogScreen";
@@ -20,4 +21,5 @@ export const programsModule: Modul = {
   genis: true,
   Ozet: TodayCard,
   ozetAd: "Programlar · bugün",
+  komutlar: programCommands,
 };

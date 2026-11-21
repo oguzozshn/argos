@@ -14,6 +14,7 @@ import {
 import { hedefOzet, roadmapOzet } from "@ortak/ozet";
 import { bugunIso } from "@ortak/plan";
 import { BosDurum, Dugme, EkranBasi, Etiket, Giris, Kart, Yuklenirken } from "@/ui/bilesenler";
+import { useGoalPrograms } from "@/ui/ProgramDays";
 import { silVeBildir } from "@/ui/toast";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
@@ -44,6 +45,7 @@ type HedefOzeti = HedefKaydi & { roadmapler: BagliRoadmap[]; aliskanliklar: stri
 export function Hedefler() {
   const dosya = useDosya<HedefDosyasi>("hedefler.json");
   const { haftalar, kurallar, roadmapler, bugun, yukleniyor } = usePlanVerisi();
+  const programlar = useGoalPrograms();
   const [ad, setAd] = useState("");
   const [tarih, setTarih] = useState("");
 
@@ -104,7 +106,8 @@ export function Hedefler() {
   const kart = (h: HedefKaydi) => {
     const b = bagli.get(h.id);
     const kalan = h.bitti ? null : kalanMetni(h.hedefTarih, bugun);
-    const bagYok = !b || (b.roadmapler.length === 0 && b.aliskanliklar.length === 0);
+    const prog = programlar.get(h.id) ?? [];
+    const bagYok = prog.length === 0 && (!b || (b.roadmapler.length === 0 && b.aliskanliklar.length === 0));
     return (
       <Kart key={h.id} dolgulu={false} className={h.bitti ? s.hedefBitti : undefined}>
         <div className={s.govde}>
@@ -148,10 +151,23 @@ export function Hedefler() {
             onKaydet={(yeni) => guncelle(h.id, { not: yeni })}
           />
 
-          {b && !bagYok && (
+          {!bagYok && (
             <div className={s.bolum}>
               <span className={s.bolumAd}>Bağlı</span>
-              {b.roadmapler.map((r) => (
+              {prog.map((p) => (
+                <div key={p.id} className={s.bagliSatir}>
+                  <Link to={`/programs/?p=${encodeURIComponent(p.id)}`} className={s.bag}>
+                    {p.name}
+                  </Link>
+                  <span className={s.cubukYuva}>
+                    <span className={s.cubuk} style={{ display: "block", width: `${p.total ? (p.done / p.total) * 100 : 0}%` }} />
+                  </span>
+                  <span className={s.soluk}>
+                    {p.done}/{p.total} · {p.ended ? "bitti" : p.week > 0 ? `${p.week}. hafta / ${p.weeks}` : "başlamadı"}
+                  </span>
+                </div>
+              ))}
+              {(b?.roadmapler ?? []).map((r) => (
                 <div key={r.slug} className={s.bagliSatir}>
                   <Link to="/asistan/roadmap" className={s.bag}>
                     {r.alan}
@@ -167,7 +183,7 @@ export function Hedefler() {
                   </span>
                 </div>
               ))}
-              {b.aliskanliklar.length > 0 && (
+              {b && b.aliskanliklar.length > 0 && (
                 <div className={s.satir}>
                   {b.aliskanliklar.map((a) => (
                     <Etiket key={a}>{a}</Etiket>
@@ -177,7 +193,7 @@ export function Hedefler() {
             </div>
           )}
           {bagYok && !h.bitti && (
-            <span className={s.soluk}>Bağlı yol haritası yok. Yol haritaları ekranında bir haritayı bu hedefe bağlayabilirsin.</span>
+            <span className={s.soluk}>Bağlı yol haritası ya da program yok. Yol haritaları ya da Programlar ekranında bu hedefe bağlayabilirsin.</span>
           )}
         </div>
         <div className={s.altSerit}>
