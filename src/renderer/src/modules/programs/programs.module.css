@@ -1,0 +1,385 @@
+/* Programlar: the list, the editor and the log screen. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b5);
+}
+
+.back {
+  margin: calc(var(--b2) * -1) 0 var(--b2) calc(var(--b2) * -1);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--b1);
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: var(--metin-soluk);
+  font-size: var(--y5);
+}
+
+.grow {
+  flex: 1;
+}
+
+.pad {
+  padding: var(--b3) var(--b6);
+}
+
+/* --- fields ------------------------------------------------------------------------ */
+
+/* Reads like text until hovered or focused, like Hedefler's fields. */
+.field,
+.fieldArea {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r1);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--y4);
+  line-height: 1.5;
+}
+
+.fieldArea {
+  resize: vertical;
+  color: var(--metin-orta);
+}
+
+.field:hover,
+.fieldArea:hover {
+  border-color: var(--cizgi);
+}
+
+.field:focus,
+.fieldArea:focus {
+  outline: none;
+  border-color: var(--vurgu);
+  background: var(--zemin-alt);
+}
+
+.field::placeholder,
+.fieldArea::placeholder {
+  color: var(--metin-soluk);
+}
+
+.field[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.tiny {
+  width: 48px;
+}
+
+.narrow {
+  width: 64px;
+}
+
+.medium {
+  width: 200px;
+}
+
+.date {
+  width: 150px;
+}
+
+.select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r1);
+  background: var(--kart);
+  color: var(--metin);
+  font: inherit;
+  font-size: var(--y4);
+  min-width: 200px;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--vurgu);
+}
+
+/* --- editor: general ---------------------------------------------------------------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  flex-wrap: wrap;
+}
+
+.row > .field:not(.narrow):not(.medium):not(.date):not(.tiny) {
+  flex: 1;
+  max-width: 420px;
+}
+
+.label {
+  width: 84px;
+  flex-shrink: 0;
+  font-size: var(--y4);
+  color: var(--metin-orta);
+}
+
+.days {
+  display: flex;
+  gap: 4px;
+}
+
+.day {
+  height: 30px;
+  min-width: 42px;
+  padding: 0 8px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r-tam);
+  background: transparent;
+  color: var(--metin-orta);
+  font: inherit;
+  font-size: var(--y4);
+  cursor: pointer;
+}
+
+.day:hover {
+  border-color: var(--cizgi-koyu);
+}
+
+.dayOn {
+  border-color: var(--vurgu);
+  background: var(--vurgu-yumusak);
+  color: var(--vurgu-koyu);
+  font-weight: var(--sik-orta);
+}
+
+.addRow {
+  display: flex;
+  margin-top: calc(var(--b3) * -1);
+}
+
+.twoCols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--b5);
+}
+
+/* --- editor: tables ----------------------------------------------------------------- */
+
+/* Before the card's note span, which takes the free width. */
+.sessionHead {
+  order: -1;
+  display: flex;
+  align-items: center;
+  gap: var(--b1);
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.sessionId {
+  width: 44px;
+  font-weight: var(--sik-kalin);
+  text-align: center;
+}
+
+.sessionName {
+  width: 220px;
+  font-size: var(--y3);
+  font-weight: var(--sik-kalin);
+}
+
+.table {
+  display: grid;
+  align-items: center;
+  column-gap: 2px;
+  row-gap: 2px;
+  padding: var(--b2) var(--b4);
+  overflow-x: auto;
+}
+
+.exerciseTable {
+  grid-template-columns: minmax(150px, 2fr) minmax(90px, 1fr) minmax(110px, 1.2fr) 56px minmax(80px, 0.9fr) minmax(90px, 1fr) minmax(110px, 1.4fr) auto;
+}
+
+.phaseTable {
+  grid-template-columns: 130px minmax(140px, 1.5fr) 56px minmax(90px, 1fr) minmax(160px, 2fr) auto;
+}
+
+.th {
+  padding: 0 8px 4px;
+  font-size: var(--y5);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-soluk);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.tableFoot {
+  display: flex;
+  padding: 0 var(--b4) var(--b3);
+  max-width: 420px;
+}
+
+.weeks {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rowTools {
+  display: flex;
+  gap: 0;
+  opacity: 0.35;
+}
+
+.table > :hover + .rowTools,
+.rowTools:hover,
+.rowTools:focus-within {
+  opacity: 1;
+}
+
+.tool {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r1);
+  background: transparent;
+  color: var(--metin-soluk);
+  cursor: pointer;
+}
+
+.tool:hover:not(:disabled) {
+  background: var(--zemin-alt);
+  color: var(--metin);
+}
+
+.tool:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* --- log screen --------------------------------------------------------------------- */
+
+.dateLabel {
+  min-width: 92px;
+  text-align: center;
+  font-size: var(--y4);
+  font-weight: var(--sik-orta);
+}
+
+.chips {
+  display: flex;
+  gap: var(--b1);
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 4px 12px;
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r-tam);
+  background: transparent;
+  color: var(--metin-orta);
+  font: inherit;
+  font-size: var(--y4);
+  cursor: pointer;
+}
+
+.chipOn {
+  border-color: var(--vurgu);
+  color: var(--vurgu-koyu);
+  background: var(--vurgu-yumusak);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+}
+
+.rest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b3);
+}
+
+.restText {
+  margin: 0;
+  color: var(--metin-orta);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: 6px var(--b6);
+  font-size: var(--y4);
+  cursor: pointer;
+}
+
+.check + .check {
+  border-top: 1px solid var(--cizgi);
+}
+
+.checkDone {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.logRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 120px auto;
+  align-items: center;
+  gap: var(--b3);
+  padding: var(--b2) var(--b6);
+  border-bottom: 1px solid var(--cizgi);
+}
+
+.logName {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.logTitle {
+  font-weight: var(--sik-orta);
+}
+
+.loadInput {
+  border-color: var(--cizgi);
+}
+
+.sets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.repInput {
+  width: 52px;
+  text-align: center;
+  border-color: var(--cizgi);
+}
+
+.saveBar {
+  display: flex;
+  gap: var(--b2);
+}
+
+@media (max-width: 720px) {
+  .logRow {
+    grid-template-columns: 1fr;
+  }
+}
