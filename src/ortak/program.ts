@@ -409,6 +409,45 @@ export function prefill(f: ProgramsFile, e: Exercise, before?: string): Exercise
   return { exerciseId: e.id, name: e.name, ...(load ? { load } : {}), reps };
 }
 
+/** One day of a week grid: what the calendar says, and the session it is about. */
+export interface WeekCell {
+  date: string;
+  status: ScheduleEntry["status"] | "none";
+  sessionId?: string;
+}
+
+/** A program's days for a row of dates (a week), for a tick grid. Rest-day logs are left out. */
+export function weekCells(f: ProgramsFile, p: Program, dates: string[], today: string): WeekCell[] {
+  const plan = schedule(p, logsOf(f, p.id), today, dates.at(-1));
+  return dates.map((date) => {
+    const e = plan.find((x) => x.date === date && x.status !== "rest");
+    return e ? { date, status: e.status, ...(e.sessionId ? { sessionId: e.sessionId } : {}) } : { date, status: "none" };
+  });
+}
+
+/**
+ * One tick in a grid: a workout done on a date becomes not done (its log is
+ * removed), anything else becomes done, with the plan's loads and last
+ * time's reps as the log. The session is the one due or missed that day,
+ * else the next one in turn. Days ahead of today cannot be ticked.
+ */
+export function toggleDone(f: ProgramsFile, programId: string, date: string, today: string, id = newLogId()): ProgramsFile {
+  const p = findProgram(f, programId);
+  if (!p || date > today || date < p.start || date > endDate(p)) return f;
+  const existing = f.logs.find((l) => l.programId === p.id && l.date === date && l.status !== "rest");
+  if (existing?.status === "done") return deleteLog(f, existing.id);
+  const plan = schedule(p, logsOf(f, p.id), today);
+  const sessionId =
+    existing?.sessionId ??
+    plan.find((e) => e.date === date && (e.status === "missed" || e.status === "planned"))?.sessionId ??
+    plan.find((e) => e.date > date && e.status === "planned")?.sessionId ??
+    p.order[0];
+  const session = findSession(p, sessionId);
+  if (!session) return f;
+  const exercises = session.exercises.map((e) => prefill(f, effectiveExercise(p, e, date), date));
+  return saveLog(f, workoutLog(p, session, date, exercises, existing?.note, existing?.id ?? id));
+}
+
 /* --- changes -------------------------------------------------------------------------- */
 
 export function saveProgram(f: ProgramsFile, p: Program): ProgramsFile {

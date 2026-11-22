@@ -7,6 +7,7 @@ import type { Hafta as HaftaTipi } from "@ortak/plan";
 import { aliskanlikOzet, siklikMetni, siklikOku } from "@ortak/ozet";
 import { BosDurum, Dugme, EkranBasi, Etiket, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { Kisayollar } from "@/ui/Kisayollar";
+import { useProgramWeek } from "@/ui/ProgramDays";
 import { useDosya } from "@/veri/kanca";
 import { usePlanVerisi } from "@/veri/plan";
 import s from "./aliskanliklar.module.css";
@@ -40,7 +41,9 @@ function Izgara({
   onCevir: (ad: string, gunNo: number) => void;
 }) {
   const aliskanliklar = veri.gunlukAliskanliklar ?? [];
-  if (aliskanliklar.length === 0) {
+  // Programs (Programlar) as rows of their own: their days come from the program, a tick logs the workout.
+  const programlar = useProgramWeek(veri.gunler.map((g) => g.isoTarih));
+  if (aliskanliklar.length === 0 && programlar.rows.length === 0) {
     return (
       <BosDurum
         baslik="Bu haftada alışkanlık yok"
@@ -99,6 +102,51 @@ function Izgara({
               <td className={s.izgaraSon}>
                 {yapilanSayi}/
                 {Array.isArray(a.beklenenGunler) ? a.beklenenGunler.length : veri.gunler.length}
+              </td>
+            </tr>
+          );
+        })}
+        {programlar.rows.map(({ program, cells }) => {
+          const yapilan = cells.filter((c) => c.status === "done").length;
+          const beklenen = cells.filter((c) => c.status !== "none").length;
+          return (
+            <tr key={program.id} className={s.programSatiri}>
+              <td>
+                <span className={s.aliskanlikAd}>{program.name}</span>
+                <span className={s.aliskanlikSiklik}>program</span>
+              </td>
+              {cells.map((c, i) => {
+                const g = veri.gunler[i]!;
+                const ileride = c.date > programlar.today;
+                const harf = c.sessionId ?? "";
+                const metin = c.status === "done" ? "☑" : c.status === "skipped" ? "–" : harf;
+                const durum = { done: "yapıldı", skipped: "atlandı", missed: "kaçtı", planned: ileride ? "planlı" : "bugün", rest: "", none: "" }[c.status];
+                return (
+                  <td key={c.date} className={c.date === bugun ? s.bugunSutun : undefined}>
+                    <button
+                      type="button"
+                      className={[
+                        s.hucre,
+                        c.status === "done" && s.hucreYapildi,
+                        c.status === "missed" && s.hucreKacti,
+                        c.status === "skipped" && s.hucreAtlandi,
+                        c.status === "none" && s.hucreBeklenmiyor,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      disabled={ileride}
+                      onClick={() => programlar.toggle(program.id, c.date)}
+                      aria-label={`${program.name} · ${g.ad}${harf ? ` · ${harf}` : ""}${durum ? ` · ${durum}` : ""}`}
+                      title={`${harf ? `${harf} günü` : "Antrenman yok"}${durum ? ` · ${durum}` : ""}${ileride ? "" : c.status === "done" ? " — işareti kaldırmak için tıkla" : " — yaptım demek için tıkla"}`}
+                      aria-pressed={c.status === "done"}
+                    >
+                      {metin}
+                    </button>
+                  </td>
+                );
+              })}
+              <td className={s.izgaraSon}>
+                {yapilan}/{beklenen}
               </td>
             </tr>
           );

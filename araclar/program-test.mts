@@ -16,6 +16,8 @@ import {
   saveLog,
   saveProgram,
   schedule,
+  toggleDone,
+  weekCells,
   workoutLog,
   type Program,
   type ProgramsFile,
@@ -181,6 +183,30 @@ console.log("logs");
   eq("copy: new start, same exercise ids", [c.programs[1]!.start, c.programs[1]!.sessions[0]!.exercises[0]!.id], ["2027-01-18", "squat"]);
   eq("copy carries last time over", prefill(c, c.programs[1]!.sessions[0]!.exercises[0]!).reps, [14, 15, 15]);
   eq("delete takes its logs", deleteProgram(c, "band").logs.length, 0);
+}
+
+console.log("week grid and ticks");
+{
+  const week = ["2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28", "2026-11-29"];
+  let f = withProgram();
+  f = saveLog(f, done("2026-11-23", "A"));
+  const cells = (g: ProgramsFile, today: string) => weekCells(g, g.programs[0]!, week, today).map((c) => `${c.status}${c.sessionId ? " " + c.sessionId : ""}`);
+  eq("Thursday: Mon done, Wed missed, Thu B, Sat A", cells(f, "2026-11-26"), ["done A", "none", "missed B", "planned B", "none", "planned A", "none"]);
+
+  const ticked = toggleDone(f, "band", "2026-11-26", "2026-11-26", "t1");
+  eq("tick today: B done with plan's load and phase sets", [ticked.logs.at(-1)!.sessionId, ticked.logs.at(-1)!.exercises[0]!.load, ticked.logs.at(-1)!.exercises[0]!.reps], ["B", "orta", [12, 12]]);
+  eq("untick removes it", toggleDone(ticked, "band", "2026-11-26", "2026-11-26").logs.length, 1);
+  eq("a day ahead cannot be ticked", toggleDone(f, "band", "2026-11-27", "2026-11-26"), f);
+
+  const late = toggleDone(f, "band", "2026-11-25", "2026-11-26", "t2");
+  eq("tick a missed Wednesday: its session B", [late.logs.at(-1)!.date, late.logs.at(-1)!.sessionId], ["2026-11-25", "B"]);
+  eq("then Thursday is too close, Friday A", cells(late, "2026-11-26"), ["done A", "none", "done B", "none", "planned A", "none", "none"]);
+
+  const tue = toggleDone(f, "band", "2026-11-24", "2026-11-26", "t3");
+  eq("tick an unplanned day: the next session in turn", tue.logs.at(-1)!.sessionId, "B");
+
+  const skipped = saveLog(f, { ...done("2026-11-25", "B"), status: "skipped", exercises: [] });
+  eq("tick a skipped day: done, same id", [toggleDone(skipped, "band", "2026-11-25", "2026-11-26").logs.filter((l) => l.date === "2026-11-25").map((l) => l.status)], [["done"]]);
 }
 
 console.log("reading the file");
