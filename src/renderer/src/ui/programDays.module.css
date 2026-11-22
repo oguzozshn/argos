@@ -1,0 +1,100 @@
+/* Programs in the calendar: a chip in the cells, rows in the day panel. */
+
+.chip {
+  display: block;
+  overflow: hidden;
+  padding: 1px 6px;
+  border-left: 3px solid var(--iyi);
+  border-radius: 4px;
+  background: var(--iyi-yumusak);
+  color: var(--metin);
+  font-size: 11px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.done {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.skipped {
+  color: var(--metin-soluk);
+  background: transparent;
+}
+
+.missed {
+  border-left-color: var(--hata);
+  background: var(--hata-yumusak);
+  color: var(--hata);
+  text-decoration: line-through;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--b2) 0;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: var(--y5, 12px);
+  font-weight: var(--sik-kalin);
+  color: var(--metin-soluk);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--b2);
+  padding: 5px 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--y4);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover .name {
+  color: var(--metin);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-tam);
+  background: var(--iyi);
+  flex-shrink: 0;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  color: var(--metin-soluk);
+  font-size: var(--y5, 12px);
+  white-space: nowrap;
+}
+
+.rowDone .name {
+  color: var(--metin-soluk);
+  text-decoration: line-through;
+}
+
+.rowMissed .name {
+  color: var(--hata);
+  text-decoration: line-through;
+}
+
+.rowMissed .dot {
+  background: var(--hata);
+}

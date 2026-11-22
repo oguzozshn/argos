@@ -12,6 +12,7 @@ import { Kisayollar } from "@/ui/Kisayollar";
 import { Dugme, EkranBasi, Kart, Yuklenirken } from "@/ui/bilesenler";
 import { SlotPaneli } from "@/ui/SlotPaneli";
 import { GununCalismasi, useCalisma, type GunOturumu } from "@/ui/CalismaOturumlari";
+import { DayPrograms, ProgramChip, useProgramDays } from "@/ui/ProgramDays";
 import { FiltreBaglam, FiltreDugmesi, oturumGorunur, useTakvimFiltresi } from "./Filtre";
 import {
   hedefOzellikleri,
@@ -920,6 +921,7 @@ function AyIzgarasi({
   onGunGorunumu: (iso: string) => void;
 }) {
   const korumaliAlanlar = kurallar.korumaliAlanlar ?? [];
+  const programDays = useProgramDays();
 
   return (
     <>
@@ -1023,6 +1025,9 @@ function AyIzgarasi({
                 {calisma(iso).map((x) => (
                   <CalismaCipi key={x.oturum.id} x={x} />
                 ))}
+                {programDays(iso).map((x) => (
+                  <ProgramChip key={x.program.id} x={x} />
+                ))}
               </span>
 
               <span className={s.hucreDip}>
@@ -1074,6 +1079,7 @@ function HaftaEkseni({
   duzen: EksenDuzeni;
 }) {
   const gunler = Array.from({ length: 7 }, (_, i) => gunEkle(bas, i));
+  const programDays = useProgramDays();
   const sutunlar = `52px repeat(7, minmax(0, 1fr))`;
   const kutu = useEksenKaydirma(bas, kaydirmaHedefi(gunler, bugun, simdiDk, gunHaritasi));
 
@@ -1123,6 +1129,9 @@ function HaftaEkseni({
                 ))}
               {calisma(iso).map((x) => (
                 <CalismaCipi key={x.oturum.id} x={x} />
+              ))}
+              {programDays(iso).map((x) => (
+                <ProgramChip key={x.program.id} x={x} />
               ))}
             </div>
           ))}
@@ -1194,6 +1203,7 @@ function GunEkseni({
     (x) => (x.baslangic ?? "").slice(0, 10) === iso,
   );
   const gunBoyu = gorevler.filter((g) => gorevSaati(g) === null);
+  const programs = useProgramDays()(iso).filter((x) => x.entry.status !== "rest");
 
   return (
     <>
@@ -1202,7 +1212,7 @@ function GunEkseni({
         <span className={s.sutunBasiOlcum}>ölçülen</span>
       </div>
 
-      {(gunBoyu.length > 0 || calisma.length > 0) && (
+      {(gunBoyu.length > 0 || calisma.length > 0 || programs.length > 0) && (
         <div className={s.gunBoyu}>
           <span className={s.gunBoyuEtiket}>gün boyu</span>
           <div className={s.gunBoyuSatirlar}>
@@ -1211,6 +1221,9 @@ function GunEkseni({
             ))}
             {calisma.map((x) => (
               <CalismaSatiri key={x.oturum.id} x={x} />
+            ))}
+            {programs.map((x) => (
+              <ProgramChip key={x.program.id} x={x} />
             ))}
           </div>
         </div>
@@ -1447,6 +1460,7 @@ function GunPaneliPlansiz({
       <PanelBasi iso={iso} />
       <GunListesi gorevler={gorevler} slotlar={[]} onKapat={onGorevKapat} surukle={surukle} calismaVar={calismaVar} />
       <GununCalismasi gun={iso} suz={suz} />
+      <DayPrograms gun={iso} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
       <p className={s.aciklama}>Bu haftanın planı kurulmamış; slot eklemek için önce hafta kurulur.</p>
     </aside>
@@ -1584,6 +1598,7 @@ function GunPaneliDosyali({
         calismaVar={calismaVar}
       />
       <GununCalismasi gun={iso} suz={suz} />
+      <DayPrograms gun={iso} />
       <GunaGorevEkle iso={iso} host={ekleHost} />
     </aside>
   );
