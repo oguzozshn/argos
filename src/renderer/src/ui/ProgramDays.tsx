@@ -3,11 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { bugunIso } from "@ortak/plan";
 import {
   PROGRAMS_PATH,
+  endDate,
   findSession,
   normalizePrograms,
   progress,
   schedule,
+  toggleDone,
+  weekCells,
   type Program,
+  type WeekCell,
   type ProgramsFile,
   type ScheduleEntry,
 } from "@ortak/program";
@@ -55,6 +59,33 @@ export function useProgramDays(): (iso: string) => ProgramDay[] {
     return map;
   }, [file.veri, today]);
   return (iso) => byDate.get(iso) ?? [];
+}
+
+export interface ProgramWeekRow {
+  program: Program;
+  cells: WeekCell[];
+}
+
+/**
+ * Programs as rows of a week's tick grid (Alışkanlıklar): the programs
+ * running in that week, their cells, and a tick that logs or unlogs a day.
+ */
+export function useProgramWeek(dates: string[]) {
+  const file = useDosya<ProgramsFile>(PROGRAMS_PATH);
+  const today = bugunIso();
+  const key = dates.join(",");
+  const rows = useMemo((): ProgramWeekRow[] => {
+    const data = normalizePrograms(file.veri);
+    const list = key ? key.split(",") : [];
+    if (list.length === 0) return [];
+    return data.programs
+      .filter((p) => !p.archived)
+      .map((p) => ({ program: p, cells: weekCells(data, p, list, today) }))
+      .filter((r) => list.some((d) => d >= r.program.start && d <= endDate(r.program)));
+  }, [file.veri, key, today]);
+  const toggle = (programId: string, date: string) =>
+    void file.degistir((d) => toggleDone(normalizePrograms(d), programId, date, bugunIso()));
+  return { rows, toggle, today };
 }
 
 export interface GoalProgram {

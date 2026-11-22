@@ -133,3 +133,27 @@
 .birakilan td {
   color: var(--metin-soluk);
 }
+
+/* Programs' rows (Programlar): the session letter on its day, red when missed. */
+.programSatiri td {
+  border-top-style: dashed;
+}
+
+.hucreKacti {
+  border-color: var(--hata);
+  color: var(--hata);
+  background: var(--hata-yumusak);
+}
+
+.hucreAtlandi {
+  color: var(--metin-soluk);
+  border-style: dashed;
+}
+
+.hucre:disabled {
+  cursor: default;
+}
+
+.hucre:disabled:hover {
+  border-color: var(--cizgi);
+}
